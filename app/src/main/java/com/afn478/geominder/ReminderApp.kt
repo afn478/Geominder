@@ -13,10 +13,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -34,6 +36,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -267,6 +270,7 @@ private fun AddReminderDialog(
     val requestDismiss = {
         if (state.sourceText.isNotBlank()) showDiscardConfirmation = true else onDismiss()
     }
+    val currentRequestDismiss = rememberUpdatedState(requestDismiss)
     val sheetState = rememberStandardBottomSheetState(
         initialValue = SheetValue.PartiallyExpanded,
         skipHiddenState = true,
@@ -331,6 +335,7 @@ private fun AddReminderDialog(
                         modifier = Modifier.heightIn(max = maximumSheetHeight),
                         autoFocusSource = true,
                         bottomSheetMode = true,
+                        onDismissByDrag = { currentRequestDismiss.value() },
                     )
                 },
                 modifier = Modifier
@@ -400,6 +405,7 @@ private fun AddReminderHost(
             editingReminderId = editingReminderId,
         ),
     )
+    val state by addViewModel.uiState.collectAsStateWithLifecycle()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -414,6 +420,26 @@ private fun AddReminderHost(
                         )
                     }
                 },
+                actions = {
+                    if (editingReminderId != null) {
+                        IconButton(
+                            onClick = addViewModel::save,
+                            enabled = state.editingReminderId != null && !state.isSaving,
+                        ) {
+                            if (state.isSaving) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.padding(12.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Save changes",
+                                )
+                            }
+                        }
+                    }
+                },
             )
         },
     ) { contentPadding ->
@@ -421,6 +447,7 @@ private fun AddReminderHost(
             viewModel = addViewModel,
             onReminderSaved = { onSaved() },
             modifier = Modifier.padding(contentPadding),
+            fullPageMode = editingReminderId != null,
         )
     }
 }
