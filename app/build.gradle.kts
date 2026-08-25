@@ -8,11 +8,11 @@ plugins {
 }
 
 android {
-    namespace = "com.geominder.reminder"
+    namespace = "com.afn478.geominder"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.geominder.reminder"
+        applicationId = "com.afn478.geominder"
         minSdk = 29
         targetSdk = 36
         versionCode = 1

@@ -1,0 +1,89 @@
+package com.afn478.geominder.settings
+
+import android.content.Context
+import android.content.SharedPreferences
+import com.afn478.geominder.parser.ReminderTextParser
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import java.time.LocalTime
+
+class SharedPreferencesSettingsRepository(
+    context: Context,
+    keywordTimeDefaultsProvider: KeywordTimeDefaultsProvider =
+        ParserKeywordTimeDefaultsProvider(ReminderTextParser()),
+    private val preferences: SharedPreferences = context.applicationContext.getSharedPreferences(
+        PREFERENCES_NAME,
+        Context.MODE_PRIVATE,
+    ),
+) : SettingsRepository {
+    private val defaultKeywordTimes = keywordTimeDefaultsProvider.get().toMap()
+    private val _settings = MutableStateFlow(readSettings())
+    override val settings: StateFlow<ReminderSettings> = _settings.asStateFlow()
+
+    override suspend fun setDefaultRadiusMeters(radiusMeters: Double) {
+        require(radiusMeters.isFinite() && radiusMeters in SettingsValidation.MIN_RADIUS_METERS..SettingsValidation.MAX_RADIUS_METERS) {
+            "Default geofence radius is out of range"
+        }
+        preferences.edit()
+            .putString(KEY_DEFAULT_RADIUS, radiusMeters.toString())
+            .apply()
+        _settings.value = _settings.value.copy(defaultGeofenceRadiusMeters = radiusMeters)
+    }
+
+    override suspend fun upsertKeywordTime(keyword: String, time: LocalTime) {
+        val normalized = (SettingsValidation.keyword(keyword) as? ValidationResult.Valid)?.value
+            ?: throw IllegalArgumentException("Invalid preset keyword")
+        updateKeywordTimes(_settings.value.keywordTimes + (normalized to time))
+    }
+
+    override suspend fun removeKeyword(keyword: String) {
+        val normalized = (SettingsValidation.keyword(keyword) as? ValidationResult.Valid)?.value
+            ?: return
+        updateKeywordTimes(_settings.value.keywordTimes - normalized)
+    }
+
+    override suspend fun resetKeywordTimes() {
+        updateKeywordTimes(defaultKeywordTimes)
+    }
+
+    override suspend fun setThemeMode(mode: ThemeMode) {
+        preferences.edit().putString(KEY_THEME_MODE, mode.name).apply()
+        _settings.value = _settings.value.copy(themeMode = mode)
+    }
+
+    override suspend fun setAccentTheme(accent: AccentTheme) {
+        preferences.edit().putString(KEY_ACCENT_THEME, accent.name).apply()
+        _settings.value = _settings.value.copy(accentTheme = accent)
+    }
+
+    private fun updateKeywordTimes(entries: Map<String, LocalTime>) {
+        val snapshot = entries.toMap()
+        preferences.edit()
+            .putString(KEY_KEYWORD_TIMES, SettingsCodec.encodeKeywordTimes(snapshot))
+            .apply()
+        _settings.value = _settings.value.copy(keywordTimes = snapshot)
+    }
+
+    private fun readSettings(): ReminderSettings {
+        val storedKeywords = preferences.getString(KEY_KEYWORD_TIMES, null)
+        return ReminderSettings(
+            defaultGeofenceRadiusMeters = SettingsCodec.decodeRadius(
+                preferences.getString(KEY_DEFAULT_RADIUS, null),
+            ),
+            keywordTimes = storedKeywords
+                ?.let(SettingsCodec::decodeKeywordTimes)
+                ?: defaultKeywordTimes,
+            themeMode = ThemeMode.fromStorage(preferences.getString(KEY_THEME_MODE, null)),
+            accentTheme = AccentTheme.fromStorage(preferences.getString(KEY_ACCENT_THEME, null)),
+        )
+    }
+
+    private companion object {
+        const val PREFERENCES_NAME = "reminder_settings"
+        const val KEY_DEFAULT_RADIUS = "default_geofence_radius_meters"
+        const val KEY_KEYWORD_TIMES = "keyword_time_presets"
+        const val KEY_THEME_MODE = "theme_mode"
+        const val KEY_ACCENT_THEME = "accent_theme"
+    }
+}
