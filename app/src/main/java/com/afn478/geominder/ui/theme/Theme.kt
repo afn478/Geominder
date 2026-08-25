@@ -27,6 +27,14 @@ private val accents = mapOf(
     AccentTheme.SLATE to Accent(Color(0xFF4D5D70), Color(0xFFB9C8DA)),
 )
 
+internal fun accentSwatchColor(
+    accentTheme: AccentTheme,
+    darkTheme: Boolean,
+    dynamicColor: Color,
+): Color = accents[accentTheme]?.let { accent ->
+    if (darkTheme) accent.dark else accent.light
+} ?: dynamicColor
+
 internal fun resolveDarkTheme(systemIsDark: Boolean, themeMode: ThemeMode): Boolean =
     when (themeMode) {
         ThemeMode.SYSTEM -> systemIsDark

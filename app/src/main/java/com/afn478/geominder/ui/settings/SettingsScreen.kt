@@ -1,5 +1,8 @@
 package com.afn478.geominder.ui.settings
 
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -8,30 +11,51 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Security
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.Icon
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -43,6 +67,50 @@ import com.afn478.geominder.settings.PermissionUiItem
 import com.afn478.geominder.settings.SettingsPermissionAction
 import com.afn478.geominder.settings.AccentTheme
 import com.afn478.geominder.settings.ThemeMode
+import com.afn478.geominder.ui.theme.accentSwatchColor
+import com.afn478.geominder.ui.theme.resolveDarkTheme
+
+private enum class SettingsSubsection(val title: String) {
+    APPEARANCE("Appearance"),
+    LOCATION("Location defaults"),
+    PRESET_TIMES("Preset times"),
+    PERMISSIONS("Permissions"),
+    BACKUP("Backup"),
+}
+
+private data class SettingsSubsectionEntry(
+    val subsection: SettingsSubsection,
+    val summary: String,
+    val icon: ImageVector,
+)
+
+private val settingsSubsectionEntries = listOf(
+    SettingsSubsectionEntry(
+        subsection = SettingsSubsection.APPEARANCE,
+        summary = "Theme and accent color",
+        icon = Icons.Default.Palette,
+    ),
+    SettingsSubsectionEntry(
+        subsection = SettingsSubsection.LOCATION,
+        summary = "Default geofence radius",
+        icon = Icons.Default.LocationOn,
+    ),
+    SettingsSubsectionEntry(
+        subsection = SettingsSubsection.PRESET_TIMES,
+        summary = "Recognized keyword times",
+        icon = Icons.Default.Schedule,
+    ),
+    SettingsSubsectionEntry(
+        subsection = SettingsSubsection.PERMISSIONS,
+        summary = "Location, notification, and alarm access",
+        icon = Icons.Default.Security,
+    ),
+    SettingsSubsectionEntry(
+        subsection = SettingsSubsection.BACKUP,
+        summary = "Export or restore reminders",
+        icon = Icons.Default.Folder,
+    ),
+)
 
 @Composable
 fun SettingsRoute(
@@ -113,62 +181,187 @@ fun SettingsScreen(
     backupInProgress: Boolean,
     modifier: Modifier = Modifier,
 ) {
+    var selectedSubsection by rememberSaveable {
+        mutableStateOf<SettingsSubsection?>(null)
+    }
+    BackHandler(enabled = selectedSubsection != null) {
+        selectedSubsection = null
+    }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(selectedSubsection?.title ?: "Settings") },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(
+                        onClick = {
+                            if (selectedSubsection == null) onBack() else selectedSubsection = null
+                        },
+                    ) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
             )
         },
     ) { contentPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(contentPadding)
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .navigationBarsPadding(),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
-        ) {
-            AppearanceSection(state, onThemeModeChange, onAccentThemeChange)
-            RadiusSection(
-                state = state,
-                onRadiusChange = onRadiusChange,
-                onSaveRadius = onSaveRadius,
+        val pageModifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(contentPadding)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .navigationBarsPadding()
+
+        when (selectedSubsection) {
+            null -> SettingsSubsectionList(
+                modifier = pageModifier,
+                persistenceError = state.persistenceError,
+                onSelect = { selectedSubsection = it },
             )
-            KeywordSection(
-                state = state,
-                onAddKeyword = onAddKeyword,
-                onEditKeyword = onEditKeyword,
-                onKeywordChange = onKeywordChange,
-                onKeywordTimeChange = onKeywordTimeChange,
-                onSaveKeyword = onSaveKeyword,
-                onCancelKeywordEdit = onCancelKeywordEdit,
-                onRemoveKeyword = onRemoveKeyword,
-                onResetKeywords = onResetKeywords,
-            )
-            PermissionSection(
-                items = state.permissionItems,
-                onPermissionAction = onPermissionAction,
-            )
-            BackupSection(
-                onExportBackup = onExportBackup,
-                onImportBackup = onImportBackup,
-                status = backupStatus,
-                inProgress = backupInProgress,
-            )
-            state.persistenceError?.let {
-                Text(
-                    text = it,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
+
+            SettingsSubsection.APPEARANCE -> SettingsSubpage(pageModifier) {
+                AppearanceSection(state, onThemeModeChange, onAccentThemeChange)
+            }
+
+            SettingsSubsection.LOCATION -> SettingsSubpage(pageModifier) {
+                RadiusSection(
+                    state = state,
+                    onRadiusChange = onRadiusChange,
+                    onSaveRadius = onSaveRadius,
                 )
             }
+
+            SettingsSubsection.PRESET_TIMES -> SettingsSubpage(pageModifier) {
+                KeywordSection(
+                    state = state,
+                    onAddKeyword = onAddKeyword,
+                    onEditKeyword = onEditKeyword,
+                    onKeywordChange = onKeywordChange,
+                    onKeywordTimeChange = onKeywordTimeChange,
+                    onSaveKeyword = onSaveKeyword,
+                    onCancelKeywordEdit = onCancelKeywordEdit,
+                    onRemoveKeyword = onRemoveKeyword,
+                    onResetKeywords = onResetKeywords,
+                )
+            }
+
+            SettingsSubsection.PERMISSIONS -> SettingsSubpage(pageModifier) {
+                PermissionSection(
+                    items = state.permissionItems,
+                    onPermissionAction = onPermissionAction,
+                )
+            }
+
+            SettingsSubsection.BACKUP -> SettingsSubpage(pageModifier) {
+                BackupSection(
+                    onExportBackup = onExportBackup,
+                    onImportBackup = onImportBackup,
+                    status = backupStatus,
+                    inProgress = backupInProgress,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsSubsectionList(
+    modifier: Modifier,
+    persistenceError: String?,
+    onSelect: (SettingsSubsection) -> Unit,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        settingsSubsectionEntries.forEach { entry ->
+            SettingsSubsectionRow(entry = entry, onClick = { onSelect(entry.subsection) })
+        }
+        persistenceError?.let {
+            Text(
+                text = it,
+                modifier = Modifier.padding(top = 16.dp),
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsSubsectionRow(
+    entry: SettingsSubsectionEntry,
+    onClick: () -> Unit,
+) {
+    ElevatedCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                role = Role.Button,
+                onClickLabel = "Open ${entry.subsection.title}",
+                onClick = onClick,
+            ),
+        shape = MaterialTheme.shapes.extraLarge,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer,
+            ) {
+                Icon(
+                    imageVector = entry.icon,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(8.dp),
+                )
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = entry.subsection.title,
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = entry.summary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SettingsSubpage(
+    modifier: Modifier,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        ElevatedCard(
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.extraLarge,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                content = content,
+            )
         }
     }
 }
@@ -179,6 +372,11 @@ private fun AppearanceSection(
     onThemeModeChange: (ThemeMode) -> Unit,
     onAccentThemeChange: (AccentTheme) -> Unit,
 ) {
+    val darkTheme = resolveDarkTheme(
+        systemIsDark = isSystemInDarkTheme(),
+        themeMode = state.settings.themeMode,
+    )
+
     SettingsSection(title = "Appearance") {
         Text("Theme", style = MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -191,17 +389,36 @@ private fun AppearanceSection(
             }
         }
         Text("Accent", style = MaterialTheme.typography.titleMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            AccentTheme.values().forEach { accent ->
-                androidx.compose.material3.AssistChip(
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(AccentTheme.values().toList(), key = { accent -> accent.name }) { accent ->
+                val selected = state.settings.accentTheme == accent
+                val label = accent.name.lowercase().replaceFirstChar(Char::uppercase)
+                IconButton(
                     onClick = { onAccentThemeChange(accent) },
-                    label = { Text(accent.name.lowercase().replaceFirstChar(Char::uppercase)) },
-                    leadingIcon = { androidx.compose.material3.Surface(
-                        modifier = Modifier.padding(2.dp),
-                        shape = androidx.compose.foundation.shape.CircleShape,
-                        color = MaterialTheme.colorScheme.primary,
-                    ) { androidx.compose.foundation.layout.Spacer(Modifier.padding(6.dp)) } },
-                )
+                    modifier = Modifier.semantics {
+                        contentDescription = "Accent color: $label" +
+                            if (selected) ", selected" else ""
+                    },
+                ) {
+                    Surface(
+                        modifier = Modifier.size(32.dp),
+                        shape = CircleShape,
+                        color = accentSwatchColor(
+                            accentTheme = accent,
+                            darkTheme = darkTheme,
+                            dynamicColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    ) {
+                        if (selected) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.padding(7.dp),
+                            )
+                        }
+                    }
+                }
             }
         }
     }
