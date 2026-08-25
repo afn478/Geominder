@@ -2,27 +2,55 @@ package com.afn478.geominder
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -43,6 +71,8 @@ import com.afn478.geominder.ui.settings.SettingsRoute
 import com.afn478.geominder.ui.settings.SettingsViewModel
 import com.afn478.geominder.ui.settings.SettingsViewModelFactory
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import java.time.LocalTime
 
 @Composable
@@ -190,6 +220,7 @@ fun ReminderApp(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AddReminderDialog(
     container: AppContainer,
@@ -198,32 +229,152 @@ private fun AddReminderDialog(
     session: Int,
     onDismiss: () -> Unit,
 ) {
+    var showDiscardConfirmation by remember { mutableStateOf(false) }
+    val density = LocalDensity.current
+    val rootView = LocalView.current
+    val safeTop = with(density) {
+        val insetTypes = WindowInsetsCompat.Type.statusBars() or
+            WindowInsetsCompat.Type.displayCutout()
+        val appliedInsetPixels = ViewCompat.getRootWindowInsets(rootView)
+            ?.getInsets(insetTypes)
+            ?.top
+            ?: WindowInsets.safeDrawing.getTop(this)
+        val statusBarResource = rootView.resources.getIdentifier(
+            "status_bar_height",
+            "dimen",
+            "android",
+        )
+        val statusBarPixels = if (statusBarResource != 0) {
+            rootView.resources.getDimensionPixelSize(statusBarResource)
+        } else {
+            0
+        }
+        val safeTopPixels = maxOf(appliedInsetPixels, statusBarPixels)
+        safeTopPixels.toDp()
+    }
+    val addViewModel: AddReminderViewModel = viewModel(
+        key = "add-composer-$settingsSnapshotKey-$session",
+        factory = AddReminderViewModelFactory(
+            repository = container.reminderRepository,
+            parser = ReminderTextParser.fromCompleteKeywordTable(keywordTimes),
+            defaultGeoRadiusProvider = container.settingsRepository,
+            locationProvider = container.currentLocationProvider,
+            geoLabelResolver = container.geoLabelResolver,
+            postSaveActions = container.schedulingCoordinator,
+        ),
+    )
+    val state by addViewModel.uiState.collectAsStateWithLifecycle()
+    val requestDismiss = {
+        if (state.sourceText.isNotBlank()) showDiscardConfirmation = true else onDismiss()
+    }
+    val sheetState = rememberStandardBottomSheetState(
+        initialValue = SheetValue.PartiallyExpanded,
+        skipHiddenState = true,
+    )
+    val scaffoldState = rememberBottomSheetScaffoldState(sheetState)
+    LaunchedEffect(sheetState) {
+        snapshotFlow { sheetState.currentValue }
+            .distinctUntilChanged()
+            .drop(1)
+            .collect { settledValue ->
+                addViewModel.onDetailsExpandedChange(settledValue == SheetValue.Expanded)
+            }
+    }
+    LaunchedEffect(state.detailsExpanded) {
+        if (
+            state.detailsExpanded &&
+            sheetState.currentValue != SheetValue.Expanded &&
+            sheetState.targetValue != SheetValue.Expanded
+        ) {
+            sheetState.expand()
+        } else if (
+            !state.detailsExpanded &&
+            sheetState.currentValue != SheetValue.PartiallyExpanded &&
+            sheetState.targetValue != SheetValue.PartiallyExpanded
+        ) {
+            sheetState.partialExpand()
+        }
+    }
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = requestDismiss,
         properties = DialogProperties(
             dismissOnBackPress = true,
-            dismissOnClickOutside = true,
+            dismissOnClickOutside = false,
             usePlatformDefaultWidth = false,
             decorFitsSystemWindows = false,
         ),
     ) {
-        val addViewModel: AddReminderViewModel = viewModel(
-            key = "add-composer-$settingsSnapshotKey-$session",
-            factory = AddReminderViewModelFactory(
-                repository = container.reminderRepository,
-                parser = ReminderTextParser.fromCompleteKeywordTable(keywordTimes),
-                defaultGeoRadiusProvider = container.settingsRepository,
-                locationProvider = container.currentLocationProvider,
-                geoLabelResolver = container.geoLabelResolver,
-                postSaveActions = container.schedulingCoordinator,
-            ),
-        )
-        AddReminderRoute(
-            viewModel = addViewModel,
-            onReminderSaved = { onDismiss() },
-            autoFocusSource = true,
-            modifier = Modifier,
-        )
+        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+            val maximumSheetHeight = (maxHeight - safeTop - 12.dp).coerceAtLeast(0.dp)
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .semantics {
+                        contentDescription = "Dismiss reminder composer"
+                        onClick {
+                            requestDismiss()
+                            true
+                        }
+                    }
+                    .pointerInput(state.sourceText) {
+                        detectTapGestures { requestDismiss() }
+                    },
+            )
+
+            BottomSheetScaffold(
+                scaffoldState = scaffoldState,
+                sheetContent = {
+                    AddReminderRoute(
+                        viewModel = addViewModel,
+                        onReminderSaved = { onDismiss() },
+                        modifier = Modifier.heightIn(max = maximumSheetHeight),
+                        autoFocusSource = true,
+                        bottomSheetMode = true,
+                    )
+                },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = safeTop + 12.dp)
+                    .imePadding(),
+                sheetPeekHeight = 192.dp,
+                sheetContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                sheetDragHandle = { BottomSheetDefaults.DragHandle() },
+                sheetSwipeEnabled = true,
+                containerColor = Color.Transparent,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .semantics {
+                            contentDescription = "Dismiss reminder composer"
+                            onClick {
+                                requestDismiss()
+                                true
+                            }
+                        }
+                        .pointerInput(state.sourceText) {
+                            detectTapGestures { requestDismiss() }
+                        },
+                )
+            }
+        }
+
+        if (showDiscardConfirmation) {
+            AlertDialog(
+                onDismissRequest = { showDiscardConfirmation = false },
+                title = { Text("Discard reminder?") },
+                text = { Text("Your reminder text will not be saved.") },
+                confirmButton = {
+                    TextButton(onClick = onDismiss) { Text("Discard") }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDiscardConfirmation = false }) {
+                        Text("Keep")
+                    }
+                },
+            )
+        }
     }
 }
 

@@ -22,7 +22,6 @@ data class Reminder(
     val dismissedAt: Instant? = null,
 ) {
     init {
-        require(sourceText.isNotBlank()) { "Source text must not be blank" }
         require(title.isNotBlank()) { "Title must not be blank" }
         require(timeTrigger != null || geoTrigger != null) {
             "A reminder must have at least one trigger"

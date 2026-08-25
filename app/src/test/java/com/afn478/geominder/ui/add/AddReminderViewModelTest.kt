@@ -125,21 +125,23 @@ class AddReminderViewModelTest {
     }
 
     @Test
-    fun `save requires source text and at least one valid trigger`() {
+    fun `save without text creates a default one-hour reminder`() {
         val repository = FakeReminderRepository()
         val viewModel = viewModel(repository = repository)
 
         viewModel.save()
-        assertEquals("Describe what you want to remember", viewModel.uiState.value.saveError)
+        val saved = repository.saved.single()
+        assertEquals("", saved.sourceText)
+        assertEquals("Reminder", saved.title)
+        assertEquals(Instant.parse("2026-08-24T11:15:00Z"), saved.timeTrigger?.exactAt)
+    }
+
+    @Test
+    fun `invalid enabled location trigger prevents saving`() {
+        val repository = FakeReminderRepository()
+        val viewModel = viewModel(repository = repository)
 
         viewModel.onSourceTextChange("Buy milk")
-        viewModel.save()
-        assertEquals(
-            "Add at least one time or location trigger",
-            viewModel.uiState.value.saveError,
-        )
-        assertTrue(repository.saved.isEmpty())
-
         viewModel.showGeoEditor()
         viewModel.onLatitudeChange("95")
         viewModel.onLongitudeChange("8")
@@ -147,6 +149,64 @@ class AddReminderViewModelTest {
         assertEquals("Check the location details", viewModel.uiState.value.saveError)
         assertFalse(viewModel.uiState.value.geoInputErrors.isEmpty())
         assertTrue(repository.saved.isEmpty())
+    }
+
+    @Test
+    fun `time chip first tap defaults and second tap opens details`() {
+        val viewModel = viewModel()
+
+        viewModel.beginDateTimeEdit()
+        assertEquals(
+            Instant.parse("2026-08-24T11:15:00Z"),
+            viewModel.uiState.value.parseResult?.dateTime?.instant,
+        )
+        assertFalse(viewModel.uiState.value.detailsExpanded)
+
+        viewModel.beginDateTimeEdit()
+        assertTrue(viewModel.uiState.value.detailsExpanded)
+        assertNotNull(viewModel.uiState.value.editingDateTimeDetectionId)
+    }
+
+    @Test
+    fun `empty detailed time editor creates a time trigger`() {
+        val viewModel = viewModel()
+
+        viewModel.onDetailsExpandedChange(true)
+        assertNull(viewModel.uiState.value.parseResult?.dateTime)
+        assertTrue(viewModel.uiState.value.dateEditText.isNotBlank())
+        assertTrue(viewModel.uiState.value.timeEditText.isNotBlank())
+
+        viewModel.commitDateTimeEdit()
+
+        assertEquals(
+            Instant.parse("2026-08-24T11:15:00Z"),
+            viewModel.uiState.value.parseResult?.dateTime?.instant,
+        )
+        assertNotNull(viewModel.uiState.value.editingDateTimeDetectionId)
+    }
+
+    @Test
+    fun `location chip first tap locates and second tap opens details`() {
+        val fix = LocationFix(
+            latitude = 40.7484,
+            longitude = -73.9857,
+            accuracyMeters = 5f,
+            measuredAt = clock.instant(),
+        )
+        val viewModel = viewModel(
+            locationProvider = CurrentLocationProvider { callback ->
+                callback(LocationResult.Available(fix))
+                CancellationHandle {}
+            },
+        )
+
+        viewModel.onGeoChipClick()
+        assertTrue(viewModel.uiState.value.geoEditorVisible)
+        assertEquals("40.7484", viewModel.uiState.value.latitudeText)
+        assertFalse(viewModel.uiState.value.detailsExpanded)
+
+        viewModel.onGeoChipClick()
+        assertTrue(viewModel.uiState.value.detailsExpanded)
     }
 
     @Test

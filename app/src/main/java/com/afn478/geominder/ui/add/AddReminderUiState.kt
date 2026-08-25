@@ -11,6 +11,7 @@ data class AddReminderUiState(
     val sourceText: String = "",
     val parseResult: ParseResult? = null,
     val expanded: Boolean = false,
+    val detailsExpanded: Boolean = false,
     val editingDateTimeDetectionId: String? = null,
     val dateEditText: String = "",
     val timeEditText: String = "",

@@ -2,6 +2,7 @@ package com.afn478.geominder.ui.add
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -24,13 +25,17 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddLocationAlt
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
@@ -43,10 +48,16 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -55,7 +66,9 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -71,7 +84,13 @@ import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.geofence.GeoInputError
 import com.afn478.geominder.geofence.GeoInputField
 import com.afn478.geominder.parser.SourceSpan
-import com.afn478.geominder.parser.TemporalRole
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.time.format.DateTimeParseException
+import java.time.format.FormatStyle
+import java.util.Locale
 
 @Composable
 fun AddReminderRoute(
@@ -79,6 +98,7 @@ fun AddReminderRoute(
     onReminderSaved: (Reminder) -> Unit,
     modifier: Modifier = Modifier,
     autoFocusSource: Boolean = false,
+    bottomSheetMode: Boolean = false,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val savedReminder = state.savedReminder
@@ -93,13 +113,16 @@ fun AddReminderRoute(
         state = state,
         onSourceTextChange = viewModel::onSourceTextChange,
         onExpandedChange = viewModel::onExpandedChange,
+        onDetailsExpandedChange = viewModel::onDetailsExpandedChange,
         onDateTimeChipClick = viewModel::beginDateTimeEdit,
         onDateEditChange = viewModel::onDateEditChange,
         onTimeEditChange = viewModel::onTimeEditChange,
         onCommitDateTimeEdit = viewModel::commitDateTimeEdit,
         onCancelDateTimeEdit = viewModel::cancelDateTimeEdit,
-        onShowGeoEditor = viewModel::showGeoEditor,
-        onHideGeoEditor = viewModel::hideGeoEditor,
+        onGeoChipClick = viewModel::onGeoChipClick,
+        onLocationTriggerEnabledChange = { enabled ->
+            if (enabled) viewModel.showGeoEditor() else viewModel.hideGeoEditor()
+        },
         onLatitudeChange = viewModel::onLatitudeChange,
         onLongitudeChange = viewModel::onLongitudeChange,
         onRadiusChange = viewModel::onRadiusChange,
@@ -110,6 +133,7 @@ fun AddReminderRoute(
         onSave = viewModel::save,
         modifier = modifier,
         autoFocusSource = autoFocusSource,
+        bottomSheetMode = bottomSheetMode,
     )
 }
 
@@ -120,13 +144,14 @@ fun AddReminderScreen(
     state: AddReminderUiState,
     onSourceTextChange: (String) -> Unit,
     onExpandedChange: (Boolean) -> Unit,
+    onDetailsExpandedChange: (Boolean) -> Unit,
     onDateTimeChipClick: () -> Unit,
     onDateEditChange: (String) -> Unit,
     onTimeEditChange: (String) -> Unit,
     onCommitDateTimeEdit: () -> Unit,
     onCancelDateTimeEdit: () -> Unit,
-    onShowGeoEditor: () -> Unit,
-    onHideGeoEditor: () -> Unit,
+    onGeoChipClick: () -> Unit,
+    onLocationTriggerEnabledChange: (Boolean) -> Unit,
     onLatitudeChange: (String) -> Unit,
     onLongitudeChange: (String) -> Unit,
     onRadiusChange: (String) -> Unit,
@@ -137,7 +162,34 @@ fun AddReminderScreen(
     onSave: () -> Unit,
     modifier: Modifier = Modifier,
     autoFocusSource: Boolean = false,
+    bottomSheetMode: Boolean = false,
 ) {
+    if (bottomSheetMode) {
+        BottomSheetComposerContent(
+            state = state,
+            onSourceTextChange = onSourceTextChange,
+            onExpandedChange = onExpandedChange,
+            onDateTimeChipClick = onDateTimeChipClick,
+            onDateEditChange = onDateEditChange,
+            onTimeEditChange = onTimeEditChange,
+            onCommitDateTimeEdit = onCommitDateTimeEdit,
+            onCancelDateTimeEdit = onCancelDateTimeEdit,
+            onGeoChipClick = onGeoChipClick,
+            onLocationTriggerEnabledChange = onLocationTriggerEnabledChange,
+            onLatitudeChange = onLatitudeChange,
+            onLongitudeChange = onLongitudeChange,
+            onRadiusChange = onRadiusChange,
+            onLocate = onLocate,
+            onActiveFromEnabledChange = onActiveFromEnabledChange,
+            onActiveFromDateChange = onActiveFromDateChange,
+            onActiveFromTimeChange = onActiveFromTimeChange,
+            onSave = onSave,
+            autoFocusSource = autoFocusSource,
+            modifier = modifier,
+        )
+        return
+    }
+
     val expansionSpec: FiniteAnimationSpec<IntSize> =
         MaterialTheme.motionScheme.defaultSpatialSpec()
 
@@ -165,19 +217,16 @@ fun AddReminderScreen(
         ) {
             Column {
                 if (state.expanded) {
-                    Column(
-                        modifier = Modifier
-                            .weight(1f, fill = false)
-                            .verticalScroll(rememberScrollState())
-                            .padding(start = 16.dp, top = 16.dp, end = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Text(
-                            text = if (state.editingReminderId == null) "New reminder" else "Edit reminder",
-                            style = MaterialTheme.typography.headlineSmall,
-                        )
+                    if (state.detailsExpanded) {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f, fill = false)
+                                .verticalScroll(rememberScrollState())
+                                .padding(start = 16.dp, top = 16.dp, end = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Text("Reminder details", style = MaterialTheme.typography.headlineSmall)
 
-                        if (state.editingDateTimeDetectionId != null) {
                             DateTimeEditor(
                                 state = state,
                                 onDateEditChange = onDateEditChange,
@@ -185,54 +234,50 @@ fun AddReminderScreen(
                                 onCommit = onCommitDateTimeEdit,
                                 onCancel = onCancelDateTimeEdit,
                             )
-                        }
 
-                        if (state.geoEditorVisible) {
-                            GeoEditor(
-                                state = state,
-                                onLatitudeChange = onLatitudeChange,
-                                onLongitudeChange = onLongitudeChange,
-                                onRadiusChange = onRadiusChange,
-                                onLocate = onLocate,
-                                onRemove = onHideGeoEditor,
-                                onActiveFromEnabledChange = onActiveFromEnabledChange,
-                                onActiveFromDateChange = onActiveFromDateChange,
-                                onActiveFromTimeChange = onActiveFromTimeChange,
-                            )
-                        } else {
-                            TextButton(onClick = onShowGeoEditor) {
-                                Icon(Icons.Default.AddLocationAlt, contentDescription = null)
-                                Spacer(Modifier.width(4.dp))
-                                Text("Add location trigger")
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Checkbox(
+                                    checked = state.geoEditorVisible,
+                                    onCheckedChange = onLocationTriggerEnabledChange,
+                                )
+                                Text("Enable location trigger")
+                            }
+                            if (state.geoEditorVisible) {
+                                GeoEditor(
+                                    state = state,
+                                    onLatitudeChange = onLatitudeChange,
+                                    onLongitudeChange = onLongitudeChange,
+                                    onRadiusChange = onRadiusChange,
+                                    onLocate = onLocate,
+                                    onActiveFromEnabledChange = onActiveFromEnabledChange,
+                                    onActiveFromDateChange = onActiveFromDateChange,
+                                    onActiveFromTimeChange = onActiveFromTimeChange,
+                                )
+                            }
+
+                            state.parseResult?.issues?.forEach { issue ->
+                                SupportingError(issue.message)
                             }
                         }
-
-                        state.parseResult?.issues?.forEach { issue ->
-                            SupportingError(issue.message)
-                        }
-                        state.saveError?.let { SupportingError(it) }
-
-                        Button(
-                            onClick = onSave,
-                            enabled = !state.isSaving,
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            val label = when {
-                                state.isSaving -> "Saving…"
-                                state.editingReminderId == null -> "Save reminder"
-                                else -> "Save changes"
-                            }
-                            Text(label)
-                        }
-
-                        HorizontalDivider()
                     }
+
+                    DetailsHandle(
+                        expanded = state.detailsExpanded,
+                        onClick = { onDetailsExpandedChange(!state.detailsExpanded) },
+                    )
+                    HorizontalDivider()
 
                     DetectionChips(
                         state = state,
                         onDateTimeChipClick = onDateTimeChipClick,
-                        onGeoChipClick = onShowGeoEditor,
+                        onGeoChipClick = onGeoChipClick,
                     )
+                    state.saveError?.let {
+                        SupportingError(it, Modifier.padding(horizontal = 16.dp))
+                    }
                 }
 
                 HighlightedInputField(
@@ -247,18 +292,166 @@ fun AddReminderScreen(
                     autoFocusSource = autoFocusSource,
                     placeholder = { Text("Remind me tomorrow at 8…") },
                     trailingIcon = {
-                        if (state.sourceText.isNotBlank()) {
-                            TextButton(
-                                onClick = onSave,
-                                enabled = !state.isSaving,
-                            ) {
-                                Text("Save")
+                        IconButton(
+                            onClick = onSave,
+                            enabled = !state.isSaving,
+                        ) {
+                            if (state.isSaving) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp,
+                                )
+                            } else {
+                                Icon(Icons.Default.Add, contentDescription = "Save reminder")
                             }
                         }
                     },
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun BottomSheetComposerContent(
+    state: AddReminderUiState,
+    onSourceTextChange: (String) -> Unit,
+    onExpandedChange: (Boolean) -> Unit,
+    onDateTimeChipClick: () -> Unit,
+    onDateEditChange: (String) -> Unit,
+    onTimeEditChange: (String) -> Unit,
+    onCommitDateTimeEdit: () -> Unit,
+    onCancelDateTimeEdit: () -> Unit,
+    onGeoChipClick: () -> Unit,
+    onLocationTriggerEnabledChange: (Boolean) -> Unit,
+    onLatitudeChange: (String) -> Unit,
+    onLongitudeChange: (String) -> Unit,
+    onRadiusChange: (String) -> Unit,
+    onLocate: () -> Unit,
+    onActiveFromEnabledChange: (Boolean) -> Unit,
+    onActiveFromDateChange: (String) -> Unit,
+    onActiveFromTimeChange: (String) -> Unit,
+    onSave: () -> Unit,
+    autoFocusSource: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .verticalScroll(rememberScrollState()),
+    ) {
+        DetectionChips(
+            state = state,
+            onDateTimeChipClick = onDateTimeChipClick,
+            onGeoChipClick = onGeoChipClick,
+        )
+        state.saveError?.let {
+            SupportingError(it, Modifier.padding(horizontal = 16.dp))
+        }
+        HighlightedInputField(
+            highlightSpan = state.parseResult?.dateTime?.span,
+            query = state.sourceText,
+            onQueryChange = onSourceTextChange,
+            onSearch = onSave,
+            expanded = true,
+            onExpandedChange = onExpandedChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
+            enabled = !state.isSaving,
+            autoFocusSource = autoFocusSource,
+            placeholder = { Text("Remind me tomorrow at 8…") },
+            trailingIcon = {
+                SaveReminderIconButton(state = state, onSave = onSave)
+            },
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 680.dp),
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text("Reminder details", style = MaterialTheme.typography.headlineSmall)
+                DateTimeEditor(
+                    state = state,
+                    onDateEditChange = onDateEditChange,
+                    onTimeEditChange = onTimeEditChange,
+                    onCommit = onCommitDateTimeEdit,
+                    onCancel = onCancelDateTimeEdit,
+                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Checkbox(
+                        checked = state.geoEditorVisible,
+                        onCheckedChange = onLocationTriggerEnabledChange,
+                    )
+                    Text("Enable location trigger")
+                }
+                if (state.geoEditorVisible) {
+                    GeoEditor(
+                        state = state,
+                        onLatitudeChange = onLatitudeChange,
+                        onLongitudeChange = onLongitudeChange,
+                        onRadiusChange = onRadiusChange,
+                        onLocate = onLocate,
+                        onActiveFromEnabledChange = onActiveFromEnabledChange,
+                        onActiveFromDateChange = onActiveFromDateChange,
+                        onActiveFromTimeChange = onActiveFromTimeChange,
+                    )
+                }
+                state.parseResult?.issues?.forEach { issue ->
+                    SupportingError(issue.message)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SaveReminderIconButton(
+    state: AddReminderUiState,
+    onSave: () -> Unit,
+) {
+    IconButton(
+        onClick = onSave,
+        enabled = !state.isSaving,
+    ) {
+        if (state.isSaving) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.dp,
+            )
+        } else {
+            Icon(Icons.Default.Add, contentDescription = "Save reminder")
+        }
+    }
+}
+
+@Composable
+private fun DetailsHandle(
+    expanded: Boolean,
+    onClick: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 2.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+            contentDescription = if (expanded) "Hide reminder details" else "Show reminder details",
+            modifier = Modifier.size(20.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -372,8 +565,6 @@ private fun DetectionChips(
         ?: listOf(state.latitudeText, state.longitudeText)
             .takeIf { values -> values.all(String::isNotBlank) }
             ?.joinToString(", ")
-    if (timeDetection == null && coordinateSummary == null) return
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -381,28 +572,20 @@ private fun DetectionChips(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        timeDetection?.let {
-            AssistChip(
-                onClick = onDateTimeChipClick,
-                label = {
-                    val prefix = if (it.role == TemporalRole.GEO_ACTIVE_FROM) {
-                        "Active from"
-                    } else {
-                        "Time"
-                    }
-                    Text("$prefix · ${it.displayLabel}")
-                },
-            )
-        }
-        coordinateSummary?.let {
-            AssistChip(
-                onClick = onGeoChipClick,
-                label = { Text("Location · $it") },
-            )
-        }
+        AssistChip(
+            onClick = onDateTimeChipClick,
+            leadingIcon = { Icon(Icons.Default.Schedule, contentDescription = null) },
+            label = { Text(timeDetection?.displayLabel ?: "…") },
+        )
+        AssistChip(
+            onClick = onGeoChipClick,
+            leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
+            label = { Text(coordinateSummary ?: "…") },
+        )
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DateTimeEditor(
     state: AddReminderUiState,
@@ -411,33 +594,185 @@ private fun DateTimeEditor(
     onCommit: () -> Unit,
     onCancel: () -> Unit,
 ) {
+    val context = LocalContext.current
+    val locale = Locale.getDefault()
+    val fallbackDate = state.parseResult?.dateTime?.date ?: LocalDate.now().plusDays(1)
+    val fallbackTime = state.parseResult?.dateTime?.time ?: LocalTime.now().plusHours(1)
+    val selectedDate = parseDisplayedDate(state.dateEditText, locale) ?: fallbackDate
+    val selectedTime = parseDisplayedTime(state.timeEditText, locale) ?: fallbackTime
+    var datePickerVisible by remember { mutableStateOf(false) }
+    var timePickerVisible by remember { mutableStateOf(false) }
+    val datePickerState = key(selectedDate) {
+        rememberDatePickerState(
+            initialSelectedDateMillis = selectedDate
+                .atStartOfDay(ZoneOffset.UTC)
+                .toInstant()
+                .toEpochMilli(),
+        )
+    }
+    val uses24HourTime = android.text.format.DateFormat.is24HourFormat(context)
+    val timePickerState = key(selectedTime, uses24HourTime) {
+        rememberTimePickerState(
+            initialHour = selectedTime.hour,
+            initialMinute = selectedTime.minute,
+            is24Hour = uses24HourTime,
+        )
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Edit time trigger", style = MaterialTheme.typography.titleMedium)
+        Text("Time trigger", style = MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
+            PickerField(
                 value = state.dateEditText,
-                onValueChange = onDateEditChange,
-                label = { Text("Date") },
-                singleLine = true,
+                label = "Date",
+                actionDescription = "Select date",
+                onClick = { datePickerVisible = true },
                 modifier = Modifier.weight(1.5f),
                 isError = state.dateTimeEditError != null,
             )
-            OutlinedTextField(
+            PickerField(
                 value = state.timeEditText,
-                onValueChange = onTimeEditChange,
-                label = { Text("Time") },
-                singleLine = true,
+                label = "Time",
+                actionDescription = "Select time",
+                onClick = { timePickerVisible = true },
                 modifier = Modifier.weight(1f),
                 isError = state.dateTimeEditError != null,
             )
         }
         state.dateTimeEditError?.let { SupportingError(it) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onCommit) { Text("Update time") }
-            TextButton(onClick = onCancel) { Text("Cancel") }
+            TextButton(onClick = onCommit) {
+                Text(if (state.editingDateTimeDetectionId == null) "Add time" else "Update time")
+            }
+            TextButton(onClick = onCancel) { Text("Reset") }
         }
     }
+
+    if (datePickerVisible) {
+        DatePickerDialog(
+            onDismissRequest = { datePickerVisible = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        datePickerState.selectedDateMillis?.let { selectedMillis ->
+                            val date = java.time.Instant.ofEpochMilli(selectedMillis)
+                                .atZone(ZoneOffset.UTC)
+                                .toLocalDate()
+                            onDateEditChange(formatDisplayedDate(date, locale))
+                        }
+                        datePickerVisible = false
+                    },
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { datePickerVisible = false }) {
+                    Text("Cancel")
+                }
+            },
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
+
+    if (timePickerVisible) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { timePickerVisible = false },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onTimeEditChange(
+                            formatDisplayedTime(
+                                LocalTime.of(timePickerState.hour, timePickerState.minute),
+                                locale,
+                            ),
+                        )
+                        timePickerVisible = false
+                    },
+                ) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { timePickerVisible = false }) {
+                    Text("Cancel")
+                }
+            },
+            text = { TimePicker(state = timePickerState) },
+        )
+    }
 }
+
+@Composable
+private fun PickerField(
+    value: String,
+    label: String,
+    actionDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    isError: Boolean = false,
+) {
+    Box(modifier = modifier) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            label = { Text(label) },
+            readOnly = true,
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            isError = isError,
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .semantics {
+                    contentDescription = actionDescription
+                    onClick {
+                        onClick()
+                        true
+                    }
+                }
+                .clickable(onClick = onClick),
+        )
+    }
+}
+
+private fun parseDisplayedDate(value: String, locale: Locale): LocalDate? =
+    try {
+        val input = value.trim()
+        runCatching {
+            LocalDate.parse(
+                input,
+                DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(locale),
+            )
+        }.getOrElse {
+            LocalDate.parse(input, DateTimeFormatter.ISO_LOCAL_DATE)
+        }
+    } catch (_: DateTimeParseException) {
+        null
+    }
+
+private fun parseDisplayedTime(value: String, locale: Locale): LocalTime? =
+    try {
+        val input = value.trim()
+        runCatching {
+            LocalTime.parse(
+                input,
+                DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale),
+            )
+        }.getOrElse {
+            LocalTime.parse(input, DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT))
+        }
+    } catch (_: DateTimeParseException) {
+        null
+    }
+
+private fun formatDisplayedDate(date: LocalDate, locale: Locale): String =
+    date.format(DateTimeFormatter.ofLocalizedDate(FormatStyle.SHORT).withLocale(locale))
+
+private fun formatDisplayedTime(time: LocalTime, locale: Locale): String =
+    time.format(DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withLocale(locale))
 
 @Composable
 private fun GeoEditor(
@@ -446,13 +781,12 @@ private fun GeoEditor(
     onLongitudeChange: (String) -> Unit,
     onRadiusChange: (String) -> Unit,
     onLocate: () -> Unit,
-    onRemove: () -> Unit,
     onActiveFromEnabledChange: (Boolean) -> Unit,
     onActiveFromDateChange: (String) -> Unit,
     onActiveFromTimeChange: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Location trigger", style = MaterialTheme.typography.titleMedium)
+        Text("Location details", style = MaterialTheme.typography.titleMedium)
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -536,14 +870,6 @@ private fun GeoEditor(
             state.activeFromError?.let { SupportingError(it) }
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
-        ) {
-            IconButton(onClick = onRemove) {
-                Icon(Icons.Default.Delete, contentDescription = "Remove location trigger")
-            }
-        }
     }
 }
 
@@ -568,9 +894,10 @@ private fun GeoNumberField(
 }
 
 @Composable
-private fun SupportingError(message: String) {
+private fun SupportingError(message: String, modifier: Modifier = Modifier) {
     Text(
         text = message,
+        modifier = modifier,
         color = MaterialTheme.colorScheme.error,
         style = MaterialTheme.typography.bodySmall,
     )

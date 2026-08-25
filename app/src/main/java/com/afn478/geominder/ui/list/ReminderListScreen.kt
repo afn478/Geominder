@@ -2,6 +2,8 @@ package com.afn478.geominder.ui.list
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FiniteAnimationSpec
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,18 +43,24 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.afn478.geominder.domain.model.ReminderId
+import kotlinx.coroutines.delay
 
 @Composable
 fun ReminderListRoute(
@@ -162,13 +170,31 @@ fun ReminderListScreen(
 private fun NewReminderLauncher(
     onClick: () -> Unit,
 ) {
+    var exampleIndex by remember { mutableIntStateOf(0) }
+    val exampleAlpha = remember { Animatable(1f) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(EXAMPLE_ROTATION_MILLIS)
+            exampleAlpha.animateTo(
+                targetValue = 0f,
+                animationSpec = tween(durationMillis = EXAMPLE_FADE_MILLIS),
+            )
+            exampleIndex = (exampleIndex + 1) % REMINDER_EXAMPLES.size
+            exampleAlpha.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(durationMillis = EXAMPLE_FADE_MILLIS),
+            )
+        }
+    }
+    val example = REMINDER_EXAMPLES[exampleIndex]
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .semantics(mergeDescendants = true) {
-                contentDescription = "New reminder"
+                contentDescription = "New reminder: $example"
             }
             .clickable(
                 role = Role.Button,
@@ -186,13 +212,28 @@ private fun NewReminderLauncher(
         ) {
             Icon(Icons.Default.Add, contentDescription = null)
             Text(
-                text = "New reminder",
+                text = example,
+                modifier = Modifier
+                    .weight(1f)
+                    .graphicsLayer { alpha = exampleAlpha.value },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }
 }
+
+private const val EXAMPLE_ROTATION_MILLIS = 6_000L
+private const val EXAMPLE_FADE_MILLIS = 180
+
+private val REMINDER_EXAMPLES = listOf(
+    "Call Mum tomorrow at 18:00",
+    "Pick up groceries in one hour",
+    "Water the plants Saturday morning",
+    "Take an umbrella when I leave home",
+)
 
 @Composable
 private fun LoadingContent(modifier: Modifier = Modifier) {
