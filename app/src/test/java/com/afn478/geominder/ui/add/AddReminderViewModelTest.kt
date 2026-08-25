@@ -113,6 +113,39 @@ class AddReminderViewModelTest {
     }
 
     @Test
+    fun `pasting a location fills both coordinates and resolves its label`() {
+        val viewModel = viewModel(
+            labelResolver = GeoLabelResolver { _, _, callback -> callback("near pasted place") },
+        )
+
+        viewModel.showGeoEditor()
+        viewModel.pasteLocation("https://osmand.net/map/?pin=40.7580,-73.9855#15/40.7812/-73.9665")
+
+        val state = viewModel.uiState.value
+        assertEquals("40.7580", state.latitudeText)
+        assertEquals("-73.9855", state.longitudeText)
+        assertEquals("near pasted place", state.geoLabel)
+        assertNull(state.locationError)
+    }
+
+    @Test
+    fun `invalid pasted location leaves coordinates intact and shows an error`() {
+        val viewModel = viewModel()
+        viewModel.showGeoEditor()
+        viewModel.onLatitudeChange("40.7128")
+        viewModel.onLongitudeChange("-74.0060")
+
+        viewModel.pasteLocation("not a location")
+
+        assertEquals("40.7128", viewModel.uiState.value.latitudeText)
+        assertEquals("-74.0060", viewModel.uiState.value.longitudeText)
+        assertEquals(
+            "Clipboard does not contain valid coordinates",
+            viewModel.uiState.value.locationError,
+        )
+    }
+
+    @Test
     fun `incomplete manual coordinate typing stays editable without errors`() {
         val viewModel = viewModel()
 
@@ -273,7 +306,7 @@ class AddReminderViewModelTest {
     }
 
     @Test
-    fun `time after coordinates becomes geo-only active-from gate`() {
+    fun `time after coordinates independently triggers and gates location`() {
         val repository = FakeReminderRepository()
         val actions = RecordingPostSaveActions()
         val viewModel = viewModel(repository = repository, actions = actions)
@@ -282,12 +315,15 @@ class AddReminderViewModelTest {
         viewModel.save()
 
         val saved = repository.saved.single()
-        assertNull(saved.timeTrigger)
+        assertEquals(
+            viewModel.uiState.value.parseResult?.dateTime?.instant,
+            saved.timeTrigger?.exactAt,
+        )
         assertEquals(
             viewModel.uiState.value.parseResult?.dateTime?.instant,
             saved.geoTrigger?.activeFrom,
         )
-        assertTrue(actions.scheduled.isEmpty())
+        assertEquals(listOf(saved), actions.scheduled)
         assertEquals(listOf(saved), actions.registered)
     }
 
@@ -310,7 +346,21 @@ class AddReminderViewModelTest {
     }
 
     @Test
-    fun `editing geo active-from chip changes gate and stays geo-only`() {
+    fun `disabling inferred active-from leaves independent time trigger enabled`() {
+        val repository = FakeReminderRepository()
+        val viewModel = viewModel(repository = repository)
+        viewModel.onSourceTextChange("Arrive at 40.7128, -74.0060 tonight")
+
+        viewModel.onActiveFromEnabledChange(false)
+        viewModel.save()
+
+        val saved = repository.saved.single()
+        assertNotNull(saved.timeTrigger)
+        assertNull(saved.geoTrigger?.activeFrom)
+    }
+
+    @Test
+    fun `editing inferred active-from time updates both independent triggers`() {
         val repository = FakeReminderRepository()
         val actions = RecordingPostSaveActions()
         val viewModel = viewModel(repository = repository, actions = actions)
@@ -323,10 +373,45 @@ class AddReminderViewModelTest {
         viewModel.save()
 
         val saved = repository.saved.single()
-        assertNull(saved.timeTrigger)
+        assertEquals(Instant.parse("2026-08-30T18:15:00Z"), saved.timeTrigger?.exactAt)
         assertEquals(Instant.parse("2026-08-30T18:15:00Z"), saved.geoTrigger?.activeFrom)
-        assertTrue(actions.scheduled.isEmpty())
+        assertEquals(listOf(saved), actions.scheduled)
         assertEquals(listOf(saved), actions.registered)
+    }
+
+    @Test
+    fun `reset clears the time trigger without clearing the location active-from gate`() {
+        val repository = FakeReminderRepository()
+        val viewModel = viewModel(repository = repository)
+        viewModel.onSourceTextChange("Arrive at 40.7128, -74.0060 tonight")
+        val activeFromDate = viewModel.uiState.value.activeFromDateText
+        val activeFromTime = viewModel.uiState.value.activeFromTimeText
+
+        viewModel.clearTimeTrigger()
+        viewModel.save()
+
+        val state = viewModel.uiState.value
+        val saved = repository.saved.single()
+        assertNull(state.parseResult?.dateTime)
+        assertEquals("", state.dateEditText)
+        assertEquals("", state.timeEditText)
+        assertNull(saved.timeTrigger)
+        assertEquals(activeFromDate, state.activeFromDateText)
+        assertEquals(activeFromTime, state.activeFromTimeText)
+        assertNotNull(saved.geoTrigger?.activeFrom)
+    }
+
+    @Test
+    fun `reset does not silently recreate time when no other trigger exists`() {
+        val repository = FakeReminderRepository()
+        val viewModel = viewModel(repository = repository)
+        viewModel.onSourceTextChange("Tomorrow at 8")
+
+        viewModel.clearTimeTrigger()
+        viewModel.save()
+
+        assertTrue(repository.saved.isEmpty())
+        assertEquals("Add at least one time or location trigger", viewModel.uiState.value.saveError)
     }
 
     @Test

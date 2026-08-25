@@ -10,6 +10,7 @@ import com.afn478.geominder.domain.model.ReminderStatus
 import com.afn478.geominder.domain.model.TimeTrigger
 import com.afn478.geominder.domain.repository.ReminderRepository
 import com.afn478.geominder.geofence.CancellationHandle
+import com.afn478.geominder.geofence.ClipboardGeoInputParser
 import com.afn478.geominder.geofence.CurrentLocationProvider
 import com.afn478.geominder.geofence.GeoInputError
 import com.afn478.geominder.geofence.GeoInputField
@@ -162,6 +163,7 @@ class AddReminderViewModel(
                 parseResult = parsed,
                 expanded = state.expanded || sourceText.isNotBlank(),
                 editingDateTimeDetectionId = null,
+                timeTriggerCleared = if (parsed.dateTime != null) false else state.timeTriggerCleared,
                 dateTimeEditError = null,
                 geoEditorVisible = state.geoEditorVisible || gps != null,
                 latitudeText = gps?.latitude?.toPlainString() ?: state.latitudeText,
@@ -231,6 +233,7 @@ class AddReminderViewModel(
             it.copy(
                 parseResult = editedResult,
                 editingDateTimeDetectionId = if (it.detailsExpanded) id else null,
+                timeTriggerCleared = false,
                 dateTimeEditError = null,
                 saveError = null,
                 activeFromDateText = if (editedDetection?.role == TemporalRole.GEO_ACTIVE_FROM) {
@@ -243,15 +246,20 @@ class AddReminderViewModel(
         }
     }
 
-    fun cancelDateTimeEdit() {
+    fun clearTimeTrigger() {
         _uiState.update { state ->
-            val detection = state.parseResult?.dateTime
-            val fallback = defaultDateTime()
             state.copy(
-                editingDateTimeDetectionId = detection?.id,
-                dateEditText = formatDate(detection?.date ?: fallback.toLocalDate()),
-                timeEditText = formatTime(detection?.time ?: fallback.toLocalTime()),
+                parseResult = state.parseResult?.copy(
+                    detections = state.parseResult.detections.filterNot { detection ->
+                        detection is DateTimeDetection
+                    },
+                ),
+                editingDateTimeDetectionId = null,
+                timeTriggerCleared = true,
+                dateEditText = "",
+                timeEditText = "",
                 dateTimeEditError = null,
+                saveError = null,
             )
         }
     }
@@ -305,6 +313,30 @@ class AddReminderViewModel(
     fun onLongitudeChange(value: String) = updateGeoText(longitude = value)
 
     fun onRadiusChange(value: String) = updateGeoText(radius = value)
+
+    fun pasteLocation(clipboardText: String) {
+        val coordinates = ClipboardGeoInputParser.parse(clipboardText)
+        if (coordinates == null) {
+            _uiState.update {
+                it.copy(locationError = "Clipboard does not contain valid coordinates")
+            }
+            return
+        }
+        _uiState.update {
+            it.copy(
+                expanded = true,
+                geoEditorVisible = true,
+                latitudeText = coordinates.latitude.toPlainString(),
+                longitudeText = coordinates.longitude.toPlainString(),
+                radiusText = it.radiusText.ifBlank(::defaultRadiusText),
+                geoInputErrors = emptyMap(),
+                geoLabel = null,
+                locationError = null,
+                saveError = null,
+            )
+        }
+        applyValidGeoInput(coordinates.latitude, coordinates.longitude)
+    }
 
     private fun updateGeoText(
         latitude: String? = null,
@@ -475,6 +507,7 @@ class AddReminderViewModel(
                 expanded = true,
                 parseResult = parsed.copy(detections = detectionsWithoutPreviousTime + detection),
                 editingDateTimeDetectionId = if (state.detailsExpanded) detection.id else null,
+                timeTriggerCleared = false,
                 dateEditText = formatDate(detection.date),
                 timeEditText = formatTime(detection.time),
                 dateTimeEditError = null,
@@ -491,7 +524,10 @@ class AddReminderViewModel(
 
     fun save() {
         if (_uiState.value.isSaving) return
-        if (_uiState.value.parseResult?.dateTime == null && !_uiState.value.geoEditorVisible) {
+        if (_uiState.value.parseResult?.dateTime == null &&
+            !_uiState.value.geoEditorVisible &&
+            !_uiState.value.timeTriggerCleared
+        ) {
             addDefaultTimeTrigger()
         }
         val built = buildReminder(_uiState.value)
@@ -575,7 +611,6 @@ class AddReminderViewModel(
     private fun buildReminder(state: AddReminderUiState): ReminderBuildResult {
         val dateTimeDetection = state.parseResult?.dateTime
         val timeTrigger = dateTimeDetection
-            ?.takeIf { it.role == TemporalRole.REMINDER_TRIGGER }
             ?.let { TimeTrigger(exactAt = it.instant) }
         val geoInputResult = if (state.geoEditorVisible) parseGeoInput(state) else null
         val geoInput = (geoInputResult as? NumericGeoInputResult.Valid)?.value
@@ -589,9 +624,7 @@ class AddReminderViewModel(
                         activeFromError = "Enter a valid active date and time",
                     )
             } else {
-                dateTimeDetection
-                    ?.takeIf { it.role == TemporalRole.GEO_ACTIVE_FROM }
-                    ?.instant
+                null
             }
         } else {
             null
