@@ -2,12 +2,14 @@ package com.afn478.geominder
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -41,12 +43,11 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -75,7 +76,7 @@ import com.afn478.geominder.ui.settings.SettingsViewModel
 import com.afn478.geominder.ui.settings.SettingsViewModelFactory
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.first
 import java.time.LocalTime
 
 @Composable
@@ -271,32 +272,40 @@ private fun AddReminderDialog(
         if (state.sourceText.isNotBlank()) showDiscardConfirmation = true else onDismiss()
     }
     val currentRequestDismiss = rememberUpdatedState(requestDismiss)
+    val sheetScope = rememberCoroutineScope()
     val sheetState = rememberStandardBottomSheetState(
         initialValue = SheetValue.PartiallyExpanded,
-        skipHiddenState = true,
+        skipHiddenState = false,
     )
     val scaffoldState = rememberBottomSheetScaffoldState(sheetState)
+    val collapsedSheetExtraHeight = if (WindowInsets.ime.getBottom(density) == 0) {
+        16.dp
+    } else {
+        0.dp
+    }
     LaunchedEffect(sheetState) {
+        snapshotFlow {
+            sheetState.hasPartiallyExpandedState &&
+                sheetState.currentValue != SheetValue.Hidden
+        }.first { it }
         snapshotFlow { sheetState.currentValue }
             .distinctUntilChanged()
-            .drop(1)
             .collect { settledValue ->
-                addViewModel.onDetailsExpandedChange(settledValue == SheetValue.Expanded)
-            }
+                if (settledValue == SheetValue.Hidden) {
+                    addViewModel.onDetailsExpandedChange(false)
+                    currentRequestDismiss.value()
+                    sheetState.partialExpand()
+                } else {
+                    addViewModel.onDetailsExpandedChange(settledValue == SheetValue.Expanded)
+                }
+        }
     }
-    LaunchedEffect(state.detailsExpanded) {
+    val expandSheet = {
         if (
-            state.detailsExpanded &&
             sheetState.currentValue != SheetValue.Expanded &&
             sheetState.targetValue != SheetValue.Expanded
         ) {
-            sheetState.expand()
-        } else if (
-            !state.detailsExpanded &&
-            sheetState.currentValue != SheetValue.PartiallyExpanded &&
-            sheetState.targetValue != SheetValue.PartiallyExpanded
-        ) {
-            sheetState.partialExpand()
+            sheetScope.launch { sheetState.expand() }
         }
     }
     Dialog(
@@ -314,15 +323,14 @@ private fun AddReminderDialog(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .zIndex(-1f)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = requestDismiss,
+                    )
                     .semantics {
                         contentDescription = "Dismiss reminder composer"
-                        onClick {
-                            requestDismiss()
-                            true
-                        }
-                    }
-                    .pointerInput(state.sourceText) {
-                        detectTapGestures { requestDismiss() }
                     },
             )
 
@@ -335,32 +343,24 @@ private fun AddReminderDialog(
                         modifier = Modifier.heightIn(max = maximumSheetHeight),
                         autoFocusSource = true,
                         bottomSheetMode = true,
-                        onDismissByDrag = { currentRequestDismiss.value() },
+                        sheetContentScrollEnabled =
+                            sheetState.currentValue == SheetValue.Expanded &&
+                                sheetState.targetValue == SheetValue.Expanded,
+                        onExpandBottomSheet = expandSheet,
                     )
                 },
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(top = safeTop + 12.dp)
                     .imePadding(),
-                sheetPeekHeight = 192.dp,
+                sheetPeekHeight = 192.dp + collapsedSheetExtraHeight,
                 sheetContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 sheetDragHandle = { BottomSheetDefaults.DragHandle() },
                 sheetSwipeEnabled = true,
                 containerColor = Color.Transparent,
             ) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .semantics {
-                            contentDescription = "Dismiss reminder composer"
-                            onClick {
-                                requestDismiss()
-                                true
-                            }
-                        }
-                        .pointerInput(state.sourceText) {
-                            detectTapGestures { requestDismiss() }
-                        },
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
         }

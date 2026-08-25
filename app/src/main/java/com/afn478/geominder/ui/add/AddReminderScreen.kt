@@ -5,9 +5,6 @@ import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -65,7 +62,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,14 +70,10 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -131,7 +123,8 @@ fun AddReminderRoute(
     autoFocusSource: Boolean = false,
     bottomSheetMode: Boolean = false,
     fullPageMode: Boolean = false,
-    onDismissByDrag: () -> Unit = {},
+    sheetContentScrollEnabled: Boolean = true,
+    onExpandBottomSheet: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val savedReminder = state.savedReminder
@@ -169,7 +162,8 @@ fun AddReminderRoute(
         autoFocusSource = autoFocusSource,
         bottomSheetMode = bottomSheetMode,
         fullPageMode = fullPageMode || viewModel.editingReminderId != null,
-        onDismissByDrag = onDismissByDrag,
+        sheetContentScrollEnabled = sheetContentScrollEnabled,
+        onExpandBottomSheet = onExpandBottomSheet,
     )
 }
 
@@ -201,19 +195,26 @@ fun AddReminderScreen(
     autoFocusSource: Boolean = false,
     bottomSheetMode: Boolean = false,
     fullPageMode: Boolean = false,
-    onDismissByDrag: () -> Unit = {},
+    sheetContentScrollEnabled: Boolean = true,
+    onExpandBottomSheet: () -> Unit = {},
 ) {
     if (bottomSheetMode) {
         BottomSheetComposerContent(
             state = state,
             onSourceTextChange = onSourceTextChange,
             onExpandedChange = onExpandedChange,
-            onDateTimeChipClick = onDateTimeChipClick,
+            onDateTimeChipClick = {
+                onExpandBottomSheet()
+                onDateTimeChipClick()
+            },
             onDateEditChange = onDateEditChange,
             onTimeEditChange = onTimeEditChange,
             onCommitDateTimeEdit = onCommitDateTimeEdit,
             onClearDateTime = onClearDateTime,
-            onGeoChipClick = onGeoChipClick,
+            onGeoChipClick = {
+                onExpandBottomSheet()
+                onGeoChipClick()
+            },
             onLocationTriggerEnabledChange = onLocationTriggerEnabledChange,
             onLatitudeChange = onLatitudeChange,
             onLongitudeChange = onLongitudeChange,
@@ -225,7 +226,7 @@ fun AddReminderScreen(
             onActiveFromTimeChange = onActiveFromTimeChange,
             onSave = onSave,
             autoFocusSource = autoFocusSource,
-            onDismissByDrag = onDismissByDrag,
+            scrollEnabled = sheetContentScrollEnabled,
             modifier = modifier,
         )
         return
@@ -564,41 +565,21 @@ private fun BottomSheetComposerContent(
     onActiveFromTimeChange: (String) -> Unit,
     onSave: () -> Unit,
     autoFocusSource: Boolean,
-    onDismissByDrag: () -> Unit,
+    scrollEnabled: Boolean,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
-    val dismissThresholdPx = with(LocalDensity.current) { 64.dp.toPx() }
-    val currentOnDismissByDrag by rememberUpdatedState(onDismissByDrag)
+    LaunchedEffect(state.detailsExpanded) {
+        if (!state.detailsExpanded) scrollState.scrollTo(0)
+    }
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
-            .pointerInput(scrollState, dismissThresholdPx) {
-                awaitEachGesture {
-                    val down = awaitFirstDown(requireUnconsumed = false)
-                    var lastY = down.position.y
-                    var downwardDrag = 0f
-                    while (true) {
-                        val event = awaitPointerEvent(PointerEventPass.Initial)
-                        val change = event.changes.firstOrNull { it.id == down.id } ?: break
-                        val deltaY = change.position.y - lastY
-                        lastY = change.position.y
-
-                        downwardDrag = when {
-                            scrollState.value > 0 || deltaY < 0f -> 0f
-                            deltaY > 0f -> downwardDrag + deltaY
-                            else -> downwardDrag
-                        }
-                        if (downwardDrag >= dismissThresholdPx) {
-                            currentOnDismissByDrag()
-                            break
-                        }
-                        if (!change.pressed) break
-                    }
-                }
-            }
-            .verticalScroll(scrollState),
+            .verticalScroll(
+                state = scrollState,
+                enabled = scrollEnabled,
+                overscrollEffect = null,
+            ),
     ) {
         DetectionChips(
             state = state,
@@ -658,6 +639,7 @@ private fun BottomSheetComposerContent(
                 }
             }
         }
+        Spacer(modifier = Modifier.navigationBarsPadding())
     }
 }
 
@@ -962,34 +944,29 @@ private fun PickerField(
     modifier: Modifier = Modifier,
     isError: Boolean = false,
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = {},
-        label = { Text(label) },
-        readOnly = true,
-        singleLine = true,
-        modifier = modifier
-            .fillMaxWidth()
-            .semantics {
-                contentDescription = actionDescription
-                onClick {
-                    onClick()
-                    true
-                }
-            }
-            .pointerInput(onClick) {
-                awaitEachGesture {
-                    awaitFirstDown(
-                        pass = PointerEventPass.Initial,
-                        requireUnconsumed = false,
-                    )
-                    if (waitForUpOrCancellation(pass = PointerEventPass.Initial) != null) {
-                        onClick()
-                    }
-                }
-            },
-        isError = isError,
-    )
+    Box(modifier = modifier) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = {},
+            label = { Text(label) },
+            readOnly = true,
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            isError = isError,
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onClick,
+                )
+                .semantics {
+                    contentDescription = actionDescription
+                },
+        )
+    }
 }
 
 private fun parseDisplayedDate(value: String, locale: Locale): LocalDate? =
