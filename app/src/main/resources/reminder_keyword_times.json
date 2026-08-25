@@ -1,0 +1,13 @@
+{
+  "morning": "08:00",
+  "breakfast": "08:00",
+  "noon": "12:00",
+  "midday": "12:00",
+  "lunch": "12:00",
+  "afternoon": "15:00",
+  "evening": "18:00",
+  "dinner": "19:00",
+  "tonight": "20:00",
+  "night": "20:00",
+  "midnight": "00:00"
+}

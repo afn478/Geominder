@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Reminder</string>
+    <string name="alert_channel_description">Time and location reminder alerts</string>
+    <string name="alert_snooze">Snooze</string>
+    <string name="alert_dismiss">Dismiss</string>
+    <string name="alert_done">Done</string>
+</resources>
