@@ -41,6 +41,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -58,6 +59,8 @@ import com.afn478.geominder.ReminderApplication
 import com.afn478.geominder.R
 import com.afn478.geominder.ui.theme.ReminderTheme
 import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.max
 import kotlin.math.sin
 
 class FullScreenAlertActivity : ComponentActivity() {
@@ -135,20 +138,31 @@ private fun FullScreenAlert(
 ) {
     val colors = MaterialTheme.colorScheme
     val backgroundTransition = rememberInfiniteTransition(label = "alert background")
-    val backgroundPhase = backgroundTransition.animateFloat(
+    val pulsePhase = backgroundTransition.animateFloat(
         initialValue = 0f,
         targetValue = (2.0 * PI).toFloat(),
         animationSpec = infiniteRepeatable(
             animation = tween(
-                durationMillis = ALERT_GRADIENT_ANIMATION_DURATION_MILLIS,
+                durationMillis = ALERT_GRADIENT_PULSE_DURATION_MILLIS,
                 easing = LinearEasing,
             ),
             repeatMode = RepeatMode.Restart,
         ),
-        label = "alert background phase",
+        label = "alert background pulse",
     ).value
-    val intensity = ((sin(backgroundPhase.toDouble()) + 1.0) / 2.0).toFloat()
-    val verticalPosition = sin((backgroundPhase - (PI / 2.0).toFloat()).toDouble()).toFloat()
+    val rotationDegrees = backgroundTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = ALERT_GRADIENT_ROTATION_DURATION_MILLIS,
+                easing = LinearEasing,
+            ),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "alert background rotation",
+    ).value
+    val intensity = ((sin(pulsePhase.toDouble()) + 1.0) / 2.0).toFloat()
 
     Box(
         modifier = Modifier
@@ -156,9 +170,10 @@ private fun FullScreenAlert(
             .drawWithCache {
                 val background = alertBackground(
                     colors = colors,
+                    width = size.width,
                     height = size.height,
                     intensity = intensity,
-                    verticalPosition = verticalPosition,
+                    rotationDegrees = rotationDegrees,
                 )
                 onDrawBehind { drawRect(brush = background) }
             },
@@ -234,31 +249,35 @@ private fun FullScreenAlert(
 
 private fun alertBackground(
     colors: ColorScheme,
+    width: Float,
     height: Float,
     intensity: Float,
-    verticalPosition: Float,
+    rotationDegrees: Float,
 ): Brush {
-    val gradientHeight = height * ALERT_GRADIENT_HEIGHT_FRACTION
-    val gradientCenter = height * ((verticalPosition + 1f) / 2f)
-    val gradientStartY = gradientCenter - (gradientHeight / 2f)
-    val gradientEndY = gradientCenter + (gradientHeight / 2f)
-    val edgeAlpha = 0.10f + (0.08f * intensity)
-    val centerAlpha = 0.36f + (0.12f * intensity)
-    return Brush.verticalGradient(
+    val screenCenter = Offset(width / 2f, height / 2f)
+    val orbitRadius = max(width, height) * 0.50f
+    val angleRadians = Math.toRadians(rotationDegrees.toDouble())
+    val glowCenter = Offset(
+        x = screenCenter.x + (sin(angleRadians).toFloat() * orbitRadius),
+        y = screenCenter.y - (cos(angleRadians).toFloat() * orbitRadius),
+    )
+    val edgeAlpha = 0.10f + (0.05f * intensity)
+    val centerAlpha = 0.36f + (0.08f * intensity)
+    val outerAlpha = 0.02f + (0.02f * intensity)
+    return Brush.radialGradient(
         colorStops = arrayOf(
-            0.00f to colors.surface,
-            0.22f to colors.primary.copy(alpha = edgeAlpha).compositeOver(colors.surface),
-            0.50f to colors.primary.copy(alpha = centerAlpha).compositeOver(colors.surface),
-            0.78f to colors.primary.copy(alpha = edgeAlpha).compositeOver(colors.surface),
+            0.00f to colors.primary.copy(alpha = centerAlpha).compositeOver(colors.surface),
+            0.32f to colors.primary.copy(alpha = edgeAlpha).compositeOver(colors.surface),
+            0.72f to colors.primary.copy(alpha = outerAlpha).compositeOver(colors.surface),
             1.00f to colors.surface,
         ),
-        startY = gradientStartY,
-        endY = gradientEndY,
+        center = glowCenter,
+        radius = max(width, height) * 0.90f,
     )
 }
 
-private const val ALERT_GRADIENT_ANIMATION_DURATION_MILLIS = 24_000
-private const val ALERT_GRADIENT_HEIGHT_FRACTION = 0.78f
+private const val ALERT_GRADIENT_PULSE_DURATION_MILLIS = 24_000
+private const val ALERT_GRADIENT_ROTATION_DURATION_MILLIS = 90_000
 
 @Composable
 private fun AlertIcon() {
