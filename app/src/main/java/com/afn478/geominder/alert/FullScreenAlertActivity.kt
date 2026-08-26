@@ -140,7 +140,7 @@ private fun FullScreenAlert(
         targetValue = (2.0 * PI).toFloat(),
         animationSpec = infiniteRepeatable(
             animation = tween(
-                durationMillis = 24_000,
+                durationMillis = ALERT_GRADIENT_ANIMATION_DURATION_MILLIS,
                 easing = LinearEasing,
             ),
             repeatMode = RepeatMode.Restart,
@@ -148,7 +148,7 @@ private fun FullScreenAlert(
         label = "alert background phase",
     ).value
     val intensity = ((sin(backgroundPhase.toDouble()) + 1.0) / 2.0).toFloat()
-    val verticalPosition = sin((backgroundPhase + (PI / 2.0).toFloat()).toDouble()).toFloat()
+    val verticalPosition = sin((backgroundPhase - (PI / 2.0).toFloat()).toDouble()).toFloat()
 
     Box(
         modifier = Modifier
@@ -238,21 +238,27 @@ private fun alertBackground(
     intensity: Float,
     verticalPosition: Float,
 ): Brush {
-    val movement = height * 0.14f * verticalPosition
+    val gradientHeight = height * ALERT_GRADIENT_HEIGHT_FRACTION
+    val gradientCenter = height * ((verticalPosition + 1f) / 2f)
+    val gradientStartY = gradientCenter - (gradientHeight / 2f)
+    val gradientEndY = gradientCenter + (gradientHeight / 2f)
+    val edgeAlpha = 0.10f + (0.08f * intensity)
+    val centerAlpha = 0.36f + (0.12f * intensity)
     return Brush.verticalGradient(
         colorStops = arrayOf(
-            0.00f to colors.primary.copy(alpha = 0.36f + (0.12f * intensity))
-                .compositeOver(colors.surface),
-            0.42f to colors.primary.copy(alpha = 0.10f + (0.08f * intensity))
-                .compositeOver(colors.surface),
-            0.76f to colors.primary.copy(alpha = 0.02f + (0.04f * intensity))
-                .compositeOver(colors.surface),
+            0.00f to colors.surface,
+            0.22f to colors.primary.copy(alpha = edgeAlpha).compositeOver(colors.surface),
+            0.50f to colors.primary.copy(alpha = centerAlpha).compositeOver(colors.surface),
+            0.78f to colors.primary.copy(alpha = edgeAlpha).compositeOver(colors.surface),
             1.00f to colors.surface,
         ),
-        startY = movement,
-        endY = height + movement,
+        startY = gradientStartY,
+        endY = gradientEndY,
     )
 }
+
+private const val ALERT_GRADIENT_ANIMATION_DURATION_MILLIS = 24_000
+private const val ALERT_GRADIENT_HEIGHT_FRACTION = 0.78f
 
 @Composable
 private fun AlertIcon() {
