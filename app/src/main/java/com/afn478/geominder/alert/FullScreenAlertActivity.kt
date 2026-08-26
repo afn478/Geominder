@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -46,6 +47,8 @@ import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.afn478.geominder.ReminderApplication
 import com.afn478.geominder.R
 import com.afn478.geominder.ui.theme.ReminderTheme
 
@@ -69,9 +72,14 @@ class FullScreenAlertActivity : ComponentActivity() {
         val locationText = intent.getStringExtra(AlertContract.EXTRA_LOCATION_TEXT)
             ?.takeIf(String::isNotBlank)
         val isDebugAlert = intent.getBooleanExtra(AlertContract.EXTRA_DEBUG_ALERT, false)
+        val settingsRepository = (application as ReminderApplication).appContainer.settingsRepository
 
         setContent {
-            ReminderTheme(darkTheme = false) {
+            val settings = settingsRepository.settings.collectAsStateWithLifecycle().value
+            ReminderTheme(
+                themeMode = settings.themeMode,
+                accentTheme = settings.accentTheme,
+            ) {
                 FullScreenAlert(
                     title = title,
                     text = text,
@@ -118,13 +126,7 @@ private fun FullScreenAlert(
     onDone: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    val background = Brush.verticalGradient(
-        colors = listOf(
-            colors.primaryContainer.copy(alpha = 0.30f).compositeOver(colors.surface),
-            colors.surface,
-            colors.surface,
-        ),
-    )
+    val background = alertBackground(colors)
 
     Box(
         modifier = Modifier
@@ -200,17 +202,26 @@ private fun FullScreenAlert(
     }
 }
 
+private fun alertBackground(colors: ColorScheme): Brush = Brush.verticalGradient(
+    colorStops = arrayOf(
+        0.00f to colors.primary.copy(alpha = 0.42f).compositeOver(colors.surface),
+        0.42f to colors.primary.copy(alpha = 0.16f).compositeOver(colors.surface),
+        0.76f to colors.primary.copy(alpha = 0.04f).compositeOver(colors.surface),
+        1.00f to colors.surface,
+    ),
+)
+
 @Composable
 private fun AlertIcon() {
     Surface(
         modifier = Modifier.size(80.dp),
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.primaryContainer,
+        color = MaterialTheme.colorScheme.primary,
     ) {
         Icon(
             imageVector = Icons.Default.Alarm,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            tint = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier.padding(20.dp),
         )
     }
