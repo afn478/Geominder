@@ -13,6 +13,8 @@ object AlertContract {
     const val EXTRA_REMINDER_ID = "com.afn478.geominder.alert.extra.REMINDER_ID"
     const val EXTRA_TITLE = "com.afn478.geominder.alert.extra.TITLE"
     const val EXTRA_TEXT = "com.afn478.geominder.alert.extra.TEXT"
+    const val EXTRA_TIME_TEXT = "com.afn478.geominder.alert.extra.TIME_TEXT"
+    const val EXTRA_LOCATION_TEXT = "com.afn478.geominder.alert.extra.LOCATION_TEXT"
     const val EXTRA_DEBUG_ALERT = "com.afn478.geominder.alert.extra.DEBUG_ALERT"
     const val EXTRA_SNOOZE_MILLIS = "com.afn478.geominder.alert.extra.SNOOZE_MILLIS"
 

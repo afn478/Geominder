@@ -10,6 +10,11 @@ import android.content.Intent
 import android.os.PowerManager
 import com.afn478.geominder.R
 import com.afn478.geominder.domain.model.Reminder
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.FormatStyle
+import java.util.Locale
 
 fun interface AlertDelivery {
     fun deliver(reminder: Reminder, hasExactAlarmAccess: Boolean): AlertPresentation
@@ -128,20 +133,17 @@ object AlertIntentFactory {
     fun fullScreenIntent(context: Context, reminder: Reminder): Intent =
         Intent(context, FullScreenAlertActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(AlertContract.EXTRA_REMINDER_ID, reminder.id.value)
-            putExtra(AlertContract.EXTRA_TITLE, reminder.title)
-            putExtra(AlertContract.EXTRA_TEXT, reminder.text.ifBlank { reminder.sourceText })
+            putReminderContent(reminder)
         }
 
     fun debugFullScreenIntent(context: Context): Intent =
         Intent(context, FullScreenAlertActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(AlertContract.EXTRA_REMINDER_ID, DEBUG_REMINDER_ID)
-            putExtra(AlertContract.EXTRA_TITLE, "Debug full-screen reminder")
-            putExtra(
-                AlertContract.EXTRA_TEXT,
-                "The display should follow the normal timeout and return over the lock screen when woken.",
-            )
+            putExtra(AlertContract.EXTRA_TITLE, "Pick up the groceries")
+            putExtra(AlertContract.EXTRA_TEXT, "")
+            putExtra(AlertContract.EXTRA_TIME_TEXT, "5:30 PM")
+            putExtra(AlertContract.EXTRA_LOCATION_TEXT, "Corner Market, Downtown")
             putExtra(AlertContract.EXTRA_DEBUG_ALERT, true)
         }
 
@@ -168,6 +170,31 @@ object AlertIntentFactory {
             putExtra(AlertContract.EXTRA_SNOOZE_MILLIS, snoozeMillis)
         }
     }
+
+    private fun Intent.putReminderContent(reminder: Reminder) {
+        putExtra(AlertContract.EXTRA_REMINDER_ID, reminder.id.value)
+        putExtra(AlertContract.EXTRA_TITLE, reminder.title)
+        putExtra(AlertContract.EXTRA_TEXT, reminder.text.ifBlank { reminder.sourceText })
+        reminder.timeTrigger?.let { trigger ->
+            putExtra(AlertContract.EXTRA_TIME_TEXT, formatTime(trigger.exactAt))
+        }
+        reminder.geoTrigger?.let { trigger ->
+            putExtra(
+                AlertContract.EXTRA_LOCATION_TEXT,
+                formatLocation(trigger.label, trigger.latitude, trigger.longitude),
+            )
+        }
+    }
+
+    private fun formatTime(value: Instant): String =
+        DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
+            .withLocale(Locale.getDefault())
+            .withZone(ZoneId.systemDefault())
+            .format(value)
+
+    private fun formatLocation(label: String?, latitude: Double, longitude: Double): String =
+        (label ?: String.format(Locale.ROOT, "%.5f, %.5f", latitude, longitude))
+            .removePrefix("near ")
 
     private const val DEBUG_REMINDER_ID = "debug-full-screen-reminder"
 }
