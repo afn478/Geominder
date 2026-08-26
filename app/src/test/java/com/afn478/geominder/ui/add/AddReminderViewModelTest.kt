@@ -122,7 +122,7 @@ class AddReminderViewModelTest {
         viewModel.pasteLocation("https://osmand.net/map/?pin=40.7580,-73.9855#15/40.7812/-73.9665")
 
         val state = viewModel.uiState.value
-        assertEquals("40.7580", state.latitudeText)
+        assertEquals("40.758", state.latitudeText)
         assertEquals("-73.9855", state.longitudeText)
         assertEquals("near pasted place", state.geoLabel)
         assertNull(state.locationError)
@@ -478,7 +478,7 @@ class AddReminderViewModelTest {
             state.timeEditText,
         )
         assertEquals("40.7128", state.latitudeText)
-        assertEquals("-74.0060", state.longitudeText)
+        assertEquals("-74.006", state.longitudeText)
         assertEquals("250", state.radiusText)
         assertEquals("near New York City Hall", state.geoLabel)
         assertTrue(state.activeFromEnabled)
