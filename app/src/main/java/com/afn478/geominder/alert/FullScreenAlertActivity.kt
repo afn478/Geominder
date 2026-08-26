@@ -6,7 +6,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.background
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -51,6 +57,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.afn478.geominder.ReminderApplication
 import com.afn478.geominder.R
 import com.afn478.geominder.ui.theme.ReminderTheme
+import kotlin.math.PI
+import kotlin.math.sin
 
 class FullScreenAlertActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -126,12 +134,34 @@ private fun FullScreenAlert(
     onDone: () -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    val background = alertBackground(colors)
+    val backgroundTransition = rememberInfiniteTransition(label = "alert background")
+    val backgroundPhase = backgroundTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = (2.0 * PI).toFloat(),
+        animationSpec = infiniteRepeatable(
+            animation = tween(
+                durationMillis = 24_000,
+                easing = LinearEasing,
+            ),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "alert background phase",
+    ).value
+    val intensity = ((sin(backgroundPhase.toDouble()) + 1.0) / 2.0).toFloat()
+    val verticalPosition = sin((backgroundPhase + (PI / 2.0).toFloat()).toDouble()).toFloat()
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(background),
+            .drawWithCache {
+                val background = alertBackground(
+                    colors = colors,
+                    height = size.height,
+                    intensity = intensity,
+                    verticalPosition = verticalPosition,
+                )
+                onDrawBehind { drawRect(brush = background) }
+            },
     ) {
         Column(
             modifier = Modifier
@@ -202,14 +232,27 @@ private fun FullScreenAlert(
     }
 }
 
-private fun alertBackground(colors: ColorScheme): Brush = Brush.verticalGradient(
-    colorStops = arrayOf(
-        0.00f to colors.primary.copy(alpha = 0.42f).compositeOver(colors.surface),
-        0.42f to colors.primary.copy(alpha = 0.16f).compositeOver(colors.surface),
-        0.76f to colors.primary.copy(alpha = 0.04f).compositeOver(colors.surface),
-        1.00f to colors.surface,
-    ),
-)
+private fun alertBackground(
+    colors: ColorScheme,
+    height: Float,
+    intensity: Float,
+    verticalPosition: Float,
+): Brush {
+    val movement = height * 0.14f * verticalPosition
+    return Brush.verticalGradient(
+        colorStops = arrayOf(
+            0.00f to colors.primary.copy(alpha = 0.36f + (0.12f * intensity))
+                .compositeOver(colors.surface),
+            0.42f to colors.primary.copy(alpha = 0.10f + (0.08f * intensity))
+                .compositeOver(colors.surface),
+            0.76f to colors.primary.copy(alpha = 0.02f + (0.04f * intensity))
+                .compositeOver(colors.surface),
+            1.00f to colors.surface,
+        ),
+        startY = movement,
+        endY = height + movement,
+    )
+}
 
 @Composable
 private fun AlertIcon() {
