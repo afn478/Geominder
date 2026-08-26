@@ -2,8 +2,10 @@ package com.afn478.geominder.ui.theme
 
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.ui.graphics.Color
+import com.afn478.geominder.settings.AccentTheme
 import com.afn478.geominder.settings.ThemeMode
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
 class ThemeTest {
@@ -34,5 +36,48 @@ class ThemeTest {
         assertEquals(false, resolveDarkTheme(true, ThemeMode.LIGHT))
         assertEquals(true, resolveDarkTheme(false, ThemeMode.DARK))
         assertEquals(true, resolveDarkTheme(false, ThemeMode.BLACK))
+    }
+
+    @Test
+    fun `fixed accents populate accent roles instead of material defaults`() {
+        AccentTheme.values()
+            .filterNot { it == AccentTheme.DYNAMIC }
+            .forEach { accent ->
+                val light = accentColorScheme(accentTheme = accent, darkTheme = false)
+                val dark = accentColorScheme(accentTheme = accent, darkTheme = true)
+
+                assertEquals(
+                    accentSwatchColor(accent, darkTheme = false, dynamicColor = Color.Magenta),
+                    light.primary,
+                )
+                assertEquals(
+                    accentSwatchColor(accent, darkTheme = true, dynamicColor = Color.Magenta),
+                    dark.primary,
+                )
+                assertNotEquals(Color(0xFFEADDFF), light.primaryContainer)
+                assertNotEquals(Color(0xFF4A4458), dark.primaryContainer)
+                assertEquals(light.primaryContainer, light.secondaryContainer)
+                assertEquals(dark.primaryContainer, dark.secondaryContainer)
+                assertOpaque(
+                    listOf(
+                        light.primary,
+                        light.primaryContainer,
+                        light.secondary,
+                        light.secondaryContainer,
+                        light.tertiary,
+                        light.tertiaryContainer,
+                        dark.primary,
+                        dark.primaryContainer,
+                        dark.secondary,
+                        dark.secondaryContainer,
+                        dark.tertiary,
+                        dark.tertiaryContainer,
+                    ),
+                )
+            }
+    }
+
+    private fun assertOpaque(colors: List<Color>) {
+        colors.forEach { color -> assertEquals(1f, color.alpha, 0f) }
     }
 }

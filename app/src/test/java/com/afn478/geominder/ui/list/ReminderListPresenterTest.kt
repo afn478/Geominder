@@ -35,7 +35,12 @@ class ReminderListPresenterTest {
 
         assertEquals(ReminderTriggerKind.TIME_AND_LOCATION, item.triggerKind)
         assertEquals("Time and location reminder", item.triggerKind.label)
-        assertEquals("Aug 25, 2026, 8:30\u202fAM", item.timeText)
+        assertEquals(
+            "Aug 25, 2026, 8:30 AM",
+            item.timeText
+                ?.replace('\u00A0', ' ')
+                ?.replace('\u202F', ' '),
+        )
         assertEquals("Penn Station", item.locationText)
         assertEquals("Active", item.lifecycle.label)
         assertFalse(item.lifecycle.isTerminal)
