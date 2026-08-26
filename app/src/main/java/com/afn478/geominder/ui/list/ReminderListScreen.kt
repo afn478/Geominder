@@ -8,9 +8,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -33,6 +35,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBarDefaults
@@ -41,6 +44,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarState
+import androidx.compose.material3.TopAppBarScrollBehavior
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -49,12 +56,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -102,59 +114,75 @@ fun ReminderListScreen(
     onDismissMessage: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(
-                title = { Text("Reminders") },
-                actions = {
-                    IconButton(
-                        onClick = onOpenSettings,
-                        modifier = Modifier.semantics {
-                            contentDescription = "Settings"
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val useReachableAppBar = shouldUseReachableAppBar(
+            windowHeight = maxHeight,
+            windowWidth = maxWidth,
+        )
+        val appBarState = rememberTopAppBarState()
+        val scrollBehavior = if (useReachableAppBar) {
+            TopAppBarDefaults.exitUntilCollapsedScrollBehavior(appBarState)
+        } else {
+            null
+        }
+        val scaffoldModifier = Modifier
+            .fillMaxSize()
+            .then(
+                scrollBehavior?.let { Modifier.nestedScroll(it.nestedScrollConnection) }
+                    ?: Modifier,
+            )
+
+        Scaffold(
+            modifier = scaffoldModifier,
+            topBar = {
+                if (scrollBehavior == null) {
+                    ReminderCompactTopAppBar(onOpenSettings = onOpenSettings)
+                } else {
+                    ReminderReachableTopAppBar(
+                        onOpenSettings = onOpenSettings,
+                        expandedHeight = reachableAppBarExpandedHeight(maxHeight),
+                        appBarState = appBarState,
+                        scrollBehavior = scrollBehavior,
+                    )
+                }
+            },
+            bottomBar = {
+                NewReminderLauncher(onClick = onAddReminder)
+            },
+            snackbarHost = {
+                state.message?.let { message ->
+                    Snackbar(
+                        modifier = Modifier.padding(16.dp),
+                        action = {
+                            TextButton(onClick = onDismissMessage) {
+                                Text("Dismiss")
+                            }
                         },
                     ) {
-                        Icon(Icons.Default.Settings, contentDescription = null)
+                        Text(message)
                     }
-                },
-            )
-        },
-        bottomBar = {
-            NewReminderLauncher(onClick = onAddReminder)
-        },
-        snackbarHost = {
-            state.message?.let { message ->
-                Snackbar(
-                    modifier = Modifier.padding(16.dp),
-                    action = {
-                        TextButton(onClick = onDismissMessage) {
-                            Text("Dismiss")
-                        }
-                    },
-                ) {
-                    Text(message)
                 }
+            },
+        ) { contentPadding ->
+            when {
+                state.isLoading -> LoadingContent(
+                    modifier = Modifier.padding(contentPadding),
+                )
+
+                state.isEmpty -> EmptyReminderContent(
+                    modifier = Modifier.padding(contentPadding),
+                )
+
+                else -> ReminderItems(
+                    items = state.items,
+                    busyReminderIds = state.busyReminderIds,
+                    onOpenReminder = onOpenReminder,
+                    onEditReminder = onEditReminder,
+                    onSetCompleted = onSetCompleted,
+                    onRequestDelete = onRequestDelete,
+                    modifier = Modifier.padding(contentPadding),
+                )
             }
-        },
-    ) { contentPadding ->
-        when {
-            state.isLoading -> LoadingContent(
-                modifier = Modifier.padding(contentPadding),
-            )
-
-            state.isEmpty -> EmptyReminderContent(
-                modifier = Modifier.padding(contentPadding),
-            )
-
-            else -> ReminderItems(
-                items = state.items,
-                busyReminderIds = state.busyReminderIds,
-                onOpenReminder = onOpenReminder,
-                onEditReminder = onEditReminder,
-                onSetCompleted = onSetCompleted,
-                onRequestDelete = onRequestDelete,
-                modifier = Modifier.padding(contentPadding),
-            )
         }
     }
 
@@ -166,6 +194,131 @@ fun ReminderListScreen(
         )
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReminderCompactTopAppBar(
+    onOpenSettings: () -> Unit,
+) {
+    TopAppBar(
+        title = { Text("Reminders") },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.background,
+            scrolledContainerColor = MaterialTheme.colorScheme.background,
+        ),
+        actions = {
+            SettingsButton(onClick = onOpenSettings)
+        },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReminderReachableTopAppBar(
+    onOpenSettings: () -> Unit,
+    expandedHeight: Dp,
+    appBarState: TopAppBarState,
+    scrollBehavior: TopAppBarScrollBehavior,
+) {
+    Box {
+        LargeTopAppBar(
+            title = { Spacer(Modifier) },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.background,
+                scrolledContainerColor = MaterialTheme.colorScheme.background,
+            ),
+            actions = {
+                SettingsButton(onClick = onOpenSettings)
+            },
+            expandedHeight = expandedHeight,
+            scrollBehavior = scrollBehavior,
+        )
+        MorphingTopAppBarTitle(
+            collapsedFraction = appBarState.collapsedFraction,
+            modifier = Modifier.matchParentSize(),
+        )
+    }
+}
+
+@Composable
+private fun MorphingTopAppBarTitle(
+    collapsedFraction: Float,
+    modifier: Modifier = Modifier,
+) {
+    BoxWithConstraints(modifier = modifier) {
+        val density = LocalDensity.current
+        var titleWidthPx by remember { mutableIntStateOf(0) }
+        val compactTitleStartPx = with(density) { COMPACT_TITLE_START_PADDING.toPx() }
+        val expandedTitleOffsetYPx = with(density) {
+            EXPANDED_TITLE_VERTICAL_OFFSET.toPx()
+        }
+        val compactTitleOffsetYPx = TopAppBarDefaults.windowInsets.getTop(density) / 2f
+        val containerWidthPx = with(density) { maxWidth.toPx() }
+        val expansionFraction = (1f - collapsedFraction).coerceIn(0f, 1f)
+        val expandedTitleStartPx = if (titleWidthPx > 0) {
+            (containerWidthPx - titleWidthPx) / 2f
+        } else {
+            compactTitleStartPx
+        }
+        val titleTranslationX = compactTitleStartPx +
+            (expandedTitleStartPx - compactTitleStartPx) * expansionFraction
+        val titleTranslationY = compactTitleOffsetYPx +
+            (expandedTitleOffsetYPx - compactTitleOffsetYPx) * expansionFraction
+        val titleScale = 1f +
+            (EXPANDED_TITLE_SCALE - 1f) * expansionFraction
+
+        Text(
+            text = "Reminders",
+            style = MaterialTheme.typography.titleLarge,
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .onSizeChanged { titleWidthPx = it.width }
+                .graphicsLayer {
+                    translationX = titleTranslationX
+                    translationY = titleTranslationY
+                    scaleX = titleScale
+                    scaleY = titleScale
+                    transformOrigin = TransformOrigin.Center
+                },
+        )
+    }
+}
+
+@Composable
+private fun SettingsButton(
+    onClick: () -> Unit,
+) {
+    IconButton(
+        onClick = onClick,
+        modifier = Modifier.semantics {
+            contentDescription = "Settings"
+        },
+    ) {
+        Icon(Icons.Default.Settings, contentDescription = null)
+    }
+}
+
+internal fun shouldUseReachableAppBar(
+    windowHeight: Dp,
+    windowWidth: Dp,
+): Boolean =
+    windowHeight >= REACHABLE_APP_BAR_MIN_WINDOW_HEIGHT && windowHeight > windowWidth
+
+@OptIn(ExperimentalMaterial3Api::class)
+internal fun reachableAppBarExpandedHeight(
+    windowHeight: Dp,
+): Dp =
+    (windowHeight * REACHABLE_APP_BAR_HEIGHT_FRACTION).coerceIn(
+        minimumValue = TopAppBarDefaults.LargeAppBarExpandedHeight,
+        maximumValue = REACHABLE_APP_BAR_MAX_EXPANDED_HEIGHT,
+    )
+
+private const val REACHABLE_APP_BAR_HEIGHT_FRACTION = 0.40f
+private const val EXPANDED_TITLE_SCALE = 1.55f
+private val COMPACT_TITLE_START_PADDING = 24.dp
+private val EXPANDED_TITLE_VERTICAL_OFFSET = 20.dp
+private val REACHABLE_APP_BAR_MIN_WINDOW_HEIGHT = 580.dp
+private val REACHABLE_APP_BAR_MAX_EXPANDED_HEIGHT = 360.dp
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
