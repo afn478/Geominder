@@ -57,6 +57,14 @@ class SharedPreferencesSettingsRepository(
         _settings.value = _settings.value.copy(accentTheme = accent)
     }
 
+    override suspend fun setSortOrder(sortOrder: ReminderSortOrder) {
+        preferences.edit()
+            .putString(KEY_SORT_FIELD, sortOrder.field.name)
+            .putString(KEY_SORT_DIRECTION, sortOrder.direction.name)
+            .apply()
+        _settings.value = _settings.value.copy(sortOrder = sortOrder)
+    }
+
     private fun updateKeywordTimes(entries: Map<String, LocalTime>) {
         val snapshot = entries.toMap()
         preferences.edit()
@@ -76,6 +84,10 @@ class SharedPreferencesSettingsRepository(
                 ?: defaultKeywordTimes,
             themeMode = ThemeMode.fromStorage(preferences.getString(KEY_THEME_MODE, null)),
             accentTheme = AccentTheme.fromStorage(preferences.getString(KEY_ACCENT_THEME, null)),
+            sortOrder = SettingsCodec.decodeSortOrder(
+                field = preferences.getString(KEY_SORT_FIELD, null),
+                direction = preferences.getString(KEY_SORT_DIRECTION, null),
+            ),
         )
     }
 
@@ -85,5 +97,7 @@ class SharedPreferencesSettingsRepository(
         const val KEY_KEYWORD_TIMES = "keyword_time_presets"
         const val KEY_THEME_MODE = "theme_mode"
         const val KEY_ACCENT_THEME = "accent_theme"
+        const val KEY_SORT_FIELD = "sort_field"
+        const val KEY_SORT_DIRECTION = "sort_direction"
     }
 }

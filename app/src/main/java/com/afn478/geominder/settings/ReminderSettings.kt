@@ -11,6 +11,7 @@ data class ReminderSettings(
     val keywordTimes: Map<String, LocalTime> = KeywordTimeDictionary.DEFAULTS.toMap(),
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val accentTheme: AccentTheme = AccentTheme.DYNAMIC,
+    val sortOrder: ReminderSortOrder = ReminderSortOrder.DEFAULT,
 )
 
 sealed interface ValidationResult<out T> {

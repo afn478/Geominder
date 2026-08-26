@@ -35,4 +35,19 @@ class SettingsCodecTest {
         assertEquals(100.0, SettingsCodec.decodeRadius("0"), 0.0)
         assertEquals(250.5, SettingsCodec.decodeRadius("250.5"), 0.0)
     }
+
+    @Test
+    fun `sort order decodes stored field and direction with safe defaults`() {
+        assertEquals(
+            ReminderSortOrder(
+                field = ReminderSortField.TITLE,
+                direction = ReminderSortDirection.DESCENDING,
+            ),
+            SettingsCodec.decodeSortOrder("TITLE", "DESCENDING"),
+        )
+        assertEquals(
+            ReminderSortOrder.DEFAULT,
+            SettingsCodec.decodeSortOrder("unknown", "unknown"),
+        )
+    }
 }

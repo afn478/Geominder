@@ -7,6 +7,8 @@ import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
 import com.afn478.geominder.domain.repository.ReminderRepository
+import com.afn478.geominder.settings.ReminderSortOrder
+import com.afn478.geominder.settings.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,29 +24,73 @@ class ReminderListViewModel(
     private val clock: Clock = Clock.systemDefaultZone(),
     private val localeProvider: () -> Locale = Locale::getDefault,
     private val injectedScope: CoroutineScope? = null,
+    private val settingsRepository: SettingsRepository? = null,
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(ReminderListUiState())
+    private val initialSortOrder = settingsRepository?.settings?.value?.sortOrder
+        ?: ReminderSortOrder.DEFAULT
+    private val _uiState = MutableStateFlow(
+        ReminderListUiState(sortOrder = initialSortOrder),
+    )
     val uiState: StateFlow<ReminderListUiState> = _uiState.asStateFlow()
 
     private var remindersById: Map<ReminderId, Reminder> = emptyMap()
+    private var reminders: List<Reminder> = emptyList()
 
     init {
+        settingsRepository?.let { repository ->
+            workScope().launch {
+                repository.settings.collect { settings ->
+                    val sortOrder = settings.sortOrder
+                    _uiState.update { current ->
+                        if (current.sortOrder == sortOrder) {
+                            current
+                        } else {
+                            current.copy(
+                                sortOrder = sortOrder,
+                                items = present(reminders, sortOrder),
+                            )
+                        }
+                    }
+                }
+            }
+        }
         workScope().launch {
-            repository.observeAll().collect { reminders ->
-                remindersById = reminders.associateBy(Reminder::id)
+            repository.observeAll().collect { observedReminders ->
+                reminders = observedReminders
+                remindersById = observedReminders.associateBy(Reminder::id)
                 _uiState.update { current ->
                     current.copy(
                         isLoading = false,
-                        items = ReminderListPresenter.present(
-                            reminders = reminders,
-                            zoneId = clock.zone,
-                            locale = localeProvider(),
-                        ),
+                        items = present(observedReminders, current.sortOrder),
                         deleteCandidate = current.deleteCandidate?.takeIf {
                             remindersById.containsKey(it.id)
                         },
                     )
                 }
+            }
+        }
+    }
+
+    fun setSortOrder(sortOrder: ReminderSortOrder) {
+        if (sortOrder == _uiState.value.sortOrder) return
+
+        _uiState.update {
+            it.copy(
+                sortOrder = sortOrder,
+                items = present(reminders, sortOrder),
+                message = null,
+            )
+        }
+        settingsRepository?.let { repository ->
+            workScope().launch {
+                runCatching { repository.setSortOrder(sortOrder) }
+                    .onFailure { error ->
+                        _uiState.update {
+                            it.copy(
+                                message = error.message ?: "The sort order could not be saved",
+                            )
+                        }
+                    }
             }
         }
     }
@@ -197,12 +243,23 @@ class ReminderListViewModel(
     private val ReminderStatus.isTerminal: Boolean
         get() = this == ReminderStatus.DISMISSED || this == ReminderStatus.COMPLETED
 
+    private fun present(
+        reminders: List<Reminder>,
+        sortOrder: ReminderSortOrder,
+    ) = ReminderListPresenter.present(
+        reminders = reminders,
+        zoneId = clock.zone,
+        locale = localeProvider(),
+        sortOrder = sortOrder,
+    )
+
     private fun workScope(): CoroutineScope = injectedScope ?: viewModelScope
 }
 
 class ReminderListViewModelFactory(
     private val repository: ReminderRepository,
     private val scheduleCommandHandler: ReminderScheduleCommandHandler,
+    private val settingsRepository: SettingsRepository? = null,
     private val clock: Clock = Clock.systemDefaultZone(),
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
@@ -214,6 +271,7 @@ class ReminderListViewModelFactory(
             repository = repository,
             scheduleCommandHandler = scheduleCommandHandler,
             clock = clock,
+            settingsRepository = settingsRepository,
         ) as T
     }
 }

@@ -3,6 +3,11 @@ package com.afn478.geominder.ui.list
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
+import com.afn478.geominder.settings.ReminderSortDirection
+import com.afn478.geominder.settings.ReminderSortField
+import com.afn478.geominder.settings.ReminderSortOrder
+import java.text.Collator
+import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
@@ -14,6 +19,7 @@ data class ReminderListUiState(
     val busyReminderIds: Set<ReminderId> = emptySet(),
     val deleteCandidate: ReminderListItem? = null,
     val message: String? = null,
+    val sortOrder: ReminderSortOrder = ReminderSortOrder.DEFAULT,
 ) {
     val isEmpty: Boolean
         get() = !isLoading && items.isEmpty()
@@ -52,6 +58,7 @@ object ReminderListPresenter {
         reminders: List<Reminder>,
         zoneId: ZoneId,
         locale: Locale,
+        sortOrder: ReminderSortOrder = ReminderSortOrder.DEFAULT,
     ): List<ReminderListItem> {
         val dateTimeFormatter = DateTimeFormatter
             .ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
@@ -59,12 +66,94 @@ object ReminderListPresenter {
             .withZone(zoneId)
 
         return reminders
-            .sortedWith(
-                compareByDescending<Reminder> { it.isPending }
-                    .thenByDescending { it.updatedAt },
-            )
+            .sortedWith(reminderComparator(sortOrder, locale))
             .map { reminder -> reminder.toListItem(dateTimeFormatter) }
     }
+
+    private fun reminderComparator(
+        sortOrder: ReminderSortOrder,
+        locale: Locale,
+    ): Comparator<Reminder> {
+        val titleCollator = Collator.getInstance(locale).apply {
+            strength = Collator.PRIMARY
+        }
+
+        return Comparator { left, right ->
+            comparePrimaryValue(left, right, sortOrder, titleCollator)
+                .takeIf { it != 0 }
+                ?: compareLifecycle(left, right)
+                .takeIf { it != 0 }
+                ?: compareTitles(left, right, titleCollator)
+                .takeIf { it != 0 }
+                ?: right.updatedAt.compareTo(left.updatedAt)
+                .takeIf { it != 0 }
+                ?: left.id.value.compareTo(right.id.value)
+        }
+    }
+
+    private fun comparePrimaryValue(
+        left: Reminder,
+        right: Reminder,
+        sortOrder: ReminderSortOrder,
+        titleCollator: Collator,
+    ): Int = when (sortOrder.field) {
+        ReminderSortField.TITLE -> directed(
+            titleCollator.compare(left.title, right.title),
+            sortOrder.direction,
+        )
+
+        ReminderSortField.CREATION_DATE -> directed(
+            left.createdAt.compareTo(right.createdAt),
+            sortOrder.direction,
+        )
+
+        ReminderSortField.MODIFICATION_DATE -> directed(
+            left.updatedAt.compareTo(right.updatedAt),
+            sortOrder.direction,
+        )
+
+        ReminderSortField.DUE_DATE -> compareDueDates(
+            left.timeTrigger?.exactAt,
+            right.timeTrigger?.exactAt,
+            sortOrder.direction,
+        )
+    }
+
+    private fun compareDueDates(
+        left: Instant?,
+        right: Instant?,
+        direction: ReminderSortDirection,
+    ): Int {
+        if (left == null || right == null) {
+            return when {
+                left == null && right == null -> 0
+                left == null -> 1
+                else -> -1
+            }
+        }
+        return directed(left.compareTo(right), direction)
+    }
+
+    private fun directed(
+        comparison: Int,
+        direction: ReminderSortDirection,
+    ): Int {
+        val normalized = comparison.compareTo(0)
+        return if (direction == ReminderSortDirection.ASCENDING) normalized else -normalized
+    }
+
+    // The selected sort remains primary; lifecycle only breaks ties to keep active items useful.
+    private fun compareLifecycle(left: Reminder, right: Reminder): Int = when {
+        left.isPending && !right.isPending -> -1
+        !left.isPending && right.isPending -> 1
+        else -> 0
+    }
+
+    private fun compareTitles(
+        left: Reminder,
+        right: Reminder,
+        titleCollator: Collator,
+    ): Int = titleCollator.compare(left.title, right.title).compareTo(0)
 
     private fun Reminder.toListItem(formatter: DateTimeFormatter): ReminderListItem {
         val place = geoTrigger?.let { trigger ->

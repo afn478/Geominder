@@ -1,5 +1,6 @@
 package com.afn478.geominder.ui.list
 
+import androidx.annotation.StringRes
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.Animatable
@@ -17,22 +18,30 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeTopAppBar
@@ -52,25 +61,32 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.afn478.geominder.R
 import com.afn478.geominder.domain.model.ReminderId
+import com.afn478.geominder.settings.ReminderSortDirection
+import com.afn478.geominder.settings.ReminderSortField
+import com.afn478.geominder.settings.ReminderSortOrder
 import kotlinx.coroutines.delay
 
 @Composable
@@ -88,6 +104,7 @@ fun ReminderListRoute(
         state = state,
         onAddReminder = onAddReminder,
         onOpenSettings = onOpenSettings,
+        onSortOrderChange = viewModel::setSortOrder,
         onOpenReminder = onOpenReminder,
         onEditReminder = onEditReminder,
         onSetCompleted = viewModel::setCompleted,
@@ -105,6 +122,7 @@ fun ReminderListScreen(
     state: ReminderListUiState,
     onAddReminder: () -> Unit,
     onOpenSettings: () -> Unit,
+    onSortOrderChange: (ReminderSortOrder) -> Unit,
     onOpenReminder: (ReminderId) -> Unit,
     onEditReminder: (ReminderId) -> Unit,
     onSetCompleted: (ReminderId, Boolean) -> Unit,
@@ -136,10 +154,16 @@ fun ReminderListScreen(
             modifier = scaffoldModifier,
             topBar = {
                 if (scrollBehavior == null) {
-                    ReminderCompactTopAppBar(onOpenSettings = onOpenSettings)
+                    ReminderCompactTopAppBar(
+                        onOpenSettings = onOpenSettings,
+                        sortOrder = state.sortOrder,
+                        onSortOrderChange = onSortOrderChange,
+                    )
                 } else {
                     ReminderReachableTopAppBar(
                         onOpenSettings = onOpenSettings,
+                        sortOrder = state.sortOrder,
+                        onSortOrderChange = onSortOrderChange,
                         expandedHeight = reachableAppBarExpandedHeight(maxHeight),
                         appBarState = appBarState,
                         scrollBehavior = scrollBehavior,
@@ -199,6 +223,8 @@ fun ReminderListScreen(
 @Composable
 private fun ReminderCompactTopAppBar(
     onOpenSettings: () -> Unit,
+    sortOrder: ReminderSortOrder,
+    onSortOrderChange: (ReminderSortOrder) -> Unit,
 ) {
     TopAppBar(
         title = { Text("Reminders") },
@@ -207,7 +233,11 @@ private fun ReminderCompactTopAppBar(
             scrolledContainerColor = MaterialTheme.colorScheme.background,
         ),
         actions = {
-            SettingsButton(onClick = onOpenSettings)
+            ReminderOverflowMenu(
+                onOpenSettings = onOpenSettings,
+                sortOrder = sortOrder,
+                onSortOrderChange = onSortOrderChange,
+            )
         },
     )
 }
@@ -216,6 +246,8 @@ private fun ReminderCompactTopAppBar(
 @Composable
 private fun ReminderReachableTopAppBar(
     onOpenSettings: () -> Unit,
+    sortOrder: ReminderSortOrder,
+    onSortOrderChange: (ReminderSortOrder) -> Unit,
     expandedHeight: Dp,
     appBarState: TopAppBarState,
     scrollBehavior: TopAppBarScrollBehavior,
@@ -228,7 +260,11 @@ private fun ReminderReachableTopAppBar(
                 scrolledContainerColor = MaterialTheme.colorScheme.background,
             ),
             actions = {
-                SettingsButton(onClick = onOpenSettings)
+                ReminderOverflowMenu(
+                    onOpenSettings = onOpenSettings,
+                    sortOrder = sortOrder,
+                    onSortOrderChange = onSortOrderChange,
+                )
             },
             expandedHeight = expandedHeight,
             scrollBehavior = scrollBehavior,
@@ -285,18 +321,161 @@ private fun MorphingTopAppBarTitle(
 }
 
 @Composable
-private fun SettingsButton(
-    onClick: () -> Unit,
+private fun ReminderOverflowMenu(
+    onOpenSettings: () -> Unit,
+    sortOrder: ReminderSortOrder,
+    onSortOrderChange: (ReminderSortOrder) -> Unit,
 ) {
-    IconButton(
-        onClick = onClick,
-        modifier = Modifier.semantics {
-            contentDescription = "Settings"
-        },
-    ) {
-        Icon(Icons.Default.Settings, contentDescription = null)
+    var overflowExpanded by rememberSaveable { mutableStateOf(false) }
+    var sortExpanded by rememberSaveable { mutableStateOf(false) }
+    val moreOptionsLabel = stringResource(R.string.more_options)
+
+    Box {
+        IconButton(
+            onClick = {
+                overflowExpanded = !overflowExpanded
+                sortExpanded = false
+            },
+            modifier = Modifier.semantics {
+                contentDescription = moreOptionsLabel
+            },
+        ) {
+            Icon(Icons.Default.MoreVert, contentDescription = null)
+        }
+
+        DropdownMenu(
+            expanded = overflowExpanded,
+            onDismissRequest = { overflowExpanded = false },
+        ) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.settings)) },
+                leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
+                onClick = {
+                    overflowExpanded = false
+                    onOpenSettings()
+                },
+            )
+            HorizontalDivider()
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.sort_by)) },
+                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null) },
+                trailingIcon = {
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = stringResource(R.string.open_sort_options),
+                    )
+                },
+                onClick = {
+                    overflowExpanded = false
+                    sortExpanded = true
+                },
+            )
+        }
+
+        DropdownMenu(
+            expanded = sortExpanded,
+            onDismissRequest = { sortExpanded = false },
+        ) {
+            Text(
+                text = stringResource(R.string.sort_menu_title),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            )
+            HorizontalDivider()
+            SORT_MENU_OPTIONS.forEach { option ->
+                val isSelected = option.sortOrder == sortOrder
+                val label = stringResource(option.labelRes)
+                val accessibilityLabel = if (isSelected) {
+                    stringResource(R.string.sort_option_selected, label)
+                } else {
+                    label
+                }
+                DropdownMenuItem(
+                    text = { Text(label) },
+                    leadingIcon = {
+                        if (isSelected) {
+                            Icon(Icons.Default.Check, contentDescription = null)
+                        } else {
+                            Spacer(Modifier.size(24.dp))
+                        }
+                    },
+                    modifier = Modifier.semantics {
+                        contentDescription = accessibilityLabel
+                    },
+                    onClick = {
+                        sortExpanded = false
+                        onSortOrderChange(option.sortOrder)
+                    },
+                )
+            }
+        }
     }
 }
+
+private data class SortMenuOption(
+    val sortOrder: ReminderSortOrder,
+    @field:StringRes val labelRes: Int,
+)
+
+private val SORT_MENU_OPTIONS = listOf(
+    SortMenuOption(
+        sortOrder = ReminderSortOrder(
+            field = ReminderSortField.TITLE,
+            direction = ReminderSortDirection.ASCENDING,
+        ),
+        labelRes = R.string.sort_title_ascending,
+    ),
+    SortMenuOption(
+        sortOrder = ReminderSortOrder(
+            field = ReminderSortField.TITLE,
+            direction = ReminderSortDirection.DESCENDING,
+        ),
+        labelRes = R.string.sort_title_descending,
+    ),
+    SortMenuOption(
+        sortOrder = ReminderSortOrder(
+            field = ReminderSortField.CREATION_DATE,
+            direction = ReminderSortDirection.ASCENDING,
+        ),
+        labelRes = R.string.sort_creation_date_ascending,
+    ),
+    SortMenuOption(
+        sortOrder = ReminderSortOrder(
+            field = ReminderSortField.CREATION_DATE,
+            direction = ReminderSortDirection.DESCENDING,
+        ),
+        labelRes = R.string.sort_creation_date_descending,
+    ),
+    SortMenuOption(
+        sortOrder = ReminderSortOrder(
+            field = ReminderSortField.MODIFICATION_DATE,
+            direction = ReminderSortDirection.ASCENDING,
+        ),
+        labelRes = R.string.sort_modification_date_ascending,
+    ),
+    SortMenuOption(
+        sortOrder = ReminderSortOrder(
+            field = ReminderSortField.MODIFICATION_DATE,
+            direction = ReminderSortDirection.DESCENDING,
+        ),
+        labelRes = R.string.sort_modification_date_descending,
+    ),
+    SortMenuOption(
+        sortOrder = ReminderSortOrder(
+            field = ReminderSortField.DUE_DATE,
+            direction = ReminderSortDirection.ASCENDING,
+        ),
+        labelRes = R.string.sort_due_date_ascending,
+    ),
+    SortMenuOption(
+        sortOrder = ReminderSortOrder(
+            field = ReminderSortField.DUE_DATE,
+            direction = ReminderSortDirection.DESCENDING,
+        ),
+        labelRes = R.string.sort_due_date_descending,
+    ),
+)
 
 internal fun shouldUseReachableAppBar(
     windowHeight: Dp,

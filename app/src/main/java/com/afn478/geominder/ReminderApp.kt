@@ -143,6 +143,7 @@ fun ReminderApp(
                 factory = ReminderListViewModelFactory(
                     repository = container.reminderRepository,
                     scheduleCommandHandler = container.schedulingCoordinator,
+                    settingsRepository = container.settingsRepository,
                 ),
             )
             ReminderListRoute(

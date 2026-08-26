@@ -5,6 +5,9 @@ import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
 import com.afn478.geominder.domain.model.TimeTrigger
+import com.afn478.geominder.settings.ReminderSortDirection
+import com.afn478.geominder.settings.ReminderSortField
+import com.afn478.geominder.settings.ReminderSortOrder
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -14,6 +17,118 @@ import java.time.ZoneOffset
 import java.util.Locale
 
 class ReminderListPresenterTest {
+    @Test
+    fun `default sort uses due date ascending and keeps undated reminders last`() {
+        val dueLater = reminder(
+            id = ReminderId("later"),
+            title = "Later",
+            timeTrigger = TimeTrigger(exactAt = NOW.plusSeconds(2_000)),
+        )
+        val dueSooner = reminder(
+            id = ReminderId("sooner"),
+            title = "Sooner",
+            timeTrigger = TimeTrigger(exactAt = NOW.plusSeconds(1_000)),
+        )
+        val undated = reminder(
+            id = ReminderId("undated"),
+            title = "Undated",
+            timeTrigger = null,
+            geoTrigger = GeoTrigger(
+                latitude = 40.7128,
+                longitude = -74.0060,
+                radiusMeters = 100.0,
+            ),
+        )
+
+        val ids = ReminderListPresenter.present(
+            reminders = listOf(undated, dueLater, dueSooner),
+            zoneId = ZoneOffset.UTC,
+            locale = Locale.US,
+        ).map(ReminderListItem::id)
+
+        assertEquals(listOf(dueSooner.id, dueLater.id, undated.id), ids)
+
+        val descendingIds = ReminderListPresenter.present(
+            reminders = listOf(undated, dueLater, dueSooner),
+            zoneId = ZoneOffset.UTC,
+            locale = Locale.US,
+            sortOrder = ReminderSortOrder(
+                field = ReminderSortField.DUE_DATE,
+                direction = ReminderSortDirection.DESCENDING,
+            ),
+        ).map(ReminderListItem::id)
+
+        assertEquals(listOf(dueLater.id, dueSooner.id, undated.id), descendingIds)
+    }
+
+    @Test
+    fun `title sort honors ascending and descending directions`() {
+        val alpha = reminder(id = ReminderId("alpha"), title = "Alpha")
+        val beta = reminder(id = ReminderId("beta"), title = "Beta")
+        val gamma = reminder(id = ReminderId("gamma"), title = "Gamma")
+        val reminders = listOf(gamma, alpha, beta)
+
+        fun ids(direction: ReminderSortDirection) = ReminderListPresenter.present(
+            reminders = reminders,
+            zoneId = ZoneOffset.UTC,
+            locale = Locale.US,
+            sortOrder = ReminderSortOrder(ReminderSortField.TITLE, direction),
+        ).map(ReminderListItem::id)
+
+        assertEquals(listOf(alpha.id, beta.id, gamma.id), ids(ReminderSortDirection.ASCENDING))
+        assertEquals(listOf(gamma.id, beta.id, alpha.id), ids(ReminderSortDirection.DESCENDING))
+    }
+
+    @Test
+    fun `creation and modification date sorts honor both directions`() {
+        val oldest = reminder(
+            id = ReminderId("oldest"),
+            title = "Oldest",
+            createdAt = NOW.minusSeconds(9_000),
+            updatedAt = NOW.minusSeconds(1_000),
+        )
+        val middle = reminder(
+            id = ReminderId("middle"),
+            title = "Middle",
+            createdAt = NOW.minusSeconds(8_000),
+            updatedAt = NOW.minusSeconds(2_000),
+        )
+        val newest = reminder(
+            id = ReminderId("newest"),
+            title = "Newest",
+            createdAt = NOW.minusSeconds(7_000),
+            updatedAt = NOW.minusSeconds(3_000),
+        )
+        val reminders = listOf(newest, oldest, middle)
+
+        fun ids(
+            field: ReminderSortField,
+            direction: ReminderSortDirection,
+        ) = ReminderListPresenter.present(
+            reminders = reminders,
+            zoneId = ZoneOffset.UTC,
+            locale = Locale.US,
+            sortOrder = ReminderSortOrder(field, direction),
+        ).map(ReminderListItem::id)
+
+        assertEquals(
+            listOf(oldest.id, middle.id, newest.id),
+            ids(ReminderSortField.CREATION_DATE, ReminderSortDirection.ASCENDING),
+        )
+        assertEquals(
+            listOf(newest.id, middle.id, oldest.id),
+            ids(ReminderSortField.CREATION_DATE, ReminderSortDirection.DESCENDING),
+        )
+        assertEquals(
+            listOf(newest.id, middle.id, oldest.id),
+            ids(ReminderSortField.MODIFICATION_DATE, ReminderSortDirection.ASCENDING),
+        )
+        assertEquals(
+            listOf(oldest.id, middle.id, newest.id),
+            ids(ReminderSortField.MODIFICATION_DATE, ReminderSortDirection.DESCENDING),
+        )
+    }
+
     @Test
     fun `maps combined trigger metadata and active lifecycle`() {
         val reminder = reminder(
@@ -137,23 +252,26 @@ class ReminderListPresenterTest {
 
     private fun reminder(
         id: ReminderId = ReminderId("reminder"),
+        title: String = "Pick up groceries",
         enabled: Boolean = true,
         status: ReminderStatus = ReminderStatus.PENDING,
         timeTrigger: TimeTrigger? = TimeTrigger(exactAt = Instant.parse("2026-08-25T08:30:00Z")),
         geoTrigger: GeoTrigger? = null,
+        createdAt: Instant = NOW,
+        updatedAt: Instant = NOW,
         snoozedUntil: Instant? = null,
         dismissedAt: Instant? = null,
     ) = Reminder(
         id = id,
-        sourceText = "Pick up groceries",
-        title = "Pick up groceries",
+        sourceText = title,
+        title = title,
         text = "Milk and bread",
         enabled = enabled,
         status = status,
         timeTrigger = timeTrigger,
         geoTrigger = geoTrigger,
-        createdAt = NOW,
-        updatedAt = NOW,
+        createdAt = createdAt,
+        updatedAt = updatedAt,
         snoozedUntil = snoozedUntil,
         dismissedAt = dismissedAt,
     )

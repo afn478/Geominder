@@ -5,12 +5,18 @@ import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
 import com.afn478.geominder.domain.model.TimeTrigger
 import com.afn478.geominder.domain.repository.ReminderRepository
+import com.afn478.geominder.settings.ReminderSettings
+import com.afn478.geominder.settings.ReminderSortDirection
+import com.afn478.geominder.settings.ReminderSortField
+import com.afn478.geominder.settings.ReminderSortOrder
+import com.afn478.geominder.settings.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -22,6 +28,7 @@ import java.time.Clock
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
+import java.time.LocalTime
 
 class ReminderListViewModelTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Unconfined)
@@ -39,6 +46,27 @@ class ReminderListViewModelTest {
         assertFalse(viewModel.uiState.value.isLoading)
         assertEquals(reminder.id, viewModel.uiState.value.items.single().id)
         assertEquals("Active", viewModel.uiState.value.items.single().lifecycle.label)
+    }
+
+    @Test
+    fun `changing sort order updates the list and persists the preference`() {
+        val first = reminder(id = ReminderId("first"), title = "Zebra")
+        val second = reminder(id = ReminderId("second"), title = "Alpha")
+        val settings = FakeSettingsRepository()
+        val viewModel = viewModel(
+            repository = FakeRepository(listOf(first, second)),
+            settingsRepository = settings,
+        )
+        val sortOrder = ReminderSortOrder(
+            field = ReminderSortField.TITLE,
+            direction = ReminderSortDirection.ASCENDING,
+        )
+
+        viewModel.setSortOrder(sortOrder)
+
+        assertEquals(sortOrder, viewModel.uiState.value.sortOrder)
+        assertEquals(listOf(second.id, first.id), viewModel.uiState.value.items.map { it.id })
+        assertEquals(sortOrder, settings.settings.value.sortOrder)
     }
 
     @Test
@@ -233,23 +261,46 @@ class ReminderListViewModelTest {
     private fun viewModel(
         repository: FakeRepository,
         handler: ReminderScheduleCommandHandler = RecordingCommandHandler(),
+        settingsRepository: SettingsRepository? = null,
     ) = ReminderListViewModel(
         repository = repository,
         scheduleCommandHandler = handler,
         clock = Clock.fixed(NOW, ZoneOffset.UTC),
         injectedScope = scope,
+        settingsRepository = settingsRepository,
     )
 
-    private fun reminder(enabled: Boolean = true) = Reminder(
-        id = ID,
+    private fun reminder(
+        id: ReminderId = ID,
+        title: String = "Call Mum",
+        enabled: Boolean = true,
+    ) = Reminder(
+        id = id,
         sourceText = "Call Mum tomorrow",
-        title = "Call Mum",
+        title = title,
         text = "Call Mum tomorrow",
         enabled = enabled,
         timeTrigger = TimeTrigger(exactAt = NOW.plus(Duration.ofDays(1))),
         createdAt = NOW.minus(Duration.ofDays(1)),
         updatedAt = NOW.minus(Duration.ofHours(1)),
     )
+
+    private class FakeSettingsRepository : SettingsRepository {
+        private val state = MutableStateFlow(ReminderSettings())
+        override val settings: StateFlow<ReminderSettings> = state
+
+        override suspend fun setDefaultRadiusMeters(radiusMeters: Double) {}
+
+        override suspend fun upsertKeywordTime(keyword: String, time: LocalTime) {}
+
+        override suspend fun removeKeyword(keyword: String) {}
+
+        override suspend fun resetKeywordTimes() {}
+
+        override suspend fun setSortOrder(sortOrder: ReminderSortOrder) {
+            state.value = state.value.copy(sortOrder = sortOrder)
+        }
+    }
 
     private class RecordingCommandHandler(
         private val events: MutableList<String> = mutableListOf(),

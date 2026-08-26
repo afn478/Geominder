@@ -49,4 +49,9 @@ object SettingsCodec {
         ?.let { it as? ValidationResult.Valid }
         ?.value
         ?: SettingsValidation.DEFAULT_RADIUS_METERS
+
+    fun decodeSortOrder(field: String?, direction: String?): ReminderSortOrder = ReminderSortOrder(
+        field = ReminderSortField.fromStorage(field),
+        direction = ReminderSortDirection.fromStorage(direction),
+    )
 }

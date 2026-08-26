@@ -20,4 +20,6 @@ interface SettingsRepository : DefaultGeoRadiusProvider {
     suspend fun setThemeMode(mode: ThemeMode) {}
 
     suspend fun setAccentTheme(accent: AccentTheme) {}
+
+    suspend fun setSortOrder(sortOrder: ReminderSortOrder) {}
 }
