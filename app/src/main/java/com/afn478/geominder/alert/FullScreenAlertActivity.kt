@@ -261,10 +261,10 @@ private fun alertBackground(
         x = screenCenter.x + (sin(angleRadians).toFloat() * orbitRadius),
         y = screenCenter.y - (cos(angleRadians).toFloat() * orbitRadius),
     )
-    val centerAlpha = 0.36f + (0.08f * intensity)
-    val innerAlpha = 0.34f + (0.07f * intensity)
-    val edgeAlpha = 0.22f + (0.05f * intensity)
-    val outerAlpha = 0.10f + (0.03f * intensity)
+    val centerAlpha = 0.32f + (0.06f * intensity)
+    val innerAlpha = 0.30f + (0.05f * intensity)
+    val edgeAlpha = 0.18f + (0.04f * intensity)
+    val outerAlpha = 0.08f + (0.02f * intensity)
     return Brush.radialGradient(
         colorStops = arrayOf(
             0.00f to colors.primary.copy(alpha = centerAlpha).compositeOver(colors.surface),
@@ -281,7 +281,7 @@ private fun alertBackground(
 
 private const val ALERT_GRADIENT_PULSE_DURATION_MILLIS = 24_000
 private const val ALERT_GRADIENT_ROTATION_DURATION_MILLIS = 90_000
-private const val ALERT_GRADIENT_SOURCE_RADIUS_MULTIPLIER = 1.35f
+private const val ALERT_GRADIENT_SOURCE_RADIUS_MULTIPLIER = 1.25f
 
 @Composable
 private fun AlertIcon() {
