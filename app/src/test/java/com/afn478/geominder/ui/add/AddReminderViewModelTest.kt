@@ -170,6 +170,35 @@ class AddReminderViewModelTest {
     }
 
     @Test
+    fun `saving commits a manually selected time instead of restoring the default`() {
+        val repository = FakeReminderRepository()
+        val viewModel = viewModel(repository = repository)
+
+        viewModel.beginDateTimeEdit()
+        viewModel.onTimeEditChange("10:16")
+        viewModel.save()
+
+        assertEquals(
+            Instant.parse("2026-08-24T10:16:00Z"),
+            repository.saved.single().timeTrigger?.exactAt,
+        )
+    }
+
+    @Test
+    fun `collapsing time details commits a manually selected time`() {
+        val viewModel = viewModel()
+
+        viewModel.beginDateTimeEdit()
+        viewModel.onTimeEditChange("10:16")
+        viewModel.onDetailsExpandedChange(false)
+
+        assertEquals(
+            Instant.parse("2026-08-24T10:16:00Z"),
+            viewModel.uiState.value.parseResult?.dateTime?.instant,
+        )
+    }
+
+    @Test
     fun `invalid enabled location trigger prevents saving`() {
         val repository = FakeReminderRepository()
         val viewModel = viewModel(repository = repository)
@@ -440,6 +469,14 @@ class AddReminderViewModelTest {
         val state = viewModel.uiState.value
         assertEquals(old.sourceText, state.sourceText)
         assertEquals(old.timeTrigger?.exactAt, state.parseResult?.dateTime?.instant)
+        assertEquals(
+            LocalDate.of(2026, 8, 25).format(usShortDateFormatter()),
+            state.dateEditText,
+        )
+        assertEquals(
+            LocalTime.of(8, 0).format(usShortTimeFormatter()),
+            state.timeEditText,
+        )
         assertEquals("40.7128", state.latitudeText)
         assertEquals("-74.0060", state.longitudeText)
         assertEquals("250", state.radiusText)

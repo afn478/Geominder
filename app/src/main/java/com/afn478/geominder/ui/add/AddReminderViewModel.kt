@@ -87,6 +87,7 @@ class AddReminderViewModel(
     }
 
     private fun prefill(reminder: Reminder) {
+        val localTimeTrigger = reminder.timeTrigger?.exactAt?.atZone(clock.zone)
         var parsed = parser.parse(reminder.sourceText, parseContext())
         reminder.timeTrigger?.let { trigger ->
             val local = trigger.exactAt.atZone(clock.zone)
@@ -111,6 +112,9 @@ class AddReminderViewModel(
         _uiState.update {
             it.copy(
                 editingReminderId = reminder.id, sourceText = reminder.sourceText, parseResult = parsed, expanded = true,
+                dateEditText = localTimeTrigger?.toLocalDate()?.let(::formatDate) ?: it.dateEditText,
+                timeEditText = localTimeTrigger?.toLocalTime()?.let(::formatTime) ?: it.timeEditText,
+                dateTimeEditDirty = false,
                 geoEditorVisible = geo != null, latitudeText = geo?.latitude?.toPlainString() ?: "",
                 longitudeText = geo?.longitude?.toPlainString() ?: "", radiusText = geo?.radiusMeters?.toPlainString() ?: defaultRadiusText(),
                 geoLabel = geo?.label, activeFromEnabled = geo?.activeFrom != null,
@@ -125,6 +129,7 @@ class AddReminderViewModel(
     }
 
     fun onDetailsExpandedChange(expanded: Boolean) {
+        if (!expanded) commitPendingDateTimeEdit()
         val wasExpanded = _uiState.value.detailsExpanded
         _uiState.update { state ->
             state.copy(
@@ -161,8 +166,11 @@ class AddReminderViewModel(
             state.copy(
                 sourceText = sourceText,
                 parseResult = parsed,
+                dateEditText = parsed.dateTime?.let { formatDate(it.date) } ?: state.dateEditText,
+                timeEditText = parsed.dateTime?.let { formatTime(it.time) } ?: state.timeEditText,
                 expanded = state.expanded || sourceText.isNotBlank(),
                 editingDateTimeDetectionId = null,
+                dateTimeEditDirty = false,
                 timeTriggerCleared = if (parsed.dateTime != null) false else state.timeTriggerCleared,
                 dateTimeEditError = null,
                 geoEditorVisible = state.geoEditorVisible || gps != null,
@@ -196,6 +204,7 @@ class AddReminderViewModel(
                 expanded = true,
                 detailsExpanded = true,
                 editingDateTimeDetectionId = detection.id,
+                dateTimeEditDirty = false,
                 dateEditText = formatDate(detection.date),
                 timeEditText = formatTime(detection.time),
                 dateTimeEditError = null,
@@ -204,11 +213,29 @@ class AddReminderViewModel(
     }
 
     fun onDateEditChange(value: String) {
-        _uiState.update { it.copy(dateEditText = value, dateTimeEditError = null) }
+        _uiState.update {
+            it.copy(
+                dateEditText = value,
+                dateTimeEditDirty = true,
+                dateTimeEditError = null,
+            )
+        }
     }
 
     fun onTimeEditChange(value: String) {
-        _uiState.update { it.copy(timeEditText = value, dateTimeEditError = null) }
+        _uiState.update {
+            it.copy(
+                timeEditText = value,
+                dateTimeEditDirty = true,
+                dateTimeEditError = null,
+            )
+        }
+    }
+
+    private fun commitPendingDateTimeEdit(): Boolean {
+        if (!_uiState.value.dateTimeEditDirty) return true
+        commitDateTimeEdit()
+        return _uiState.value.dateTimeEditError == null
     }
 
     fun commitDateTimeEdit() {
@@ -233,6 +260,7 @@ class AddReminderViewModel(
             it.copy(
                 parseResult = editedResult,
                 editingDateTimeDetectionId = if (it.detailsExpanded) id else null,
+                dateTimeEditDirty = false,
                 timeTriggerCleared = false,
                 dateTimeEditError = null,
                 saveError = null,
@@ -255,6 +283,7 @@ class AddReminderViewModel(
                     },
                 ),
                 editingDateTimeDetectionId = null,
+                dateTimeEditDirty = false,
                 timeTriggerCleared = true,
                 dateEditText = "",
                 timeEditText = "",
@@ -507,6 +536,7 @@ class AddReminderViewModel(
                 expanded = true,
                 parseResult = parsed.copy(detections = detectionsWithoutPreviousTime + detection),
                 editingDateTimeDetectionId = if (state.detailsExpanded) detection.id else null,
+                dateTimeEditDirty = false,
                 timeTriggerCleared = false,
                 dateEditText = formatDate(detection.date),
                 timeEditText = formatTime(detection.time),
@@ -524,6 +554,7 @@ class AddReminderViewModel(
 
     fun save() {
         if (_uiState.value.isSaving) return
+        if (!commitPendingDateTimeEdit()) return
         if (_uiState.value.parseResult?.dateTime == null &&
             !_uiState.value.geoEditorVisible &&
             !_uiState.value.timeTriggerCleared
