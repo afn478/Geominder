@@ -261,23 +261,27 @@ private fun alertBackground(
         x = screenCenter.x + (sin(angleRadians).toFloat() * orbitRadius),
         y = screenCenter.y - (cos(angleRadians).toFloat() * orbitRadius),
     )
-    val edgeAlpha = 0.10f + (0.05f * intensity)
     val centerAlpha = 0.36f + (0.08f * intensity)
-    val outerAlpha = 0.02f + (0.02f * intensity)
+    val innerAlpha = 0.34f + (0.07f * intensity)
+    val edgeAlpha = 0.22f + (0.05f * intensity)
+    val outerAlpha = 0.10f + (0.03f * intensity)
     return Brush.radialGradient(
         colorStops = arrayOf(
             0.00f to colors.primary.copy(alpha = centerAlpha).compositeOver(colors.surface),
-            0.32f to colors.primary.copy(alpha = edgeAlpha).compositeOver(colors.surface),
-            0.72f to colors.primary.copy(alpha = outerAlpha).compositeOver(colors.surface),
+            0.20f to colors.primary.copy(alpha = centerAlpha).compositeOver(colors.surface),
+            0.44f to colors.primary.copy(alpha = innerAlpha).compositeOver(colors.surface),
+            0.68f to colors.primary.copy(alpha = edgeAlpha).compositeOver(colors.surface),
+            0.86f to colors.primary.copy(alpha = outerAlpha).compositeOver(colors.surface),
             1.00f to colors.surface,
         ),
         center = glowCenter,
-        radius = max(width, height) * 0.90f,
+        radius = max(width, height) * ALERT_GRADIENT_SOURCE_RADIUS_MULTIPLIER,
     )
 }
 
 private const val ALERT_GRADIENT_PULSE_DURATION_MILLIS = 24_000
 private const val ALERT_GRADIENT_ROTATION_DURATION_MILLIS = 90_000
+private const val ALERT_GRADIENT_SOURCE_RADIUS_MULTIPLIER = 1.35f
 
 @Composable
 private fun AlertIcon() {
