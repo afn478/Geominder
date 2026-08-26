@@ -44,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -58,6 +59,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.afn478.geominder.alert.AlertIntentFactory
 import com.afn478.geominder.backup.CalendarDocumentContract
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.parser.ReminderTextParser
@@ -85,6 +87,7 @@ fun ReminderApp(
     onPermissionAction: (SettingsPermissionAction) -> Unit,
 ) {
     val navController = rememberNavController()
+    val context = LocalContext.current
     val settings by container.settingsRepository.settings.collectAsStateWithLifecycle()
     var backupStatus by remember { mutableStateOf<String?>(null) }
     var backupInProgress by remember { mutableStateOf(false) }
@@ -209,6 +212,9 @@ fun ReminderApp(
                 },
                 backupStatus = backupStatus,
                 backupInProgress = backupInProgress,
+                onShowDebugFullScreenReminder = {
+                    context.startActivity(AlertIntentFactory.debugFullScreenIntent(context))
+                },
             )
         }
     }

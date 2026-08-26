@@ -48,7 +48,8 @@ class FullScreenAlertActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setShowWhenLocked(true)
         setTurnScreenOn(true)
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // Wake the display for the initial alert, then let the normal device timeout turn it off.
+        // showWhenLocked keeps this unresolved alert visible when the user wakes the device again.
         configureScrim()
         enableEdgeToEdge()
 
@@ -59,15 +60,16 @@ class FullScreenAlertActivity : ComponentActivity() {
         }
         val title = intent.getStringExtra(AlertContract.EXTRA_TITLE).orEmpty()
         val text = intent.getStringExtra(AlertContract.EXTRA_TEXT).orEmpty()
+        val isDebugAlert = intent.getBooleanExtra(AlertContract.EXTRA_DEBUG_ALERT, false)
 
         setContent {
             ReminderTheme(darkTheme = true) {
                 FullScreenAlert(
                     title = title,
                     text = text,
-                    onSnooze = { finishWithAction(reminderId, AlertAction.SNOOZE) },
-                    onDismiss = { finishWithAction(reminderId, AlertAction.DISMISS) },
-                    onDone = { finishWithAction(reminderId, AlertAction.DONE) },
+                    onSnooze = { finishAlert(reminderId, AlertAction.SNOOZE, isDebugAlert) },
+                    onDismiss = { finishAlert(reminderId, AlertAction.DISMISS, isDebugAlert) },
+                    onDone = { finishAlert(reminderId, AlertAction.DONE, isDebugAlert) },
                 )
             }
         }
@@ -89,7 +91,11 @@ class FullScreenAlertActivity : ComponentActivity() {
         }
     }
 
-    private fun finishWithAction(reminderId: String, action: AlertAction) {
+    private fun finishAlert(reminderId: String, action: AlertAction, isDebugAlert: Boolean) {
+        if (isDebugAlert) {
+            finishAndRemoveTask()
+            return
+        }
         sendBroadcast(AlertIntentFactory.actionIntent(this, reminderId, action))
         finishAndRemoveTask()
     }

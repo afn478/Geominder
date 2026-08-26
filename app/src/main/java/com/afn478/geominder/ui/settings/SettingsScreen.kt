@@ -22,6 +22,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Palette
@@ -63,6 +64,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.afn478.geominder.BuildConfig
 import com.afn478.geominder.settings.PermissionUiItem
 import com.afn478.geominder.settings.SettingsPermissionAction
 import com.afn478.geominder.settings.AccentTheme
@@ -76,6 +78,7 @@ private enum class SettingsSubsection(val title: String) {
     PRESET_TIMES("Preset times"),
     PERMISSIONS("Permissions"),
     BACKUP("Backup"),
+    DEBUG("Debug"),
 }
 
 private data class SettingsSubsectionEntry(
@@ -110,7 +113,17 @@ private val settingsSubsectionEntries = listOf(
         summary = "Export or restore reminders",
         icon = Icons.Default.Folder,
     ),
-)
+).let { entries ->
+    if (BuildConfig.DEBUG) {
+        entries + SettingsSubsectionEntry(
+            subsection = SettingsSubsection.DEBUG,
+            summary = "Test the lock-screen alert behavior",
+            icon = Icons.Default.BugReport,
+        )
+    } else {
+        entries
+    }
+}
 
 @Composable
 fun SettingsRoute(
@@ -121,6 +134,7 @@ fun SettingsRoute(
     onImportBackup: () -> Unit,
     backupStatus: String?,
     backupInProgress: Boolean,
+    onShowDebugFullScreenReminder: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -153,6 +167,7 @@ fun SettingsRoute(
         onImportBackup = onImportBackup,
         backupStatus = backupStatus,
         backupInProgress = backupInProgress,
+        onShowDebugFullScreenReminder = onShowDebugFullScreenReminder,
         modifier = modifier,
     )
 }
@@ -179,6 +194,7 @@ fun SettingsScreen(
     onImportBackup: () -> Unit,
     backupStatus: String?,
     backupInProgress: Boolean,
+    onShowDebugFullScreenReminder: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var selectedSubsection by rememberSaveable {
@@ -259,6 +275,12 @@ fun SettingsScreen(
                     status = backupStatus,
                     inProgress = backupInProgress,
                 )
+            }
+
+            SettingsSubsection.DEBUG -> if (BuildConfig.DEBUG) {
+                SettingsSubpage(pageModifier) {
+                    DebugAlertSection(onShowDebugFullScreenReminder)
+                }
             }
         }
     }
@@ -454,6 +476,22 @@ private fun BackupSection(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+@Composable
+private fun DebugAlertSection(
+    onShowDebugFullScreenReminder: () -> Unit,
+) {
+    SettingsSection(title = "Debug") {
+        Text(
+            text = "Launch a test full-screen reminder to check wake, timeout, and lock-screen behavior.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Button(onClick = onShowDebugFullScreenReminder) {
+            Text("Show full-screen reminder")
         }
     }
 }

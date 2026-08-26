@@ -133,6 +133,18 @@ object AlertIntentFactory {
             putExtra(AlertContract.EXTRA_TEXT, reminder.text.ifBlank { reminder.sourceText })
         }
 
+    fun debugFullScreenIntent(context: Context): Intent =
+        Intent(context, FullScreenAlertActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            putExtra(AlertContract.EXTRA_REMINDER_ID, DEBUG_REMINDER_ID)
+            putExtra(AlertContract.EXTRA_TITLE, "Debug full-screen reminder")
+            putExtra(
+                AlertContract.EXTRA_TEXT,
+                "The display should follow the normal timeout and return over the lock screen when woken.",
+            )
+            putExtra(AlertContract.EXTRA_DEBUG_ALERT, true)
+        }
+
     fun actionPendingIntent(
         context: Context,
         reminder: Reminder,
@@ -156,4 +168,6 @@ object AlertIntentFactory {
             putExtra(AlertContract.EXTRA_SNOOZE_MILLIS, snoozeMillis)
         }
     }
+
+    private const val DEBUG_REMINDER_ID = "debug-full-screen-reminder"
 }
