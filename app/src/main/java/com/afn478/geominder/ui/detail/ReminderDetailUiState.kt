@@ -43,11 +43,15 @@ data class ReminderDetailUiState(
                 .withLocale(locale)
                 .withZone(zoneId)
             val geo = reminder.geoTrigger
-            val status = when (reminder.status) {
-                ReminderStatus.PENDING -> if (reminder.enabled) "Active" else "Paused"
-                ReminderStatus.SNOOZED -> "Snoozed"
-                ReminderStatus.DISMISSED -> "Dismissed"
-                ReminderStatus.COMPLETED -> "Completed"
+            val status = if (reminder.isDeleted) {
+                "Deleted"
+            } else {
+                when (reminder.status) {
+                    ReminderStatus.PENDING -> if (reminder.enabled) "Active" else "Paused"
+                    ReminderStatus.SNOOZED -> "Snoozed"
+                    ReminderStatus.DISMISSED -> "Dismissed"
+                    ReminderStatus.COMPLETED -> "Completed"
+                }
             }
             return ReminderDetailUiState(
                 isLoading = false,
@@ -55,7 +59,11 @@ data class ReminderDetailUiState(
                 sourceText = reminder.sourceText,
                 title = reminder.title,
                 text = reminder.text,
-                lifecycleLabel = if (reminder.enabled) status else "$status · disabled",
+                lifecycleLabel = if (reminder.isDeleted || reminder.enabled) {
+                    status
+                } else {
+                    "$status · disabled"
+                },
                 timeText = reminder.timeTrigger?.let { formatter.format(it.exactAt) },
                 geoCoordinates = geo?.let { "%.5f, %.5f".format(Locale.ROOT, it.latitude, it.longitude) },
                 geoLabel = geo?.label,

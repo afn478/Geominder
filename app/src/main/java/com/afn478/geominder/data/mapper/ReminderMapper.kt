@@ -22,6 +22,7 @@ fun Reminder.toEntities(): ReminderEntities = ReminderEntities(
         sourceText = sourceText,
         title = title,
         text = text,
+        tag = tag,
         enabled = enabled,
         status = status,
         createdAt = createdAt,
@@ -29,6 +30,7 @@ fun Reminder.toEntities(): ReminderEntities = ReminderEntities(
         lastTriggeredAt = lastTriggeredAt,
         snoozedUntil = snoozedUntil,
         dismissedAt = dismissedAt,
+        deletedAt = deletedAt,
     ),
     timeTrigger = timeTrigger?.let { trigger ->
         TimeTriggerEntity(
@@ -55,6 +57,7 @@ fun ReminderWithTriggers.toDomain(): Reminder = Reminder(
     sourceText = reminder.sourceText,
     title = reminder.title,
     text = reminder.text,
+    tag = reminder.tag,
     enabled = reminder.enabled,
     status = reminder.status,
     timeTrigger = timeTrigger?.let { trigger ->
@@ -78,4 +81,5 @@ fun ReminderWithTriggers.toDomain(): Reminder = Reminder(
     lastTriggeredAt = reminder.lastTriggeredAt,
     snoozedUntil = reminder.snoozedUntil,
     dismissedAt = reminder.dismissedAt,
+    deletedAt = reminder.deletedAt,
 )

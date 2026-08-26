@@ -86,9 +86,11 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.afn478.geominder.domain.model.Reminder
+import com.afn478.geominder.domain.model.ReminderTag
 import com.afn478.geominder.geofence.GeoInputError
 import com.afn478.geominder.geofence.GeoInputField
 import com.afn478.geominder.parser.SourceSpan
+import com.afn478.geominder.ui.tag.ReminderTagChips
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneOffset
@@ -138,6 +140,7 @@ fun AddReminderRoute(
     AddReminderScreen(
         state = state,
         onSourceTextChange = viewModel::onSourceTextChange,
+        onTagClick = viewModel::onTagClick,
         onExpandedChange = viewModel::onExpandedChange,
         onDetailsExpandedChange = viewModel::onDetailsExpandedChange,
         onDateTimeChipClick = viewModel::beginDateTimeEdit,
@@ -173,6 +176,7 @@ fun AddReminderRoute(
 fun AddReminderScreen(
     state: AddReminderUiState,
     onSourceTextChange: (String) -> Unit,
+    onTagClick: (ReminderTag) -> Unit,
     onExpandedChange: (Boolean) -> Unit,
     onDetailsExpandedChange: (Boolean) -> Unit,
     onDateTimeChipClick: () -> Unit,
@@ -202,6 +206,7 @@ fun AddReminderScreen(
         BottomSheetComposerContent(
             state = state,
             onSourceTextChange = onSourceTextChange,
+            onTagClick = onTagClick,
             onExpandedChange = onExpandedChange,
             onDateTimeChipClick = {
                 onExpandBottomSheet()
@@ -236,6 +241,7 @@ fun AddReminderScreen(
         EditReminderContent(
             state = state,
             onSourceTextChange = onSourceTextChange,
+            onTagClick = onTagClick,
             onDateTimeChipClick = onDateTimeChipClick,
             onDateEditChange = onDateEditChange,
             onTimeEditChange = onTimeEditChange,
@@ -309,6 +315,7 @@ fun AddReminderScreen(
                                 onActiveFromDateChange = onActiveFromDateChange,
                                 onActiveFromTimeChange = onActiveFromTimeChange,
                             )
+                            TagSelector(state = state, onTagClick = onTagClick)
 
                             state.parseResult?.issues?.forEach { issue ->
                                 SupportingError(issue.message)
@@ -368,6 +375,7 @@ fun AddReminderScreen(
 private fun EditReminderContent(
     state: AddReminderUiState,
     onSourceTextChange: (String) -> Unit,
+    onTagClick: (ReminderTag) -> Unit,
     onDateTimeChipClick: () -> Unit,
     onDateEditChange: (String) -> Unit,
     onTimeEditChange: (String) -> Unit,
@@ -432,6 +440,7 @@ private fun EditReminderContent(
                 onActiveFromDateChange = onActiveFromDateChange,
                 onActiveFromTimeChange = onActiveFromTimeChange,
             )
+            TagSelector(state = state, onTagClick = onTagClick)
 
             state.parseResult?.issues?.forEach { issue ->
                 SupportingError(issue.message)
@@ -548,6 +557,7 @@ private fun BottomSheetComposerContent(
     state: AddReminderUiState,
     onSourceTextChange: (String) -> Unit,
     onExpandedChange: (Boolean) -> Unit,
+    onTagClick: (ReminderTag) -> Unit,
     onDateTimeChipClick: () -> Unit,
     onDateEditChange: (String) -> Unit,
     onTimeEditChange: (String) -> Unit,
@@ -634,12 +644,28 @@ private fun BottomSheetComposerContent(
                     onActiveFromDateChange = onActiveFromDateChange,
                     onActiveFromTimeChange = onActiveFromTimeChange,
                 )
+                TagSelector(state = state, onTagClick = onTagClick)
                 state.parseResult?.issues?.forEach { issue ->
                     SupportingError(issue.message)
                 }
             }
         }
         Spacer(modifier = Modifier.navigationBarsPadding())
+    }
+}
+
+@Composable
+private fun TagSelector(
+    state: AddReminderUiState,
+    onTagClick: (ReminderTag) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Color tag", style = MaterialTheme.typography.titleMedium)
+        ReminderTagChips(
+            selectedTag = state.tag,
+            onTagClick = onTagClick,
+            enabled = !state.isSaving,
+        )
     }
 }
 

@@ -31,9 +31,9 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -48,10 +48,12 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBarDefaults
-import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarState
@@ -67,6 +69,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -84,9 +89,13 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.afn478.geominder.R
 import com.afn478.geominder.domain.model.ReminderId
+import com.afn478.geominder.domain.model.ReminderTag
 import com.afn478.geominder.settings.ReminderSortDirection
 import com.afn478.geominder.settings.ReminderSortField
 import com.afn478.geominder.settings.ReminderSortOrder
+import com.afn478.geominder.ui.tag.ReminderTagChips
+import com.afn478.geominder.ui.tag.ReminderTrashChip
+import com.afn478.geominder.ui.tag.color
 import kotlinx.coroutines.delay
 
 @Composable
@@ -105,12 +114,15 @@ fun ReminderListRoute(
         onAddReminder = onAddReminder,
         onOpenSettings = onOpenSettings,
         onSortOrderChange = viewModel::setSortOrder,
+        onTagFilterClick = viewModel::toggleTagFilter,
         onOpenReminder = onOpenReminder,
         onEditReminder = onEditReminder,
         onSetCompleted = viewModel::setCompleted,
-        onRequestDelete = viewModel::requestDelete,
-        onConfirmDelete = viewModel::confirmDelete,
-        onCancelDelete = viewModel::cancelDelete,
+        onToggleTrash = viewModel::toggleTrash,
+        onDeleteReminder = viewModel::deleteReminder,
+        onRestoreReminder = viewModel::restoreReminder,
+        onUndoDelete = viewModel::undoDelete,
+        onUndoDeleteNoticeConsumed = viewModel::consumeUndoDeleteNotice,
         onDismissMessage = viewModel::clearMessage,
         modifier = modifier,
     )
@@ -123,18 +135,45 @@ fun ReminderListScreen(
     onAddReminder: () -> Unit,
     onOpenSettings: () -> Unit,
     onSortOrderChange: (ReminderSortOrder) -> Unit,
+    onTagFilterClick: (ReminderTag) -> Unit,
     onOpenReminder: (ReminderId) -> Unit,
     onEditReminder: (ReminderId) -> Unit,
     onSetCompleted: (ReminderId, Boolean) -> Unit,
-    onRequestDelete: (ReminderId) -> Unit,
-    onConfirmDelete: () -> Unit,
-    onCancelDelete: () -> Unit,
+    onToggleTrash: () -> Unit,
+    onDeleteReminder: (ReminderId) -> Unit,
+    onRestoreReminder: (ReminderId) -> Unit,
+    onUndoDelete: (ReminderId) -> Unit,
+    onUndoDeleteNoticeConsumed: (ReminderId) -> Unit,
     onDismissMessage: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val windowHeight = maxHeight
+        val snackbarHostState = remember { SnackbarHostState() }
+        LaunchedEffect(state.message) {
+            state.message?.let { message ->
+                snackbarHostState.showSnackbar(
+                    message = message,
+                    actionLabel = "Dismiss",
+                    duration = SnackbarDuration.Short,
+                )
+                onDismissMessage()
+            }
+        }
+        LaunchedEffect(state.undoDeleteReminderId) {
+            val reminderId = state.undoDeleteReminderId ?: return@LaunchedEffect
+            val result = snackbarHostState.showSnackbar(
+                message = "Reminder deleted",
+                actionLabel = "Undo",
+                duration = SnackbarDuration.Short,
+            )
+            if (result == SnackbarResult.ActionPerformed) {
+                onUndoDelete(reminderId)
+            }
+            onUndoDeleteNoticeConsumed(reminderId)
+        }
         val useReachableAppBar = shouldUseReachableAppBar(
-            windowHeight = maxHeight,
+            windowHeight = windowHeight,
             windowWidth = maxWidth,
         )
         val appBarState = rememberTopAppBarState()
@@ -164,28 +203,35 @@ fun ReminderListScreen(
                         onOpenSettings = onOpenSettings,
                         sortOrder = state.sortOrder,
                         onSortOrderChange = onSortOrderChange,
-                        expandedHeight = reachableAppBarExpandedHeight(maxHeight),
+                        expandedHeight = reachableAppBarExpandedHeight(windowHeight),
                         appBarState = appBarState,
                         scrollBehavior = scrollBehavior,
                     )
                 }
             },
             bottomBar = {
-                NewReminderLauncher(onClick = onAddReminder)
+                Column {
+                    ReminderTagChips(
+                        selectedTag = state.selectedTag,
+                        onTagClick = onTagFilterClick,
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                        compact = true,
+                        trailingContent = {
+                            ReminderTrashChip(
+                                selected = state.showTrash,
+                                onClick = onToggleTrash,
+                            )
+                        },
+                    )
+                    NewReminderLauncher(onClick = onAddReminder)
+                }
             },
             snackbarHost = {
-                state.message?.let { message ->
-                    Snackbar(
-                        modifier = Modifier.padding(16.dp),
-                        action = {
-                            TextButton(onClick = onDismissMessage) {
-                                Text("Dismiss")
-                            }
-                        },
-                    ) {
-                        Text(message)
-                    }
-                }
+                SnackbarHost(
+                    hostState = snackbarHostState,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
             },
         ) { contentPadding ->
             when {
@@ -194,6 +240,18 @@ fun ReminderListScreen(
                 )
 
                 state.isEmpty -> EmptyReminderContent(
+                    title = when {
+                        state.showTrash && state.selectedTag == null -> "Recycling bin is empty"
+                        state.selectedTag != null -> "No reminders found"
+                        else -> "Nothing to remember yet"
+                    },
+                    description = when {
+                        state.showTrash && state.selectedTag == null ->
+                            "Deleted reminders will appear here."
+                        state.selectedTag != null -> "No reminders use this color tag yet."
+                        else -> "Create a reminder for a time, a place, or both. " +
+                            "It will appear here so you can open, edit, or mark it done."
+                    },
                     modifier = Modifier.padding(contentPadding),
                 )
 
@@ -203,19 +261,13 @@ fun ReminderListScreen(
                     onOpenReminder = onOpenReminder,
                     onEditReminder = onEditReminder,
                     onSetCompleted = onSetCompleted,
-                    onRequestDelete = onRequestDelete,
+                    onDeleteReminder = onDeleteReminder,
+                    onRestoreReminder = onRestoreReminder,
+                    inTrash = state.showTrash,
                     modifier = Modifier.padding(contentPadding),
                 )
             }
         }
-    }
-
-    state.deleteCandidate?.let { reminder ->
-        DeleteReminderDialog(
-            reminder = reminder,
-            onConfirm = onConfirmDelete,
-            onDismiss = onCancelDelete,
-        )
     }
 }
 
@@ -587,6 +639,8 @@ private fun LoadingContent(modifier: Modifier = Modifier) {
 
 @Composable
 private fun EmptyReminderContent(
+    title: String,
+    description: String,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -601,12 +655,11 @@ private fun EmptyReminderContent(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                text = "Nothing to remember yet",
+                text = title,
                 style = MaterialTheme.typography.headlineSmall,
             )
             Text(
-                text = "Create a reminder for a time, a place, or both. " +
-                    "It will appear here so you can open, edit, or mark it done.",
+                text = description,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -621,7 +674,9 @@ private fun ReminderItems(
     onOpenReminder: (ReminderId) -> Unit,
     onEditReminder: (ReminderId) -> Unit,
     onSetCompleted: (ReminderId, Boolean) -> Unit,
-    onRequestDelete: (ReminderId) -> Unit,
+    onDeleteReminder: (ReminderId) -> Unit,
+    onRestoreReminder: (ReminderId) -> Unit,
+    inTrash: Boolean,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -644,7 +699,9 @@ private fun ReminderItems(
                 onOpen = { onOpenReminder(item.id) },
                 onEdit = { onEditReminder(item.id) },
                 onSetCompleted = { completed -> onSetCompleted(item.id, completed) },
-                onDelete = { onRequestDelete(item.id) },
+                onDelete = { onDeleteReminder(item.id) },
+                onRestore = { onRestoreReminder(item.id) },
+                inTrash = inTrash,
             )
         }
     }
@@ -659,8 +716,11 @@ private fun ReminderCard(
     onEdit: () -> Unit,
     onSetCompleted: (Boolean) -> Unit,
     onDelete: () -> Unit,
+    onRestore: () -> Unit,
+    inTrash: Boolean,
 ) {
     val motionSpec: FiniteAnimationSpec<IntSize> = MaterialTheme.motionScheme.defaultSpatialSpec()
+    val cardShape = MaterialTheme.shapes.extraLarge
     val primaryTextColor = if (item.isCompleted) {
         MaterialTheme.colorScheme.onSurfaceVariant
     } else {
@@ -677,12 +737,22 @@ private fun ReminderCard(
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize(animationSpec = motionSpec)
+            .clip(cardShape)
+            .drawWithContent {
+                drawContent()
+                item.tag?.let { tag ->
+                    drawRect(
+                        color = tag.color,
+                        size = Size(width = 4.dp.toPx(), height = size.height),
+                    )
+                }
+            }
             .clickable(
                 enabled = !isBusy,
                 onClickLabel = "Open ${item.title}",
                 onClick = onOpen,
             ),
-        shape = MaterialTheme.shapes.extraLarge,
+        shape = cardShape,
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
@@ -695,7 +765,7 @@ private fun ReminderCard(
             ) {
                 Checkbox(
                     checked = item.isCompleted,
-                    onCheckedChange = if (isBusy) {
+                    onCheckedChange = if (isBusy || inTrash) {
                         null
                     } else {
                         { checked -> onSetCompleted(checked) }
@@ -718,13 +788,27 @@ private fun ReminderCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+                if (!inTrash) {
+                    IconButtonWithDescription(
+                        description = "Edit ${item.primaryText}",
+                        onClick = onEdit,
+                        enabled = !isBusy,
+                    ) { Icon(Icons.Default.Edit, contentDescription = null) }
+                } else {
+                    IconButtonWithDescription(
+                        description = "Restore ${item.primaryText}",
+                        onClick = onRestore,
+                        enabled = !isBusy,
+                    ) {
+                        Icon(Icons.Default.RestoreFromTrash, contentDescription = null)
+                    }
+                }
                 IconButtonWithDescription(
-                    description = "Edit ${item.primaryText}",
-                    onClick = onEdit,
-                    enabled = !isBusy,
-                ) { Icon(Icons.Default.Edit, contentDescription = null) }
-                IconButtonWithDescription(
-                    description = "Delete ${item.primaryText}",
+                    description = if (inTrash) {
+                        "Delete permanently ${item.primaryText}"
+                    } else {
+                        "Delete ${item.primaryText}"
+                    },
                     onClick = onDelete,
                     enabled = !isBusy,
                 ) { Icon(Icons.Default.Delete, contentDescription = null) }
@@ -770,30 +854,5 @@ private fun IconButtonWithDescription(
         enabled = enabled,
         modifier = Modifier.semantics { contentDescription = description },
         content = icon,
-    )
-}
-
-@Composable
-private fun DeleteReminderDialog(
-    reminder: ReminderListItem,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Delete reminder?") },
-        text = {
-            Text("“${reminder.title}” and its scheduled alarm or location trigger will be removed.")
-        },
-        confirmButton = {
-            TextButton(onClick = onConfirm) {
-                Text("Delete")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Keep reminder")
-            }
-        },
     )
 }

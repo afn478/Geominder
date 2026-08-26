@@ -31,6 +31,18 @@ class RoomReminderRepository(
         reminderDao.replace(entities.reminder, entities.timeTrigger, entities.geoTrigger)
     }
 
+    override suspend fun moveToTrash(id: ReminderId, changedAt: Instant) {
+        update(id) { reminder ->
+            reminder.copy(updatedAt = changedAt, deletedAt = changedAt)
+        }
+    }
+
+    override suspend fun restoreFromTrash(id: ReminderId, changedAt: Instant) {
+        update(id) { reminder ->
+            reminder.copy(updatedAt = changedAt, deletedAt = null)
+        }
+    }
+
     override suspend fun delete(id: ReminderId) {
         reminderDao.deleteById(id.value)
     }

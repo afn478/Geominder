@@ -3,6 +3,7 @@ package com.afn478.geominder.ui.list
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
+import com.afn478.geominder.domain.model.ReminderTag
 import com.afn478.geominder.domain.model.TimeTrigger
 import com.afn478.geominder.domain.repository.ReminderRepository
 import com.afn478.geominder.settings.ReminderSettings
@@ -70,6 +71,24 @@ class ReminderListViewModelTest {
     }
 
     @Test
+    fun `tag filter toggles between matching reminders and all reminders`() {
+        val red = reminder(id = ReminderId("red")).copy(tag = ReminderTag.RED)
+        val blue = reminder(id = ReminderId("blue")).copy(tag = ReminderTag.BLUE)
+        val viewModel = viewModel(FakeRepository(listOf(red, blue)))
+
+        viewModel.toggleTagFilter(ReminderTag.RED)
+        assertEquals(ReminderTag.RED, viewModel.uiState.value.selectedTag)
+        assertEquals(listOf(red.id), viewModel.uiState.value.items.map { it.id })
+
+        viewModel.toggleTagFilter(ReminderTag.RED)
+        assertNull(viewModel.uiState.value.selectedTag)
+        assertEquals(setOf(red.id, blue.id), viewModel.uiState.value.items.map { it.id }.toSet())
+
+        viewModel.toggleTagFilter(ReminderTag.PURPLE)
+        assertTrue(viewModel.uiState.value.isEmpty)
+    }
+
+    @Test
     fun `disabling cancels registration and persists the change`() {
         val events = mutableListOf<String>()
         val repository = FakeRepository(listOf(reminder()), events)
@@ -100,19 +119,18 @@ class ReminderListViewModelTest {
     }
 
     @Test
-    fun `confirmed deletion cancels scheduling before deleting persistence`() {
+    fun `deleting active reminder moves it to trash and exposes undo`() {
         val events = mutableListOf<String>()
         val repository = FakeRepository(listOf(reminder()), events)
         val commands = RecordingCommandHandler(events)
         val viewModel = viewModel(repository, commands)
 
-        viewModel.requestDelete(ID)
-        assertEquals(ID, viewModel.uiState.value.deleteCandidate?.id)
-        viewModel.confirmDelete()
+        viewModel.deleteReminder(ID)
 
-        assertEquals(listOf("command:Cancel", "delete"), events)
-        assertTrue(repository.current().isEmpty())
-        assertNull(viewModel.uiState.value.deleteCandidate)
+        assertEquals(listOf("command:Cancel", "moveToTrash"), events)
+        assertTrue(repository.current().single().isDeleted)
+        assertTrue(viewModel.uiState.value.items.isEmpty())
+        assertEquals(ID, viewModel.uiState.value.undoDeleteReminderId)
     }
 
     @Test
@@ -123,8 +141,7 @@ class ReminderListViewModelTest {
             handler = ReminderScheduleCommandHandler { error("Scheduler unavailable") },
         )
 
-        viewModel.requestDelete(ID)
-        viewModel.confirmDelete()
+        viewModel.deleteReminder(ID)
 
         assertEquals(1, repository.current().size)
         assertEquals("Scheduler unavailable", viewModel.uiState.value.message)
@@ -153,21 +170,72 @@ class ReminderListViewModelTest {
     }
 
     @Test
-    fun `failed deletion restores registration for a pending reminder`() {
+    fun `failed move to trash restores registration for a pending reminder`() {
         val events = mutableListOf<String>()
         val repository = FakeRepository(
             reminders = listOf(reminder()),
             events = events,
-            failDelete = true,
+            failMoveToTrash = true,
         )
         val viewModel = viewModel(repository, RecordingCommandHandler(events))
 
-        viewModel.requestDelete(ID)
-        viewModel.confirmDelete()
+        viewModel.deleteReminder(ID)
 
-        assertEquals(listOf("command:Cancel", "delete", "command:Register"), events)
+        assertEquals(listOf("command:Cancel", "moveToTrash", "command:Register"), events)
         assertEquals(1, repository.current().size)
         assertEquals("Persistence unavailable", viewModel.uiState.value.message)
+    }
+
+    @Test
+    fun `undo restores a deleted pending reminder and re-registers it`() {
+        val events = mutableListOf<String>()
+        val repository = FakeRepository(listOf(reminder()), events)
+        val viewModel = viewModel(repository, RecordingCommandHandler(events))
+
+        viewModel.deleteReminder(ID)
+        viewModel.undoDelete(ID)
+
+        assertEquals(
+            listOf("command:Cancel", "moveToTrash", "command:Register", "restoreFromTrash"),
+            events,
+        )
+        assertFalse(repository.current().single().isDeleted)
+        assertEquals(listOf(ID), viewModel.uiState.value.items.map(ReminderListItem::id))
+        assertNull(viewModel.uiState.value.undoDeleteReminderId)
+    }
+
+    @Test
+    fun `deleting from trash permanently removes the reminder`() {
+        val events = mutableListOf<String>()
+        val repository = FakeRepository(
+            reminders = listOf(reminder().copy(deletedAt = NOW)),
+            events = events,
+        )
+        val viewModel = viewModel(repository, RecordingCommandHandler(events))
+
+        viewModel.toggleTrash()
+        viewModel.deleteReminder(ID)
+
+        assertEquals(listOf("command:Cancel", "delete"), events)
+        assertTrue(repository.current().isEmpty())
+        assertTrue(viewModel.uiState.value.items.isEmpty())
+    }
+
+    @Test
+    fun `restoring from trash re-registers the reminder`() {
+        val events = mutableListOf<String>()
+        val repository = FakeRepository(
+            reminders = listOf(reminder().copy(deletedAt = NOW)),
+            events = events,
+        )
+        val viewModel = viewModel(repository, RecordingCommandHandler(events))
+
+        viewModel.toggleTrash()
+        viewModel.restoreReminder(ID)
+
+        assertEquals(listOf("command:Register", "restoreFromTrash"), events)
+        assertFalse(repository.current().single().isDeleted)
+        assertTrue(viewModel.uiState.value.items.isEmpty())
     }
 
     @Test
@@ -321,6 +389,7 @@ class ReminderListViewModelTest {
         private val events: MutableList<String> = mutableListOf(),
         private val failSetEnabled: Boolean = false,
         private val failDelete: Boolean = false,
+        private val failMoveToTrash: Boolean = false,
         private val failComplete: Boolean = false,
         private val failReopen: Boolean = false,
     ) : ReminderRepository {
@@ -346,6 +415,17 @@ class ReminderListViewModelTest {
             events += "delete"
             if (failDelete) error("Persistence unavailable")
             reminders.value = reminders.value.filterNot { it.id == id }
+        }
+
+        override suspend fun moveToTrash(id: ReminderId, changedAt: Instant) {
+            events += "moveToTrash"
+            if (failMoveToTrash) error("Persistence unavailable")
+            update(id) { it.copy(updatedAt = changedAt, deletedAt = changedAt) }
+        }
+
+        override suspend fun restoreFromTrash(id: ReminderId, changedAt: Instant) {
+            events += "restoreFromTrash"
+            update(id) { it.copy(updatedAt = changedAt, deletedAt = null) }
         }
 
         override suspend fun setEnabled(id: ReminderId, enabled: Boolean, changedAt: Instant) {

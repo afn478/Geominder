@@ -7,6 +7,7 @@ import com.afn478.geominder.domain.model.GeoTrigger
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
+import com.afn478.geominder.domain.model.ReminderTag
 import com.afn478.geominder.domain.model.TimeTrigger
 import com.afn478.geominder.domain.repository.ReminderRepository
 import com.afn478.geominder.geofence.CancellationHandle
@@ -112,6 +113,7 @@ class AddReminderViewModel(
         _uiState.update {
             it.copy(
                 editingReminderId = reminder.id, sourceText = reminder.sourceText, parseResult = parsed, expanded = true,
+                tag = reminder.tag,
                 dateEditText = localTimeTrigger?.toLocalDate()?.let(::formatDate) ?: it.dateEditText,
                 timeEditText = localTimeTrigger?.toLocalTime()?.let(::formatTime) ?: it.timeEditText,
                 dateTimeEditDirty = false,
@@ -126,6 +128,16 @@ class AddReminderViewModel(
 
     fun onExpandedChange(expanded: Boolean) {
         _uiState.update { it.copy(expanded = expanded) }
+    }
+
+    fun onTagClick(tag: ReminderTag) {
+        _uiState.update { state ->
+            state.copy(
+                tag = if (state.tag == tag) null else tag,
+                saveError = null,
+                savedReminder = null,
+            )
+        }
     }
 
     fun onDetailsExpandedChange(expanded: Boolean) {
@@ -688,6 +700,7 @@ class AddReminderViewModel(
                 sourceText = state.sourceText,
                 title = displayText,
                 text = displayText,
+                tag = state.tag,
                 timeTrigger = timeTrigger,
                 geoTrigger = geoTrigger,
                 createdAt = now,

@@ -6,6 +6,7 @@ import com.afn478.geominder.domain.model.GeoTrigger
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
+import com.afn478.geominder.domain.model.ReminderTag
 import com.afn478.geominder.domain.model.TimeTrigger
 import com.afn478.geominder.domain.model.TriggerId
 import org.junit.Assert.assertEquals
@@ -27,6 +28,7 @@ class BiweeklyReminderCalendarCodecTest {
             title = "A deliberately long reminder title that causes the iCalendar writer " +
                 "to fold this content line safely",
             text = "Milk, bread; eggs \\ cheese\nSecond line",
+            tag = ReminderTag.GREEN,
             enabled = false,
             status = ReminderStatus.SNOOZED,
             timeTrigger = TimeTrigger(

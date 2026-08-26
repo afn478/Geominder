@@ -3,6 +3,7 @@ package com.afn478.geominder.ui.list
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
+import com.afn478.geominder.domain.model.ReminderTag
 import com.afn478.geominder.settings.ReminderSortDirection
 import com.afn478.geominder.settings.ReminderSortField
 import com.afn478.geominder.settings.ReminderSortOrder
@@ -17,9 +18,11 @@ data class ReminderListUiState(
     val isLoading: Boolean = true,
     val items: List<ReminderListItem> = emptyList(),
     val busyReminderIds: Set<ReminderId> = emptySet(),
-    val deleteCandidate: ReminderListItem? = null,
     val message: String? = null,
     val sortOrder: ReminderSortOrder = ReminderSortOrder.DEFAULT,
+    val selectedTag: ReminderTag? = null,
+    val showTrash: Boolean = false,
+    val undoDeleteReminderId: ReminderId? = null,
 ) {
     val isEmpty: Boolean
         get() = !isLoading && items.isEmpty()
@@ -33,6 +36,7 @@ data class ReminderListItem(
     // Kept for the existing detail/delete copy and callback contract.
     val title: String,
     val body: String,
+    val tag: ReminderTag?,
     val enabled: Boolean,
     val canChangeEnabled: Boolean,
     val triggerKind: ReminderTriggerKind,
@@ -59,6 +63,8 @@ object ReminderListPresenter {
         zoneId: ZoneId,
         locale: Locale,
         sortOrder: ReminderSortOrder = ReminderSortOrder.DEFAULT,
+        selectedTag: ReminderTag? = null,
+        showDeleted: Boolean = false,
     ): List<ReminderListItem> {
         val dateTimeFormatter = DateTimeFormatter
             .ofLocalizedDateTime(FormatStyle.MEDIUM, FormatStyle.SHORT)
@@ -66,6 +72,8 @@ object ReminderListPresenter {
             .withZone(zoneId)
 
         return reminders
+            .filter { reminder -> reminder.isDeleted == showDeleted }
+            .filter { reminder -> selectedTag == null || reminder.tag == selectedTag }
             .sortedWith(reminderComparator(sortOrder, locale))
             .map { reminder -> reminder.toListItem(dateTimeFormatter) }
     }
@@ -175,6 +183,7 @@ object ReminderListPresenter {
             locationText = place,
             title = title,
             body = text,
+            tag = tag,
             enabled = enabled,
             canChangeEnabled = !lifecycle.isTerminal,
             triggerKind = kind,
@@ -186,6 +195,13 @@ object ReminderListPresenter {
     private fun Reminder.lifecyclePresentation(
         formatter: DateTimeFormatter,
     ): ReminderLifecyclePresentation {
+        if (isDeleted) {
+            return ReminderLifecyclePresentation(
+                label = "Deleted",
+                supportingText = "In the recycling bin",
+                isTerminal = true,
+            )
+        }
         if (!enabled) {
             val reason = when (status) {
                 ReminderStatus.DISMISSED -> "Dismissed and no longer scheduled"

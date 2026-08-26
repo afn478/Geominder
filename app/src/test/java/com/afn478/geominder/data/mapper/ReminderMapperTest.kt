@@ -5,6 +5,7 @@ import com.afn478.geominder.domain.model.GeoTrigger
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
+import com.afn478.geominder.domain.model.ReminderTag
 import com.afn478.geominder.domain.model.TimeTrigger
 import com.afn478.geominder.domain.model.TriggerId
 import org.junit.Assert.assertEquals
@@ -19,6 +20,7 @@ class ReminderMapperTest {
             sourceText = "At 8 remind me near the station",
             title = "Catch the train",
             text = "Platform 4",
+            tag = ReminderTag.PURPLE,
             enabled = true,
             status = ReminderStatus.SNOOZED,
             timeTrigger = TimeTrigger(

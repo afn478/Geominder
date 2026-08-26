@@ -20,6 +20,7 @@ import com.afn478.geominder.domain.model.GeoTrigger
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
+import com.afn478.geominder.domain.model.ReminderTag
 import com.afn478.geominder.domain.model.TimeTrigger
 import com.afn478.geominder.domain.model.TriggerId
 import java.io.FilterInputStream
@@ -28,6 +29,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.time.Instant
 import java.util.Date
+import java.util.Locale
 
 /** iCalendar codec whose grammar, escaping, and line folding are all handled by biweekly. */
 class BiweeklyReminderCalendarCodec(
@@ -156,6 +158,7 @@ class BiweeklyReminderCalendarCodec(
         val importedStatus = decodeStatus(todo, componentIndex, uid, issues)
         val snoozedUntil = todo.instantValue(X_SNOOZED_UNTIL, componentIndex, uid, issues)
         val dismissedAt = todo.instantValue(X_DISMISSED_AT, componentIndex, uid, issues)
+        val deletedAt = todo.instantValue(X_DELETED_AT, componentIndex, uid, issues)
         val status = when {
             importedStatus == ReminderStatus.SNOOZED && snoozedUntil == null -> {
                 issues += issue(
@@ -175,6 +178,7 @@ class BiweeklyReminderCalendarCodec(
             status == ReminderStatus.DISMISSED -> dismissedAt ?: updatedAt
             else -> dismissedAt
         }
+        val tag = decodeTag(todo, componentIndex, uid, issues)
 
         val reminder = runCatching {
             Reminder(
@@ -182,6 +186,7 @@ class BiweeklyReminderCalendarCodec(
                 sourceText = sourceText,
                 title = title,
                 text = text,
+                tag = tag,
                 enabled = todo.booleanValue(X_ENABLED, default = true, componentIndex, uid, issues),
                 status = status,
                 timeTrigger = timeTrigger,
@@ -191,6 +196,7 @@ class BiweeklyReminderCalendarCodec(
                 lastTriggeredAt = todo.instantValue(X_LAST_TRIGGERED_AT, componentIndex, uid, issues),
                 snoozedUntil = snoozedUntil,
                 dismissedAt = normalizedDismissedAt,
+                deletedAt = deletedAt,
             )
         }.getOrElse { error ->
             issues += issue(
@@ -358,6 +364,25 @@ class BiweeklyReminderCalendarCodec(
         }
     }
 
+    private fun decodeTag(
+        todo: VTodo,
+        componentIndex: Int,
+        uid: String,
+        issues: MutableList<CalendarImportIssue>,
+    ): ReminderTag? = todo.rawValue(X_TAG)?.let { raw ->
+        runCatching { ReminderTag.valueOf(raw.uppercase(Locale.ROOT)) }
+            .onFailure {
+                issues += issue(
+                    componentIndex,
+                    uid,
+                    "INVALID_TAG",
+                    "Unknown $X_TAG value '$raw'; the reminder was restored without a tag.",
+                    CalendarImportIssueSeverity.WARNING,
+                )
+            }
+            .getOrNull()
+    }
+
     private fun Reminder.toVTodo(): VTodo = VTodo().also { todo ->
         todo.setUid(id.value)
         todo.setDateTimeStamp(updatedAt.toDate())
@@ -378,9 +403,11 @@ class BiweeklyReminderCalendarCodec(
         todo.addProperty(SourceText(sourceText))
         todo.addText(X_STATUS, status.name)
         todo.addText(X_ENABLED, enabled.toString())
+        tag?.let { todo.addText(X_TAG, it.name) }
         lastTriggeredAt?.let { todo.addText(X_LAST_TRIGGERED_AT, it.toString()) }
         snoozedUntil?.let { todo.addText(X_SNOOZED_UNTIL, it.toString()) }
         dismissedAt?.let { todo.addText(X_DISMISSED_AT, it.toString()) }
+        deletedAt?.let { todo.addText(X_DELETED_AT, it.toString()) }
 
         timeTrigger?.let { trigger ->
             todo.setDateStart(trigger.exactAt.toDate())
@@ -566,9 +593,11 @@ class BiweeklyReminderCalendarCodec(
         private const val X_ACTIVE_FROM_TIME = "X-ACTIVE-FROM-TIME"
         private const val X_STATUS = "X-GEOMINDER-STATUS"
         private const val X_ENABLED = "X-GEOMINDER-ENABLED"
+        private const val X_TAG = "X-GEOMINDER-TAG"
         private const val X_LAST_TRIGGERED_AT = "X-GEOMINDER-LAST-TRIGGERED-AT"
         private const val X_SNOOZED_UNTIL = "X-GEOMINDER-SNOOZED-UNTIL"
         private const val X_DISMISSED_AT = "X-GEOMINDER-DISMISSED-AT"
+        private const val X_DELETED_AT = "X-GEOMINDER-DELETED-AT"
         private const val X_TRIGGER_KIND = "X-GEOMINDER-TRIGGER-KIND"
         private const val TRIGGER_KIND_TIME = "TIME"
         private const val TRIGGER_KIND_GEO = "GEO"

@@ -3,6 +3,7 @@ package com.afn478.geominder.ui.add
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
+import com.afn478.geominder.domain.model.ReminderTag
 import com.afn478.geominder.domain.model.GeoTrigger
 import com.afn478.geominder.domain.model.TimeTrigger
 import com.afn478.geominder.domain.model.TriggerId
@@ -167,6 +168,23 @@ class AddReminderViewModelTest {
         assertEquals("", saved.sourceText)
         assertEquals("Reminder", saved.title)
         assertEquals(Instant.parse("2026-08-24T11:15:00Z"), saved.timeTrigger?.exactAt)
+    }
+
+    @Test
+    fun `tag selection toggles and persists with the reminder`() {
+        val repository = FakeReminderRepository()
+        val viewModel = viewModel(repository = repository)
+
+        viewModel.onTagClick(ReminderTag.BLUE)
+        assertEquals(ReminderTag.BLUE, viewModel.uiState.value.tag)
+
+        viewModel.onTagClick(ReminderTag.BLUE)
+        assertNull(viewModel.uiState.value.tag)
+
+        viewModel.onTagClick(ReminderTag.ORANGE)
+        viewModel.save()
+
+        assertEquals(ReminderTag.ORANGE, repository.saved.single().tag)
     }
 
     @Test
@@ -481,6 +499,7 @@ class AddReminderViewModelTest {
         assertEquals("-74.006", state.longitudeText)
         assertEquals("250", state.radiusText)
         assertEquals("near New York City Hall", state.geoLabel)
+        assertEquals(ReminderTag.RED, state.tag)
         assertTrue(state.activeFromEnabled)
         assertEquals(
             LocalDate.of(2026, 8, 25).format(usShortDateFormatter()),
@@ -561,7 +580,8 @@ class AddReminderViewModelTest {
         val created = Instant.parse("2026-08-20T10:00:00Z")
         return Reminder(
             id = ReminderId("existing"), sourceText = "Meet tomorrow at 8 near 40.7128, -74.0060",
-            title = "Meet", text = "Meet", enabled = false, status = ReminderStatus.DISMISSED,
+            title = "Meet", text = "Meet", tag = ReminderTag.RED, enabled = false,
+            status = ReminderStatus.DISMISSED,
             timeTrigger = TimeTrigger(TriggerId("old-time"), Instant.parse("2026-08-25T08:00:00Z")),
             geoTrigger = GeoTrigger(TriggerId("old-geo"), 40.7128, -74.0060, 250.0, "near New York City Hall", Instant.parse("2026-08-25T09:30:00Z")),
             createdAt = created, updatedAt = Instant.parse("2026-08-23T10:00:00Z"),

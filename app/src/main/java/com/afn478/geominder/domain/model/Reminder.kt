@@ -11,6 +11,7 @@ data class Reminder(
     val sourceText: String,
     val title: String,
     val text: String,
+    val tag: ReminderTag? = null,
     val enabled: Boolean = true,
     val status: ReminderStatus = ReminderStatus.PENDING,
     val timeTrigger: TimeTrigger? = null,
@@ -20,6 +21,7 @@ data class Reminder(
     val lastTriggeredAt: Instant? = null,
     val snoozedUntil: Instant? = null,
     val dismissedAt: Instant? = null,
+    val deletedAt: Instant? = null,
 ) {
     init {
         require(title.isNotBlank()) { "Title must not be blank" }
@@ -37,5 +39,8 @@ data class Reminder(
 
     /** True when downstream schedulers should keep registrations for this reminder. */
     val isPending: Boolean
-        get() = enabled && status in setOf(ReminderStatus.PENDING, ReminderStatus.SNOOZED)
+        get() = deletedAt == null && enabled && status in setOf(ReminderStatus.PENDING, ReminderStatus.SNOOZED)
+
+    val isDeleted: Boolean
+        get() = deletedAt != null
 }

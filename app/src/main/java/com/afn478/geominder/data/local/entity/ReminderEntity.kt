@@ -5,6 +5,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.afn478.geominder.domain.model.ReminderTag
 import com.afn478.geominder.domain.model.ReminderStatus
 import java.time.Instant
 
@@ -14,6 +15,7 @@ data class ReminderEntity(
     @ColumnInfo(name = "source_text") val sourceText: String,
     val title: String,
     val text: String,
+    val tag: ReminderTag?,
     val enabled: Boolean,
     val status: ReminderStatus,
     @ColumnInfo(name = "created_at") val createdAt: Instant,
@@ -21,6 +23,7 @@ data class ReminderEntity(
     @ColumnInfo(name = "last_triggered_at") val lastTriggeredAt: Instant?,
     @ColumnInfo(name = "snoozed_until") val snoozedUntil: Instant?,
     @ColumnInfo(name = "dismissed_at") val dismissedAt: Instant?,
+    @ColumnInfo(name = "deleted_at") val deletedAt: Instant?,
 )
 
 @Entity(

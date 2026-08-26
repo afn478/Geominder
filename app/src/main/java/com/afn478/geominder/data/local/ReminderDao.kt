@@ -28,7 +28,7 @@ abstract class ReminderDao {
     @Query(
         """
         SELECT * FROM reminders
-        WHERE enabled = 1 AND status IN ('PENDING', 'SNOOZED')
+        WHERE enabled = 1 AND status IN ('PENDING', 'SNOOZED') AND deleted_at IS NULL
         ORDER BY updated_at DESC
         """,
     )

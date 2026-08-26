@@ -2,6 +2,7 @@ package com.afn478.geominder.ui.add
 
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
+import com.afn478.geominder.domain.model.ReminderTag
 import com.afn478.geominder.geofence.GeoInputError
 import com.afn478.geominder.geofence.GeoInputField
 import com.afn478.geominder.parser.ParseResult
@@ -9,6 +10,7 @@ import com.afn478.geominder.parser.ParseResult
 data class AddReminderUiState(
     val editingReminderId: ReminderId? = null,
     val sourceText: String = "",
+    val tag: ReminderTag? = null,
     val parseResult: ParseResult? = null,
     val expanded: Boolean = false,
     val detailsExpanded: Boolean = false,

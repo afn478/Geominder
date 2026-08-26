@@ -4,6 +4,7 @@ import com.afn478.geominder.domain.model.GeoTrigger
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
+import com.afn478.geominder.domain.model.ReminderTag
 import com.afn478.geominder.domain.model.TimeTrigger
 import com.afn478.geominder.settings.ReminderSortDirection
 import com.afn478.geominder.settings.ReminderSortField
@@ -160,6 +161,23 @@ class ReminderListPresenterTest {
         assertEquals("Active", item.lifecycle.label)
         assertFalse(item.lifecycle.isTerminal)
         assertFalse(item.isCompleted)
+    }
+
+    @Test
+    fun `selected tag filters reminders and is exposed on each item`() {
+        val red = reminder(id = ReminderId("red")).copy(tag = ReminderTag.RED)
+        val blue = reminder(id = ReminderId("blue")).copy(tag = ReminderTag.BLUE)
+        val untagged = reminder(id = ReminderId("untagged"))
+
+        val items = ReminderListPresenter.present(
+            reminders = listOf(blue, untagged, red),
+            zoneId = ZoneOffset.UTC,
+            locale = Locale.US,
+            selectedTag = ReminderTag.RED,
+        )
+
+        assertEquals(listOf(red.id), items.map(ReminderListItem::id))
+        assertEquals(ReminderTag.RED, items.single().tag)
     }
 
     @Test

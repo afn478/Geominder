@@ -1,6 +1,7 @@
 package com.afn478.geominder.data.local
 
 import com.afn478.geominder.domain.model.ReminderStatus
+import com.afn478.geominder.domain.model.ReminderTag
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -23,5 +24,14 @@ class RoomConvertersTest {
         ReminderStatus.entries.forEach { status ->
             assertEquals(status, converters.nameToStatus(converters.statusToName(status)))
         }
+    }
+
+    @Test
+    fun `tag conversion preserves nullable stable enum name`() {
+        ReminderTag.entries.forEach { tag ->
+            assertEquals(tag, converters.nameToTag(converters.tagToName(tag)))
+        }
+        assertNull(converters.tagToName(null))
+        assertNull(converters.nameToTag(null))
     }
 }

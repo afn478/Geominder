@@ -18,6 +18,16 @@ interface ReminderRepository {
 
     suspend fun save(reminder: Reminder)
 
+    suspend fun moveToTrash(id: ReminderId, changedAt: Instant) {
+        val current = get(id) ?: error("Reminder ${id.value} does not exist")
+        save(current.copy(updatedAt = changedAt, deletedAt = changedAt))
+    }
+
+    suspend fun restoreFromTrash(id: ReminderId, changedAt: Instant) {
+        val current = get(id) ?: error("Reminder ${id.value} does not exist")
+        save(current.copy(updatedAt = changedAt, deletedAt = null))
+    }
+
     suspend fun delete(id: ReminderId)
 
     suspend fun setEnabled(id: ReminderId, enabled: Boolean, changedAt: Instant)
