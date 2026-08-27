@@ -129,6 +129,7 @@ fun ReminderListRoute(
         onSelectAllReminders = viewModel::selectAllReminders,
         onInvertSelection = viewModel::invertSelection,
         onDeleteSelectedReminders = viewModel::deleteSelectedReminders,
+        onRestoreSelectedReminders = viewModel::restoreSelectedReminders,
         onExitSelectionMode = viewModel::exitSelectionMode,
         modifier = modifier,
     )
@@ -156,6 +157,7 @@ fun ReminderListScreen(
     onSelectAllReminders: () -> Unit = {},
     onInvertSelection: () -> Unit = {},
     onDeleteSelectedReminders: () -> Unit = {},
+    onRestoreSelectedReminders: () -> Unit = {},
     onExitSelectionMode: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -217,6 +219,7 @@ fun ReminderListScreen(
                     inTrash = state.showTrash,
                     hasSelection = state.selectedReminderIds.isNotEmpty(),
                     onDeleteSelected = onDeleteSelectedReminders,
+                    onRestoreSelected = onRestoreSelectedReminders,
                     onSelectAll = onSelectAllReminders,
                     onInvertSelection = onInvertSelection,
                 )
@@ -300,6 +303,7 @@ private fun ReminderSelectionActions(
     inTrash: Boolean,
     hasSelection: Boolean,
     onDeleteSelected: () -> Unit,
+    onRestoreSelected: () -> Unit,
     onSelectAll: () -> Unit,
     onInvertSelection: () -> Unit,
 ) {
@@ -310,6 +314,15 @@ private fun ReminderSelectionActions(
             R.string.delete_selected_reminders
         },
     )
+    if (inTrash) {
+        IconButtonWithDescription(
+            description = stringResource(R.string.restore_selected_reminders),
+            onClick = onRestoreSelected,
+            enabled = hasSelection,
+        ) {
+            Icon(Icons.Default.RestoreFromTrash, contentDescription = null)
+        }
+    }
     IconButtonWithDescription(
         description = deleteLabel,
         onClick = onDeleteSelected,

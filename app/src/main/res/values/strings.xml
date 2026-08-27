@@ -48,6 +48,9 @@
     <string name="invert_reminder_selection">Invert reminder selection</string>
     <string name="delete_selected_reminders">Delete selected reminders</string>
     <string name="delete_selected_reminders_permanently">Permanently delete selected reminders</string>
+    <string name="restore_selected_reminders">Restore selected reminders</string>
+    <string name="reminder_restored">Reminder restored</string>
+    <string name="reminders_restored">%1$d reminders restored</string>
     <string name="select_reminder">Select %1$s</string>
     <string name="deselect_reminder">Deselect %1$s</string>
     <string name="reminders_deleted">%1$d reminders deleted</string>

@@ -48,6 +48,9 @@
     <string name="invert_reminder_selection">Инвертировать выбор</string>
     <string name="delete_selected_reminders">Удалить выбранные напоминания</string>
     <string name="delete_selected_reminders_permanently">Удалить выбранные напоминания навсегда</string>
+    <string name="restore_selected_reminders">Восстановить выбранные напоминания</string>
+    <string name="reminder_restored">Напоминание восстановлено</string>
+    <string name="reminders_restored">Восстановлено напоминаний: %1$d</string>
     <string name="select_reminder">Выбрать: %1$s</string>
     <string name="deselect_reminder">Снять выбор: %1$s</string>
     <string name="reminders_deleted">Удалено напоминаний: %1$d</string>

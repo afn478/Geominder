@@ -168,6 +168,38 @@ class ReminderListViewModelTest {
     }
 
     @Test
+    fun `restoring selected reminders restores all and registers pending reminders`() {
+        val events = mutableListOf<String>()
+        val pending = reminder(id = ReminderId("pending")).copy(deletedAt = NOW)
+        val completed = reminder(id = ReminderId("completed"), title = "Completed", enabled = false)
+            .copy(
+                deletedAt = NOW,
+                status = ReminderStatus.COMPLETED,
+            )
+        val repository = FakeRepository(listOf(pending, completed), events)
+        val viewModel = viewModel(repository, RecordingCommandHandler(events))
+
+        viewModel.toggleTrash()
+        viewModel.startSelection(pending.id)
+        viewModel.toggleSelection(completed.id)
+        viewModel.restoreSelectedReminders()
+
+        assertEquals(
+            listOf("command:Register", "restoreFromTrash", "restoreFromTrash"),
+            events,
+        )
+        assertTrue(repository.current().none(Reminder::isDeleted))
+        assertTrue(repository.current().first { it.id == pending.id }.isPending)
+        assertEquals(
+            ReminderStatus.COMPLETED,
+            repository.current().first { it.id == completed.id }.status,
+        )
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+        assertTrue(viewModel.uiState.value.items.isEmpty())
+        assertEquals(R.string.reminders_restored, viewModel.uiState.value.message?.resourceId())
+    }
+
+    @Test
     fun `disabling cancels registration and persists the change`() {
         val events = mutableListOf<String>()
         val repository = FakeRepository(listOf(reminder()), events)

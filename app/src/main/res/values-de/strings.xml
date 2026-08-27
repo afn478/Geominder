@@ -48,6 +48,9 @@
     <string name="invert_reminder_selection">Auswahl umkehren</string>
     <string name="delete_selected_reminders">Ausgewählte Erinnerungen löschen</string>
     <string name="delete_selected_reminders_permanently">Ausgewählte Erinnerungen endgültig löschen</string>
+    <string name="restore_selected_reminders">Ausgewählte Erinnerungen wiederherstellen</string>
+    <string name="reminder_restored">Erinnerung wiederhergestellt</string>
+    <string name="reminders_restored">%1$d Erinnerungen wiederhergestellt</string>
     <string name="select_reminder">%1$s auswählen</string>
     <string name="deselect_reminder">Auswahl von %1$s aufheben</string>
     <string name="reminders_deleted">%1$d Erinnerungen gelöscht</string>

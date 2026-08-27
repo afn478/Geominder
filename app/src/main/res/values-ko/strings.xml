@@ -48,6 +48,9 @@
     <string name="invert_reminder_selection">선택 반전</string>
     <string name="delete_selected_reminders">선택한 리마인더 삭제</string>
     <string name="delete_selected_reminders_permanently">선택한 리마인더 영구 삭제</string>
+    <string name="restore_selected_reminders">선택한 리마인더 복원</string>
+    <string name="reminder_restored">리마인더가 복원됨</string>
+    <string name="reminders_restored">리마인더 %1$d개 복원됨</string>
     <string name="select_reminder">%1$s 선택</string>
     <string name="deselect_reminder">%1$s 선택 해제</string>
     <string name="reminders_deleted">리마인더 %1$d개 삭제됨</string>

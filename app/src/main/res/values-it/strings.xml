@@ -48,6 +48,9 @@
     <string name="invert_reminder_selection">Inverti selezione</string>
     <string name="delete_selected_reminders">Elimina i promemoria selezionati</string>
     <string name="delete_selected_reminders_permanently">Elimina definitivamente i promemoria selezionati</string>
+    <string name="restore_selected_reminders">Ripristina i promemoria selezionati</string>
+    <string name="reminder_restored">Promemoria ripristinato</string>
+    <string name="reminders_restored">%1$d promemoria ripristinati</string>
     <string name="select_reminder">Seleziona %1$s</string>
     <string name="deselect_reminder">Deseleziona %1$s</string>
     <string name="reminders_deleted">%1$d promemoria eliminati</string>

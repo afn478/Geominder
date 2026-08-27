@@ -387,6 +387,61 @@ class ReminderListViewModel(
         }
     }
 
+    fun restoreSelectedReminders() {
+        val state = _uiState.value
+        if (!state.isSelectionMode || !state.showTrash) return
+
+        val selectedReminders = state.items
+            .asSequence()
+            .map(ReminderListItem::id)
+            .filter(state.selectedReminderIds::contains)
+            .filterNot(state.busyReminderIds::contains)
+            .mapNotNull { id -> remindersById[id]?.let { reminder -> id to reminder } }
+            .filter { (_, reminder) -> reminder.isDeleted }
+            .toList()
+        if (selectedReminders.isEmpty()) return
+
+        val selectedIds = selectedReminders.map { (id, _) -> id }.toSet()
+        _uiState.update {
+            it.copy(
+                isSelectionMode = false,
+                selectedReminderIds = emptySet(),
+                busyReminderIds = it.busyReminderIds + selectedIds,
+                undoDeleteReminderId = it.undoDeleteReminderId
+                    ?.takeUnless(selectedIds::contains),
+                message = null,
+            )
+        }
+
+        workScope().launch {
+            var restoredCount = 0
+            var firstError: Throwable? = null
+            selectedReminders.forEach { (_, reminder) ->
+                runCatching {
+                    restoreReminder(reminder)
+                }.onSuccess {
+                    restoredCount += 1
+                }.onFailure { error ->
+                    firstError = firstError ?: error
+                }
+            }
+            _uiState.update { current ->
+                current.copy(
+                    busyReminderIds = current.busyReminderIds - selectedIds,
+                    message = firstError?.message?.let(UiText::Plain)
+                        ?: when {
+                            restoredCount == 0 -> null
+                            restoredCount == 1 -> UiText.resource(R.string.reminder_restored)
+                            else -> UiText.resource(
+                                R.string.reminders_restored,
+                                restoredCount,
+                            )
+                        },
+                )
+            }
+        }
+    }
+
     private fun moveToTrash(id: ReminderId, reminder: Reminder) {
         launchMutation(id) {
             deleteReminder(reminder, permanently = false)
@@ -463,20 +518,24 @@ class ReminderListViewModel(
             }
         }
         launchMutation(id) {
-            val restoredReminder = reminder.copy(
-                updatedAt = clock.instant(),
-                deletedAt = null,
-            )
-            if (restoredReminder.isPending) {
-                scheduleCommandHandler.handle(ReminderScheduleCommand.Register(restoredReminder))
-                try {
-                    repository.restoreFromTrash(id, restoredReminder.updatedAt)
-                } catch (error: Throwable) {
-                    compensate(error, ReminderScheduleCommand.Cancel(restoredReminder))
-                }
-            } else {
-                repository.restoreFromTrash(id, restoredReminder.updatedAt)
+            restoreReminder(reminder)
+        }
+    }
+
+    private suspend fun restoreReminder(reminder: Reminder) {
+        val restoredReminder = reminder.copy(
+            updatedAt = clock.instant(),
+            deletedAt = null,
+        )
+        if (restoredReminder.isPending) {
+            scheduleCommandHandler.handle(ReminderScheduleCommand.Register(restoredReminder))
+            try {
+                repository.restoreFromTrash(reminder.id, restoredReminder.updatedAt)
+            } catch (error: Throwable) {
+                compensate(error, ReminderScheduleCommand.Cancel(restoredReminder))
             }
+        } else {
+            repository.restoreFromTrash(reminder.id, restoredReminder.updatedAt)
         }
     }
 

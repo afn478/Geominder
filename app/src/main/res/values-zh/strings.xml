@@ -48,6 +48,9 @@
     <string name="invert_reminder_selection">反选</string>
     <string name="delete_selected_reminders">删除所选提醒</string>
     <string name="delete_selected_reminders_permanently">永久删除所选提醒</string>
+    <string name="restore_selected_reminders">恢复所选提醒</string>
+    <string name="reminder_restored">提醒已恢复</string>
+    <string name="reminders_restored">已恢复 %1$d 条提醒</string>
     <string name="select_reminder">选择 %1$s</string>
     <string name="deselect_reminder">取消选择 %1$s</string>
     <string name="reminders_deleted">已删除 %1$d 条提醒</string>

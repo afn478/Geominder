@@ -48,6 +48,9 @@
     <string name="invert_reminder_selection">選択を反転</string>
     <string name="delete_selected_reminders">選択したリマインダーを削除</string>
     <string name="delete_selected_reminders_permanently">選択したリマインダーを完全に削除</string>
+    <string name="restore_selected_reminders">選択したリマインダーを復元</string>
+    <string name="reminder_restored">リマインダーを復元しました</string>
+    <string name="reminders_restored">%1$d件のリマインダーを復元しました</string>
     <string name="select_reminder">%1$s を選択</string>
     <string name="deselect_reminder">%1$s の選択を解除</string>
     <string name="reminders_deleted">%1$d件のリマインダーを削除しました</string>
