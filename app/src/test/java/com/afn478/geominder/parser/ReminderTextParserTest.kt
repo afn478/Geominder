@@ -2,6 +2,7 @@ package com.afn478.geominder.parser
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -73,6 +74,31 @@ class ReminderTextParserTest {
 
         assertTrue(parser.keywordTimes.isEmpty())
         assertTrue(parser.parse("Morning evening tonight", context).detections.isEmpty())
+    }
+
+    @Test
+    fun `temporal detection can be disabled while GPS detection remains enabled`() {
+        val result = ReminderTextParser().parse(
+            sourceText = "Meet tomorrow at 8 near 40.7128, -74.0060",
+            context = context,
+            detectTemporalExpressions = false,
+        )
+
+        assertNull(result.dateTime)
+        assertNotNull(result.gps)
+        assertTrue(result.issues.isEmpty())
+    }
+
+    @Test
+    fun `GPS detection can be disabled independently`() {
+        val result = ReminderTextParser().parse(
+            sourceText = "Meet tomorrow near 40.7128, -74.0060",
+            context = context,
+            detectGpsExpressions = false,
+        )
+
+        assertNull(result.gps)
+        assertNotNull(result.dateTime)
     }
 
     @Test

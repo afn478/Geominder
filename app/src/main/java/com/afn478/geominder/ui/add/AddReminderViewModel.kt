@@ -81,6 +81,9 @@ class AddReminderViewModel(
     private var locationRequestVersion = 0L
     private var originalReminder: Reminder? = null
 
+    private val detectSourceExpressions: Boolean
+        get() = editingReminderId == null
+
     init {
         editingReminderId?.let { id ->
             workScope().launch {
@@ -100,25 +103,30 @@ class AddReminderViewModel(
 
     private fun prefill(reminder: Reminder) {
         val localTimeTrigger = reminder.timeTrigger?.exactAt?.atZone(clock.zone)
-        var parsed = parser.parse(reminder.sourceText, parseContext())
+        var parsed = parser.parse(
+            sourceText = reminder.sourceText,
+            context = parseContext(),
+            detectTemporalExpressions = detectSourceExpressions,
+            detectGpsExpressions = detectSourceExpressions,
+        )
         reminder.timeTrigger?.let { trigger ->
             val local = trigger.exactAt.atZone(clock.zone)
-            parsed = parsed.dateTime?.let {
-                val edited = parsed.applyEdit(DetectionEdit.DateTime(it.id, local.toLocalDate(), local.toLocalTime()))
-                edited.copy(detections = edited.detections.map { detection ->
-                    if (detection.id == it.id && detection is DateTimeDetection) {
-                        detection.copy(role = TemporalRole.REMINDER_TRIGGER)
-                    } else detection
-                })
-            }
-                ?: parsed.copy(detections = parsed.detections + DateTimeDetection(
+            parsed = parsed.copy(
+                detections = parsed.detections + DateTimeDetection(
                     id = "existing-time",
                     span = SourceSpan(0, 0),
                     sourceLabel = "",
                     displayLabel = formatDateTime(local.toLocalDateTime()),
-                    confidence = 1.0, date = local.toLocalDate(), time = local.toLocalTime(), instant = trigger.exactAt,
-                    zoneId = clock.zone, precision = TemporalPrecision.DATE_TIME,
-                ))
+                    confidence = 1.0,
+                    date = local.toLocalDate(),
+                    time = local.toLocalTime(),
+                    instant = trigger.exactAt,
+                    zoneId = clock.zone,
+                    precision = TemporalPrecision.DATE_TIME,
+                    role = TemporalRole.REMINDER_TRIGGER,
+                    expressionSpans = emptyList(),
+                ),
+            )
         }
         val geo = reminder.geoTrigger
         _uiState.update {
@@ -171,17 +179,26 @@ class AddReminderViewModel(
     }
 
     fun onSourceTextChange(sourceText: String) {
-        val previousManualTime = _uiState.value.parseResult?.dateTime
-            ?.takeIf { it.id == MANUAL_TIME_DETECTION_ID }
-        val parsedSource = parser.parse(sourceText, parseContext())
-        val parsed = if (parsedSource.dateTime == null && previousManualTime != null) {
-            parsedSource.copy(detections = parsedSource.detections + previousManualTime)
+        val state = _uiState.value
+        val previousDateTime = state.parseResult?.dateTime
+        val previousGps = state.parseResult?.gps
+        val preservedDateTime = previousDateTime?.takeIf {
+            !state.timeTriggerCleared &&
+                (!detectSourceExpressions || it.id == MANUAL_TIME_DETECTION_ID)
+        }
+        val parsedSource = parser.parse(
+            sourceText = sourceText,
+            context = parseContext(),
+            detectTemporalExpressions = detectSourceExpressions,
+            detectGpsExpressions = detectSourceExpressions,
+        )
+        val parsed = if (parsedSource.dateTime == null && preservedDateTime != null) {
+            parsedSource.copy(detections = parsedSource.detections + preservedDateTime)
         } else {
             parsedSource
         }
         val gps = parsed.gps
         val parsedActiveFrom = parsed.dateTime?.takeIf { it.role == TemporalRole.GEO_ACTIVE_FROM }
-        val previousGps = _uiState.value.parseResult?.gps
         val gpsChanged = gps != null &&
             (gps.latitude != previousGps?.latitude || gps.longitude != previousGps.longitude)
 
@@ -435,7 +452,7 @@ class AddReminderViewModel(
         val current = _uiState.value
         val gpsDetection = current.parseResult?.gps
         val editedParseResult = if (gpsDetection != null) {
-            current.parseResult.applyEdit(
+            requireNotNull(current.parseResult).applyEdit(
                 DetectionEdit.Gps(
                     detectionId = gpsDetection.id,
                     latitude = latitude,

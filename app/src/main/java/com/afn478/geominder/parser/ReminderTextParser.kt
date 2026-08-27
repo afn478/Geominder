@@ -36,16 +36,25 @@ class ReminderTextParser private constructor(
     val keywordTimes: Map<String, LocalTime> = keywordDictionary.entries
     val defaultKeywordTimes: Map<String, LocalTime> = keywordDictionary.defaultEntries
 
-    fun parse(sourceText: String, context: ParseContext): ParseResult {
+    fun parse(
+        sourceText: String,
+        context: ParseContext,
+        detectTemporalExpressions: Boolean = true,
+        detectGpsExpressions: Boolean = true,
+    ): ParseResult {
         if (sourceText.isBlank()) return ParseResult(sourceText, context, emptyList())
 
         val issues = mutableListOf<ParseIssue>()
-        val gps = parseGps(sourceText, issues)
+        val gps = if (detectGpsExpressions) parseGps(sourceText, issues) else null
         val occupiedGpsSpan = gps?.span
-        val date = dateCandidates(sourceText, context, issues).best()
-        val time = timeCandidates(sourceText, occupiedGpsSpan, issues).best()
-        val duration = durationCandidates(sourceText, context.now).best()
-        val temporal = buildTemporal(sourceText, context, date, time, duration, occupiedGpsSpan)
+        val temporal = if (detectTemporalExpressions) {
+            val date = dateCandidates(sourceText, context, issues).best()
+            val time = timeCandidates(sourceText, occupiedGpsSpan, issues).best()
+            val duration = durationCandidates(sourceText, context.now).best()
+            buildTemporal(sourceText, context, date, time, duration, occupiedGpsSpan)
+        } else {
+            null
+        }
 
         return ParseResult(
             sourceText = sourceText,

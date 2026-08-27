@@ -540,6 +540,66 @@ class AddReminderViewModelTest {
     }
 
     @Test
+    fun `editing source text does not reparse or change the existing time trigger`() {
+        val old = existingReminder().copy(
+            sourceText = "Meet tomorrow at 8",
+            timeTrigger = TimeTrigger(
+                TriggerId("old-time"),
+                Instant.parse("2026-08-30T18:15:00Z"),
+            ),
+            geoTrigger = null,
+        )
+        val repository = FakeReminderRepository(old)
+        val viewModel = viewModel(repository = repository, editingReminderId = old.id)
+
+        assertEquals(old.timeTrigger?.exactAt, viewModel.uiState.value.parseResult?.dateTime?.instant)
+
+        viewModel.onSourceTextChange("Meet tomorrow at 8 about the appointment")
+        viewModel.save()
+
+        val saved = repository.saved.single()
+        assertEquals(old.timeTrigger?.exactAt, saved.timeTrigger?.exactAt)
+        assertEquals("Meet tomorrow at 8 about the appointment", saved.sourceText)
+        assertEquals(saved.sourceText, saved.title)
+    }
+
+    @Test
+    fun `editing source text does not add a time trigger from a new time expression`() {
+        val old = existingReminder().copy(timeTrigger = null)
+        val repository = FakeReminderRepository(old)
+        val viewModel = viewModel(repository = repository, editingReminderId = old.id)
+
+        viewModel.onSourceTextChange("Arrive tomorrow at 8 near 40.7128, -74.0060")
+
+        assertNull(viewModel.uiState.value.parseResult?.dateTime)
+        viewModel.save()
+
+        assertNull(repository.saved.single().timeTrigger)
+    }
+
+    @Test
+    fun `editing source text does not replace the existing location from new coordinates`() {
+        val old = existingReminder().copy(
+            sourceText = "Meet at 41.0000, -73.0000",
+        )
+        val repository = FakeReminderRepository(old)
+        val viewModel = viewModel(repository = repository, editingReminderId = old.id)
+
+        assertNull(viewModel.uiState.value.parseResult?.gps)
+        viewModel.onSourceTextChange("Meet at 40.0000, -72.0000")
+
+        val state = viewModel.uiState.value
+        assertEquals("40.7128", state.latitudeText)
+        assertEquals("-74.006", state.longitudeText)
+        viewModel.save()
+
+        val savedGeo = requireNotNull(repository.saved.single().geoTrigger)
+        val oldGeo = requireNotNull(old.geoTrigger)
+        assertEquals(oldGeo.latitude, savedGeo.latitude, 0.0)
+        assertEquals(oldGeo.longitude, savedGeo.longitude, 0.0)
+    }
+
+    @Test
     fun `saving edits preserves identity and trigger ids and orders replacement`() {
         val old = existingReminder()
         val events = mutableListOf<String>()
