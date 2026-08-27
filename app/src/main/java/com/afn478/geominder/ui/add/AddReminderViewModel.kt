@@ -884,6 +884,7 @@ class AddReminderViewModelFactory(
     private val defaultReminderTitle: String = "Reminder",
     private val removeTimeExpressionsFromText: Boolean = true,
     private val clock: Clock = Clock.systemDefaultZone(),
+    private val localeProvider: () -> Locale = Locale::getDefault,
     private val editingReminderId: ReminderId? = null,
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
@@ -901,6 +902,7 @@ class AddReminderViewModelFactory(
             defaultReminderTitle = defaultReminderTitle,
             removeTimeExpressionsFromText = removeTimeExpressionsFromText,
             clock = clock,
+            localeProvider = localeProvider,
             editingReminderId = editingReminderId,
         ) as T
     }

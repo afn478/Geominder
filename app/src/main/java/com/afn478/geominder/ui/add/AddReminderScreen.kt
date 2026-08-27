@@ -91,6 +91,7 @@ import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderTag
 import com.afn478.geominder.geofence.GeoInputError
 import com.afn478.geominder.geofence.GeoInputField
+import com.afn478.geominder.localization.AppLanguagePreferences
 import com.afn478.geominder.localization.UiText
 import com.afn478.geominder.localization.resource
 import com.afn478.geominder.parser.ParseIssue
@@ -350,7 +351,7 @@ fun AddReminderScreen(
                 }
 
                 HighlightedInputField(
-                    highlightSpan = state.parseResult?.dateTime?.span,
+                    highlightSpans = state.parseResult?.dateTime?.expressionSpans.orEmpty(),
                     query = state.sourceText,
                     onQueryChange = onSourceTextChange,
                     onSearch = { onSave() },
@@ -615,7 +616,7 @@ private fun BottomSheetComposerContent(
             SupportingError(it, Modifier.padding(horizontal = 16.dp))
         }
         HighlightedInputField(
-            highlightSpan = state.parseResult?.dateTime?.span,
+            highlightSpans = state.parseResult?.dateTime?.expressionSpans.orEmpty(),
             query = state.sourceText,
             onQueryChange = onSourceTextChange,
             onSearch = onSave,
@@ -741,7 +742,7 @@ private fun DetailsHandle(
 @Composable
 private fun HighlightedInputField(
     query: String,
-    highlightSpan: SourceSpan?,
+    highlightSpans: List<SourceSpan>,
     onQueryChange: (String) -> Unit,
     onSearch: () -> Unit,
     expanded: Boolean,
@@ -780,7 +781,7 @@ private fun HighlightedInputField(
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
         keyboardActions = KeyboardActions(onSearch = { onSearch() }),
         visualTransformation = DateTimeHighlightTransformation(
-            span = highlightSpan,
+            spans = highlightSpans,
             source = query,
             background = MaterialTheme.colorScheme.secondaryContainer,
             foreground = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -806,30 +807,35 @@ private fun HighlightedInputField(
 }
 
 internal class DateTimeHighlightTransformation(
-    private val span: SourceSpan?,
+    private val spans: List<SourceSpan>,
     private val source: String,
     private val background: Color,
     private val foreground: Color,
 ) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
-        val validSpan = span?.takeIf {
-            it.start >= 0 &&
-                it.endExclusive > it.start &&
-                it.endExclusive <= source.length &&
-                it.endExclusive <= text.length
-        }
-        if (validSpan == null || text.text != source) {
+        val validSpans = spans
+            .filter {
+                it.start >= 0 &&
+                    it.endExclusive > it.start &&
+                    it.endExclusive <= source.length &&
+                    it.endExclusive <= text.length
+            }
+            .distinct()
+            .sortedBy(SourceSpan::start)
+        if (validSpans.isEmpty() || text.text != source) {
             return TransformedText(text, OffsetMapping.Identity)
         }
         val highlighted = AnnotatedString.Builder(source).apply {
-            addStyle(
-                SpanStyle(
-                    background = background,
-                    color = foreground,
-                ),
-                validSpan.start,
-                validSpan.endExclusive,
-            )
+            validSpans.forEach { span ->
+                addStyle(
+                    SpanStyle(
+                        background = background,
+                        color = foreground,
+                    ),
+                    span.start,
+                    span.endExclusive,
+                )
+            }
         }.toAnnotatedString()
         return TransformedText(highlighted, OffsetMapping.Identity)
     }
@@ -876,7 +882,7 @@ private fun DateTimeEditor(
     onCommit: () -> Unit,
 ) {
     val context = LocalContext.current
-    val locale = Locale.getDefault()
+    val locale = AppLanguagePreferences.locale(context)
     val fallbackDate = state.parseResult?.dateTime?.date ?: LocalDate.now().plusDays(1)
     val fallbackTime = state.parseResult?.dateTime?.time ?: LocalTime.now().plusHours(1)
     val selectedDate = parseDisplayedDate(state.dateEditText, locale) ?: fallbackDate

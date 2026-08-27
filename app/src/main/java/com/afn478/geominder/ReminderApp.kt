@@ -65,6 +65,8 @@ import com.afn478.geominder.alert.AlertIntentFactory
 import com.afn478.geominder.backup.CalendarDocumentContract
 import com.afn478.geominder.domain.model.PresetLocation
 import com.afn478.geominder.domain.model.ReminderId
+import com.afn478.geominder.localization.AppLanguagePreferences
+import com.afn478.geominder.localization.SupportedLanguage
 import com.afn478.geominder.localization.UiText
 import com.afn478.geominder.localization.resource
 import com.afn478.geominder.settings.SettingsPermissionAction
@@ -85,14 +87,17 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import java.time.LocalTime
+import java.util.Locale
 
 @Composable
 fun ReminderApp(
     container: AppContainer,
     onPermissionAction: (SettingsPermissionAction) -> Unit,
+    onLanguageChanged: () -> Unit = {},
 ) {
     val navController = rememberNavController()
     val context = LocalContext.current
+    val localeProvider = { AppLanguagePreferences.locale(context) }
     val settings by container.settingsRepository.settings.collectAsStateWithLifecycle()
     var backupStatus by remember { mutableStateOf<UiText?>(null) }
     var backupInProgress by remember { mutableStateOf(false) }
@@ -152,10 +157,12 @@ fun ReminderApp(
     ) {
         composable(Routes.LIST) {
             val listViewModel: ReminderListViewModel = viewModel(
+                key = "reminder-list-${settings.keywordLanguage.languageTag}",
                 factory = ReminderListViewModelFactory(
                     repository = container.reminderRepository,
                     scheduleCommandHandler = container.schedulingCoordinator,
                     settingsRepository = container.settingsRepository,
+                    localeProvider = localeProvider,
                 ),
             )
             ReminderListRoute(
@@ -180,6 +187,8 @@ fun ReminderApp(
                 settingsSnapshotKey = settings.hashCode(),
                 keywordTimes = settings.keywordTimes,
                 keywordLocations = settings.keywordLocations,
+                keywordLanguage = settings.keywordLanguage,
+                localeProvider = localeProvider,
                 removeTimeExpressionsFromText = settings.removeTimeExpressionsFromText,
                 editingReminderId = reminderId,
                 onBack = navController::popBackStack,
@@ -195,9 +204,11 @@ fun ReminderApp(
                 navController.popBackStack()
             } else {
                 val detailViewModel: ReminderDetailViewModel = viewModel(
+                    key = "reminder-detail-${reminderId.value}-${localeProvider().toLanguageTag()}",
                     factory = ReminderDetailViewModelFactory(
                         repository = container.reminderRepository,
                         reminderId = reminderId,
+                        locale = localeProvider(),
                     ),
                 )
                 ReminderDetailRoute(
@@ -208,14 +219,17 @@ fun ReminderApp(
         }
         composable(Routes.SETTINGS) {
             val settingsViewModel: SettingsViewModel = viewModel(
+                key = "settings-${settings.keywordLanguage.languageTag}",
                 factory = SettingsViewModelFactory(
                     repository = container.settingsRepository,
                     permissionStatusProvider = container.permissionStatusProvider,
+                    localeProvider = localeProvider,
                     locationProvider = container.currentLocationProvider,
                 ),
             )
             SettingsRoute(
                 viewModel = settingsViewModel,
+                onKeywordLanguageChanged = onLanguageChanged,
                 onPermissionAction = onPermissionAction,
                 onBack = navController::popBackStack,
                 onExportBackup = {
@@ -241,6 +255,8 @@ fun ReminderApp(
             settingsSnapshotKey = settings.hashCode(),
             keywordTimes = settings.keywordTimes,
             keywordLocations = settings.keywordLocations,
+            keywordLanguage = settings.keywordLanguage,
+            localeProvider = localeProvider,
             removeTimeExpressionsFromText = settings.removeTimeExpressionsFromText,
             session = session,
             onDismiss = { addComposerSession = null },
@@ -255,6 +271,8 @@ private fun AddReminderDialog(
     settingsSnapshotKey: Int,
     keywordTimes: Map<String, LocalTime>,
     keywordLocations: Map<String, PresetLocation>,
+    keywordLanguage: SupportedLanguage,
+    localeProvider: () -> Locale,
     removeTimeExpressionsFromText: Boolean,
     session: Int,
     onDismiss: () -> Unit,
@@ -290,6 +308,7 @@ private fun AddReminderDialog(
             parser = container.parserFactory.fromCompleteKeywordTable(
                 keywordTimes = keywordTimes,
                 keywordLocations = keywordLocations,
+                language = keywordLanguage,
             ),
             defaultGeoRadiusProvider = container.settingsRepository,
             locationProvider = container.currentLocationProvider,
@@ -297,6 +316,7 @@ private fun AddReminderDialog(
             postSaveActions = container.schedulingCoordinator,
             defaultReminderTitle = stringResource(R.string.reminder),
             removeTimeExpressionsFromText = removeTimeExpressionsFromText,
+            localeProvider = localeProvider,
         ),
     )
     val state by addViewModel.uiState.collectAsStateWithLifecycle()
@@ -431,6 +451,8 @@ private fun AddReminderHost(
     settingsSnapshotKey: Int,
     keywordTimes: Map<String, LocalTime>,
     keywordLocations: Map<String, PresetLocation>,
+    keywordLanguage: SupportedLanguage,
+    localeProvider: () -> Locale,
     removeTimeExpressionsFromText: Boolean,
     editingReminderId: ReminderId? = null,
     onBack: () -> Unit,
@@ -443,6 +465,7 @@ private fun AddReminderHost(
             parser = container.parserFactory.fromCompleteKeywordTable(
                 keywordTimes = keywordTimes,
                 keywordLocations = keywordLocations,
+                language = keywordLanguage,
             ),
             defaultGeoRadiusProvider = container.settingsRepository,
             locationProvider = container.currentLocationProvider,
@@ -450,6 +473,7 @@ private fun AddReminderHost(
             postSaveActions = container.schedulingCoordinator,
             defaultReminderTitle = stringResource(R.string.reminder),
             removeTimeExpressionsFromText = removeTimeExpressionsFromText,
+            localeProvider = localeProvider,
             editingReminderId = editingReminderId,
         ),
     )

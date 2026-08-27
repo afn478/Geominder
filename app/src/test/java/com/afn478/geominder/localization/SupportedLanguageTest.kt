@@ -26,4 +26,13 @@ class SupportedLanguageTest {
             ),
         )
     }
+
+    @Test
+    fun `invalid stored language tags do not select a language`() {
+        assertEquals(null, SupportedLanguage.fromLanguageTagOrNull("not-a-language"))
+        assertEquals(
+            SupportedLanguage.GERMAN,
+            SupportedLanguage.fromLanguageTagOrNull("de-DE"),
+        )
+    }
 }

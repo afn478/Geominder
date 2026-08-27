@@ -52,10 +52,23 @@ class ReminderTextParser private constructor(
         val issues = mutableListOf<ParseIssue>()
         val gps = if (detectGpsExpressions) parseGps(sourceText, issues) else null
         val occupiedGpsSpan = gps?.span
+        var selectedDateSpan: SourceSpan? = null
+        var selectedDurationSpan: SourceSpan? = null
         val temporal = if (detectTemporalExpressions) {
-            val date = dateCandidates(sourceText, context, issues).best()
-            val time = timeCandidates(sourceText, occupiedGpsSpan, issues).best()
+            val dateOptions = dateCandidates(sourceText, context, issues)
+            val provisionalDate = dateOptions.best()
             val duration = durationCandidates(sourceText, context.now).best()
+            val timeCandidates = timeCandidates(
+                source = sourceText,
+                occupiedGpsSpan = occupiedGpsSpan,
+                issues = issues,
+                date = provisionalDate,
+                duration = duration,
+            )
+            val date = selectDateCandidate(dateOptions, timeCandidates)
+            val time = selectTimeCandidate(timeCandidates, duration, date)
+            selectedDateSpan = date?.span
+            selectedDurationSpan = duration?.span
             buildTemporal(sourceText, context, date, time, duration, occupiedGpsSpan)
         } else {
             null
@@ -65,7 +78,10 @@ class ReminderTextParser private constructor(
             sourceText = sourceText,
             context = context,
             detections = listOfNotNull(temporal, gps).sortedBy { it.span.start },
-            issues = issues.distinctBy { it.message to it.span },
+            issues = issues.deduplicateOverlappingClockIssues(
+                dateSpan = selectedDateSpan,
+                durationSpan = selectedDurationSpan,
+            ),
         )
     }
 
@@ -77,7 +93,15 @@ class ReminderTextParser private constructor(
         duration: InstantCandidate?,
         gpsSpan: SourceSpan?,
     ): DateTimeDetection? {
-        if (date == null && duration != null && (time == null || duration.priority > time.priority)) {
+        // A clock-with-unit rule may match only the numeric fragment inside a relative duration
+        // (for example, "3 heures" inside "dans 3 heures"). A containing duration is the more
+        // complete expression, even when the fragment's clock priority is higher.
+        if (date == null && duration != null && (
+                time == null ||
+                    duration.priority > time.priority ||
+                    duration.span.contains(time.span)
+            )
+        ) {
             val zoned = duration.instant.atZone(context.zoneId)
             return DateTimeDetection(
                 id = detectionId(DetectionType.DATE_TIME, duration.span),
@@ -100,34 +124,54 @@ class ReminderTextParser private constructor(
         }
         if (date == null && time == null) return null
 
+        // A dotted clock can overlap a full numeric date such as "08.05.2026". These are
+        // competing interpretations, not a date-plus-time combination; the containing date wins.
+        val (resolvedDateCandidate, resolvedTimeCandidate) = when {
+            date == null || time == null || !date.span.overlaps(time.span) -> date to time
+            date.span.contains(time.span) && date.span != time.span -> date to null
+            time.span.contains(date.span) && time.span != date.span -> null to time
+            date.span == time.span && date.span.textFrom(source).count { it == '.' || it == '/' } < 2 ->
+                null to time
+            time.priority > date.priority -> null to time
+            else -> date to null
+        }
+
         val now = context.now.atZone(context.zoneId)
-        val resolvedDate = date?.date ?: run {
+        val resolvedDate = resolvedDateCandidate?.date ?: run {
             val today = now.toLocalDate()
-            val todayAtTime = resolveLocalDateTime(today, requireNotNull(time).time, context.zoneId)
+            val todayAtTime = resolveLocalDateTime(
+                today,
+                requireNotNull(resolvedTimeCandidate).time,
+                context.zoneId,
+            )
             if (todayAtTime.toInstant().isAfter(context.now)) today else today.plusDays(1)
         }
-        val resolvedTime = time?.time ?: options.defaultDateOnlyTime
+        val resolvedTime = resolvedTimeCandidate?.time ?: options.defaultDateOnlyTime
         val zoned = resolveLocalDateTime(resolvedDate, resolvedTime, context.zoneId)
         val span = when {
-            date != null && time != null -> date.span.union(time.span)
-            date != null -> date.span
-            else -> requireNotNull(time).span
+            resolvedDateCandidate != null && resolvedTimeCandidate != null ->
+                resolvedDateCandidate.span.union(resolvedTimeCandidate.span)
+            resolvedDateCandidate != null -> resolvedDateCandidate.span
+            else -> requireNotNull(resolvedTimeCandidate).span
         }
         val precision = when {
-            date != null && time != null -> TemporalPrecision.DATE_TIME
-            date != null -> TemporalPrecision.DATE
+            resolvedDateCandidate != null && resolvedTimeCandidate != null -> TemporalPrecision.DATE_TIME
+            resolvedDateCandidate != null -> TemporalPrecision.DATE
             else -> TemporalPrecision.TIME
         }
         val expressionSpans = buildList {
-            date?.span?.let { dateSpan ->
+            resolvedDateCandidate?.span?.let { dateSpan ->
                 add(dateSpan)
                 addAll(temporalJoinerSpans(source, dateSpan))
             }
-            time?.span?.let { timeSpan ->
+            resolvedTimeCandidate?.span?.let { timeSpan ->
                 add(timeSpan)
                 addAll(temporalJoinerSpans(source, timeSpan))
             }
-        }
+            if (resolvedDateCandidate != null && resolvedTimeCandidate != null) {
+                addAll(isoDateTimeSeparatorSpans(source, resolvedDateCandidate.span, resolvedTimeCandidate.span))
+            }
+        }.distinct().sortedBy(SourceSpan::start)
 
         return DateTimeDetection(
             id = detectionId(DetectionType.DATE_TIME, span),
@@ -142,7 +186,8 @@ class ReminderTextParser private constructor(
             precision = precision,
             role = if (gpsSpan != null &&
                 (isIntroducedByFrom(source, span) ||
-                    (time?.isPreset == true && time.span.start >= gpsSpan.endExclusive))
+                    (resolvedTimeCandidate?.isPreset == true &&
+                        resolvedTimeCandidate.span.start >= gpsSpan.endExclusive))
             ) {
                 TemporalRole.GEO_ACTIVE_FROM
             } else {
@@ -152,6 +197,55 @@ class ReminderTextParser private constructor(
         )
     }
 
+    private fun selectTimeCandidate(
+        candidates: List<TimeCandidate>,
+        duration: InstantCandidate?,
+        date: DateCandidate?,
+    ): TimeCandidate? {
+        val candidatesOutsideDate = if (date == null) {
+            candidates
+        } else {
+            candidates.filterNot { candidate ->
+                date.span.contains(candidate.span)
+            }.ifEmpty { candidates }
+        }
+        val best = candidatesOutsideDate.best() ?: return null
+        if (duration == null || !duration.span.contains(best.span)) return best
+
+        // A localized clock rule can recognize the unit-bearing fragment inside a duration (for
+        // example, "3 heures" in "dans 3 heures, 8:05"). If another clock is outside that
+        // duration, let it compete normally instead of allowing the nested fragment to hide it.
+        return candidatesOutsideDate
+            .filterNot { candidate -> duration.span.contains(candidate.span) }
+            .best()
+            ?: best
+    }
+
+    private fun selectDateCandidate(
+        candidates: List<DateCandidate>,
+        timeCandidates: List<TimeCandidate>,
+    ): DateCandidate? {
+        val best = candidates.best() ?: return null
+        if (timeCandidates.any { time -> time.span.contains(best.span) && time.span != best.span }) {
+            return candidates
+                .filterNot { candidate ->
+                    timeCandidates.any { time -> time.span.contains(candidate.span) && time.span != candidate.span }
+                }
+                .best()
+                ?: best
+        }
+        if (timeCandidates.none { it.span == best.span }) return best
+
+        // A two-part dotted value can be either a clock or a yearless date. If another date
+        // candidate does not share the winning clock's exact span, prefer that date and use the
+        // dotted clock as its time (for example, "8.05 25.12"). A lone "8.05" falls back to the
+        // clock because there is no competing date candidate.
+        return candidates
+            .filterNot { candidate -> timeCandidates.any { time -> time.span == candidate.span } }
+            .best()
+            ?: best
+    }
+
     private fun temporalJoinerSpans(source: String, temporalSpan: SourceSpan): List<SourceSpan> {
         val precedingText = source.substring(0, temporalSpan.start)
         return languagePack.temporalJoiners.flatMap { joiner ->
@@ -159,6 +253,26 @@ class ReminderTextParser private constructor(
                 .filter { match -> precedingText.substring(match.range.last + 1).isBlank() }
                 .map { match -> match.range.toSpan() }
                 .toList()
+        }
+    }
+
+    private fun isoDateTimeSeparatorSpans(
+        source: String,
+        dateSpan: SourceSpan,
+        timeSpan: SourceSpan,
+    ): List<SourceSpan> {
+        if (dateSpan.endExclusive > timeSpan.start) return emptyList()
+        val between = source.substring(dateSpan.endExclusive, timeSpan.start)
+        val separatorOffset = between.indexOfFirst { it == 'T' || it == 't' }
+        return if (separatorOffset >= 0 && between.replace("T", "", ignoreCase = true).isBlank()) {
+            listOf(
+                SourceSpan(
+                    start = dateSpan.endExclusive + separatorOffset,
+                    endExclusive = dateSpan.endExclusive + separatorOffset + 1,
+                ),
+            )
+        } else {
+            emptyList()
         }
     }
 
@@ -300,7 +414,10 @@ class ReminderTextParser private constructor(
         YEARLESS_DAY_MONTH.findAll(source).forEach { match ->
             val day = match.groupValues[1].toInt()
             val month = match.groupValues[2].toInt()
-            addDateOrIssue(candidates, issues, match, 107, 0.99) {
+            // A two-part dotted value is also a localized clock (for example, "8.05" in
+            // German). Keep an explicit year-bearing date ahead of this fallback so a clock
+            // following a date cannot replace the date candidate.
+            addDateOrIssue(candidates, issues, match, 104, 0.99) {
                 var date = LocalDate.of(localToday.year, month, day)
                 if (date.isBefore(localToday)) date = date.plusYears(1)
                 date
@@ -311,27 +428,33 @@ class ReminderTextParser private constructor(
 
         languagePack.relativeDateRules.forEach { rule ->
             rule.regex.findAll(source).forEach { match ->
-            candidates += DateCandidate(
-                span = match.range.toSpan(),
-                priority = rule.priority,
-                confidence = 0.98,
-                date = localToday.plusDays(rule.daysFromToday),
-            )
+                candidates += DateCandidate(
+                    span = match.range.toSpan(),
+                    priority = rule.priority,
+                    confidence = 0.98,
+                    date = localToday.plusDays(rule.daysFromToday),
+                )
             }
         }
 
         languagePack.relativeDayRules.forEach { rule ->
             rule.regex.findAll(source).forEach { match ->
-                val amount = match.groupValue(rule.amountGroup)?.toLongOrNull() ?: return@forEach
+                val amount = match.groupValue(rule.amountGroup)
+                    ?.let { parseAmount(it, languagePack.language) }
+                    ?: return@forEach
                 val unit = match.groupValue(rule.unitGroup)
                     ?.lowercase(languagePack.locale)
                     ?: return@forEach
                 val multiplier = rule.unitMultipliers[unit] ?: return@forEach
+                val days = runCatching { Math.multiplyExact(amount, multiplier) }.getOrNull()
+                    ?: return@forEach
+                val date = runCatching { localToday.plusDays(days) }.getOrNull()
+                    ?: return@forEach
                 candidates += DateCandidate(
                     match.range.toSpan(),
                     priority = 95,
                     confidence = 0.98,
-                    date = localToday.plusDays(amount * multiplier),
+                    date = date,
                 )
             }
         }
@@ -428,14 +551,26 @@ class ReminderTextParser private constructor(
         source: String,
         occupiedGpsSpan: SourceSpan?,
         issues: MutableList<ParseIssue>,
+        date: DateCandidate?,
+        duration: InstantCandidate?,
     ): List<TimeCandidate> {
         val candidates = mutableListOf<TimeCandidate>()
+        val unsupportedClockSpans = languagePack.unsupportedClockPatterns
+            .flatMap { pattern -> pattern.findAll(source).map { it.range.toSpan() }.toList() }
 
         languagePack.clockPatterns.forEach { pattern ->
             pattern.regex.findAll(source).forEach { match ->
                 val span = match.range.toSpan()
                 if (occupiedGpsSpan != null && span.overlaps(occupiedGpsSpan)) return@forEach
-                parseClockMatch(pattern, match, span, issues)?.let { time ->
+                if (unsupportedClockSpans.any { it.overlaps(span) }) return@forEach
+                parseClockMatch(
+                    pattern = pattern,
+                    match = match,
+                    span = span,
+                    issues = issues,
+                    reportInvalidTime = (date == null || !date.span.contains(span)) &&
+                        (duration == null || !duration.span.contains(span)),
+                )?.let { time ->
                     candidates += TimeCandidate(
                         span = span,
                         priority = pattern.priority,
@@ -457,9 +592,17 @@ class ReminderTextParser private constructor(
         match: MatchResult,
         span: SourceSpan,
         issues: MutableList<ParseIssue>,
+        reportInvalidTime: Boolean = true,
     ): LocalTime? {
-        val hourText = match.groupValue(pattern.hourGroup)?.toIntOrNull() ?: return null
-        val minuteText = match.groupValue(pattern.minuteGroup)?.toIntOrNull()
+        val hourText = match.groupValue(pattern.hourGroup)
+            ?.let { parseAmount(it, languagePack.language) }
+            ?.takeIf { it <= Int.MAX_VALUE }
+            ?.toInt()
+            ?: return null
+        val minuteText = match.groupValue(pattern.minuteGroup)
+            ?.let { parseAmount(it, languagePack.language) }
+            ?.takeIf { it <= Int.MAX_VALUE }
+            ?.toInt()
         val modifierText = match.groupValue(pattern.modifierGroup)
             ?.lowercase(languagePack.locale)
         val modifier = modifierText
@@ -485,11 +628,13 @@ class ReminderTextParser private constructor(
             else -> hourText in 1..12
         } && minute in 0..59
         if (!valid) {
-            issues += ParseIssue(
-                message = "Time is outside the valid range",
-                span = span,
-                code = ParseIssueCode.INVALID_TIME,
-            )
+            if (reportInvalidTime) {
+                issues += ParseIssue(
+                    message = "Time is outside the valid range",
+                    span = span,
+                    code = ParseIssueCode.INVALID_TIME,
+                )
+            }
             return null
         }
         return LocalTime.of(hour, minute)
@@ -498,19 +643,36 @@ class ReminderTextParser private constructor(
     private fun durationCandidates(source: String, now: Instant): List<InstantCandidate> =
         languagePack.relativeDurationRules.flatMap { rule ->
             rule.regex.findAll(source).mapNotNull { match ->
-                val amount = match.groupValue(rule.amountGroup)?.toLongOrNull()
-                    ?: return@mapNotNull null
-                val unit = match.groupValue(rule.unitGroup)
-                    ?.lowercase(languagePack.locale)
-                    ?: return@mapNotNull null
-                val duration = when (rule.unitTypes[unit]) {
-                    DurationUnit.HOURS -> Duration.ofHours(amount)
-                    DurationUnit.MINUTES -> Duration.ofMinutes(amount)
-                    null -> return@mapNotNull null
-                }
-                InstantCandidate(match.range.toSpan(), 96, 0.99, now.plus(duration))
+                val duration = durationForMatch(rule, match) ?: return@mapNotNull null
+                val instant = runCatching { now.plus(duration) }.getOrNull() ?: return@mapNotNull null
+                InstantCandidate(match.range.toSpan(), 96, 0.99, instant)
             }.toList()
         }
+
+    private fun durationForMatch(rule: RelativeDurationRule, match: MatchResult): Duration? {
+        var total = Duration.ZERO
+        rule.components.forEach { component ->
+            val amountText = match.groupValue(component.amountGroup)
+            val unitText = match.groupValue(component.unitGroup)
+            if (amountText == null) {
+                if (component.required) return null
+                return@forEach
+            }
+            val amount = parseAmount(amountText, languagePack.language) ?: return null
+            val unitType = when {
+                unitText != null -> rule.unitTypes[unitText.lowercase(languagePack.locale)]
+                else -> component.defaultUnit
+            } ?: return null
+            val componentDuration = runCatching {
+                when (unitType) {
+                    DurationUnit.HOURS -> Duration.ofHours(amount)
+                    DurationUnit.MINUTES -> Duration.ofMinutes(amount)
+                }
+            }.getOrNull() ?: return null
+            total = runCatching { total.plus(componentDuration) }.getOrNull() ?: return null
+        }
+        return total
+    }
 
     private fun addDateOrIssue(
         output: MutableList<DateCandidate>,
@@ -568,11 +730,23 @@ class ReminderTextParser private constructor(
         val confidence: Double
     }
 
-    private fun <T : Candidate> List<T>.best(): T? = sortedWith(
-        compareByDescending<T> { it.priority }
-            .thenBy { it.span.start }
-            .thenByDescending { it.span.endExclusive - it.span.start },
-    ).firstOrNull()
+    private fun <T : Candidate> List<T>.best(): T? {
+        val highestPriority = maxOfOrNull { it.priority } ?: return null
+        val highestPriorityCandidates = filter { it.priority == highestPriority }
+        // Alternative rules can produce nested candidates at the same priority. Keep the
+        // enclosing candidate so a more complete expression does not lose to its prefix.
+        val enclosingCandidates = highestPriorityCandidates.filter { candidate ->
+            highestPriorityCandidates.any { other ->
+                other !== candidate && candidate.span.contains(other.span)
+            }
+        }
+        return (enclosingCandidates.ifEmpty { highestPriorityCandidates })
+            .sortedWith(
+                compareBy<T> { it.span.start }
+                    .thenByDescending { it.span.endExclusive - it.span.start },
+            )
+            .firstOrNull()
+    }
 
     companion object {
         /**
@@ -624,6 +798,110 @@ private fun MatchResult.groupValue(name: String): String? = runCatching {
 
 private fun SourceSpan.overlaps(other: SourceSpan): Boolean =
     start < other.endExclusive && other.start < endExclusive
+
+private fun SourceSpan.contains(other: SourceSpan): Boolean =
+    start <= other.start && endExclusive >= other.endExclusive
+
+private fun List<ParseIssue>.deduplicateOverlappingClockIssues(
+    dateSpan: SourceSpan? = null,
+    durationSpan: SourceSpan? = null,
+): List<ParseIssue> {
+    val invalidTimeSpans = asSequence()
+        .filter { it.code == ParseIssueCode.INVALID_TIME }
+        .mapNotNull { it.span }
+        .toList()
+    return filterNot { issue ->
+        if (issue.code != ParseIssueCode.INVALID_TIME) return@filterNot false
+        val span = issue.span ?: return@filterNot false
+        if (dateSpan?.contains(span) == true || durationSpan?.contains(span) == true) return@filterNot true
+        invalidTimeSpans.any { other -> other != span && other.contains(span) }
+    }.distinctBy { it.message to it.span }
+}
+
+private fun parseAmount(value: String, language: SupportedLanguage): Long? =
+    value.toLongOrNull() ?: when (language) {
+        SupportedLanguage.JAPANESE,
+        SupportedLanguage.CHINESE,
+        -> parseCjkInteger(value)
+        else -> null
+    }
+
+// Deliberately limited to compositional CJK numerals. Lexical shorthand such as 廿 or 卅 is
+// irregular and is not part of the regular-expression grammar.
+private val CJK_DIGIT_VALUES = mapOf(
+    '〇' to 0L,
+    '零' to 0L,
+    '一' to 1L,
+    '壱' to 1L,
+    '二' to 2L,
+    '弐' to 2L,
+    '两' to 2L,
+    '兩' to 2L,
+    '三' to 3L,
+    '参' to 3L,
+    '四' to 4L,
+    '五' to 5L,
+    '六' to 6L,
+    '七' to 7L,
+    '八' to 8L,
+    '九' to 9L,
+)
+private val CJK_SMALL_UNITS = mapOf(
+    '十' to 10L,
+    '拾' to 10L,
+    '百' to 100L,
+    '千' to 1_000L,
+)
+private val CJK_LARGE_UNITS = mapOf(
+    '万' to 10_000L,
+    '萬' to 10_000L,
+    '亿' to 100_000_000L,
+    '億' to 100_000_000L,
+    '兆' to 1_000_000_000_000L,
+)
+
+private fun parseCjkInteger(value: String): Long? {
+    if (value.isEmpty()) return null
+
+    return runCatching {
+        var total = 0L
+        var section = 0L
+        var number = 0L
+        value.forEach { character ->
+            when {
+                CJK_DIGIT_VALUES.containsKey(character) -> {
+                    number = Math.addExact(
+                        Math.multiplyExact(number, 10L),
+                        CJK_DIGIT_VALUES.getValue(character),
+                    )
+                }
+
+                CJK_SMALL_UNITS.containsKey(character) -> {
+                    val unitNumber = if (number == 0L) 1L else number
+                    section = Math.addExact(
+                        section,
+                        Math.multiplyExact(unitNumber, CJK_SMALL_UNITS.getValue(character)),
+                    )
+                    number = 0L
+                }
+
+                CJK_LARGE_UNITS.containsKey(character) -> {
+                    section = Math.addExact(section, number)
+                    val sectionValue = if (section == 0L) 1L else section
+                    total = Math.addExact(
+                        total,
+                        Math.multiplyExact(sectionValue, CJK_LARGE_UNITS.getValue(character)),
+                    )
+                    section = 0L
+                    number = 0L
+                }
+
+                else -> throw IllegalArgumentException("Unsupported CJK numeral")
+            }
+        }
+        Math.addExact(total, Math.addExact(section, number))
+    }.getOrNull()
+}
 
 private fun signedCoordinate(value: String?, hemisphere: String?, negativeHemisphere: String): Double? {
     val parsed = value?.toDoubleOrNull() ?: return null

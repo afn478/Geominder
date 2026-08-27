@@ -10,6 +10,7 @@ import android.content.Intent
 import android.os.PowerManager
 import com.afn478.geominder.R
 import com.afn478.geominder.domain.model.Reminder
+import com.afn478.geominder.localization.AppLanguagePreferences
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -57,12 +58,13 @@ class AndroidAlertDelivery(
     }
 
     private fun createNotificationChannel() {
+        val context = AppLanguagePreferences.localizedContext(applicationContext)
         val channel = NotificationChannel(
             AlertContract.CHANNEL_ID,
-            applicationContext.getString(R.string.alert_channel_name),
+            context.getString(R.string.alert_channel_name),
             NotificationManager.IMPORTANCE_HIGH,
         ).apply {
-            description = applicationContext.getString(R.string.alert_channel_description)
+            description = context.getString(R.string.alert_channel_description)
             lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             enableVibration(true)
         }
@@ -74,7 +76,8 @@ class AndroidAlertDelivery(
         presentation: AlertPresentation,
     ): Notification {
         val body = reminder.text.ifBlank { reminder.sourceText }
-        val builder = Notification.Builder(applicationContext, AlertContract.CHANNEL_ID)
+        val context = AppLanguagePreferences.localizedContext(applicationContext)
+        val builder = Notification.Builder(context, AlertContract.CHANNEL_ID)
             .setSmallIcon(R.drawable.alert_notification_icon)
             .setContentTitle(reminder.title)
             .setContentText(body)
@@ -83,9 +86,9 @@ class AndroidAlertDelivery(
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setAutoCancel(true)
             .setOnlyAlertOnce(false)
-            .addAction(action(reminder, AlertAction.SNOOZE, R.string.alert_snooze))
-            .addAction(action(reminder, AlertAction.DISMISS, R.string.alert_dismiss))
-            .addAction(action(reminder, AlertAction.DONE, R.string.alert_done))
+            .addAction(action(reminder, AlertAction.SNOOZE, R.string.alert_snooze, context))
+            .addAction(action(reminder, AlertAction.DISMISS, R.string.alert_dismiss, context))
+            .addAction(action(reminder, AlertAction.DONE, R.string.alert_done, context))
 
         contentPendingIntent(reminder)?.let(builder::setContentIntent)
 
@@ -99,9 +102,10 @@ class AndroidAlertDelivery(
         reminder: Reminder,
         action: AlertAction,
         titleResource: Int,
+        context: Context,
     ): Notification.Action = Notification.Action.Builder(
         null,
-        applicationContext.getString(titleResource),
+        context.getString(titleResource),
         AlertIntentFactory.actionPendingIntent(applicationContext, reminder, action),
     ).build()
 
@@ -133,19 +137,30 @@ object AlertIntentFactory {
     fun fullScreenIntent(context: Context, reminder: Reminder): Intent =
         Intent(context, FullScreenAlertActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putReminderContent(reminder)
+            putReminderContent(reminder, context)
         }
 
-    fun debugFullScreenIntent(context: Context): Intent =
-        Intent(context, FullScreenAlertActivity::class.java).apply {
+    fun debugFullScreenIntent(context: Context): Intent {
+        val localizedContext = AppLanguagePreferences.localizedContext(context)
+        return Intent(context, FullScreenAlertActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(AlertContract.EXTRA_REMINDER_ID, DEBUG_REMINDER_ID)
-            putExtra(AlertContract.EXTRA_TITLE, context.getString(R.string.example_pick_up_groceries))
+            putExtra(
+                AlertContract.EXTRA_TITLE,
+                localizedContext.getString(R.string.example_pick_up_groceries),
+            )
             putExtra(AlertContract.EXTRA_TEXT, "")
-            putExtra(AlertContract.EXTRA_TIME_TEXT, context.getString(R.string.debug_alert_time))
-            putExtra(AlertContract.EXTRA_LOCATION_TEXT, context.getString(R.string.debug_alert_location))
+            putExtra(
+                AlertContract.EXTRA_TIME_TEXT,
+                localizedContext.getString(R.string.debug_alert_time),
+            )
+            putExtra(
+                AlertContract.EXTRA_LOCATION_TEXT,
+                localizedContext.getString(R.string.debug_alert_location),
+            )
             putExtra(AlertContract.EXTRA_DEBUG_ALERT, true)
         }
+    }
 
     fun actionPendingIntent(
         context: Context,
@@ -171,12 +186,12 @@ object AlertIntentFactory {
         }
     }
 
-    private fun Intent.putReminderContent(reminder: Reminder) {
+    private fun Intent.putReminderContent(reminder: Reminder, context: Context) {
         putExtra(AlertContract.EXTRA_REMINDER_ID, reminder.id.value)
         putExtra(AlertContract.EXTRA_TITLE, reminder.title)
         putExtra(AlertContract.EXTRA_TEXT, reminder.text.ifBlank { reminder.sourceText })
         reminder.timeTrigger?.let { trigger ->
-            putExtra(AlertContract.EXTRA_TIME_TEXT, formatTime(trigger.exactAt))
+            putExtra(AlertContract.EXTRA_TIME_TEXT, formatTime(trigger.exactAt, context))
         }
         reminder.geoTrigger?.let { trigger ->
             putExtra(
@@ -186,9 +201,9 @@ object AlertIntentFactory {
         }
     }
 
-    private fun formatTime(value: Instant): String =
+    private fun formatTime(value: Instant, context: Context): String =
         DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
-            .withLocale(Locale.getDefault())
+            .withLocale(AppLanguagePreferences.locale(context))
             .withZone(ZoneId.systemDefault())
             .format(value)
 

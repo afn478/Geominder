@@ -19,9 +19,9 @@ class AndroidReverseGeocoder(
     context: Context,
     private val callbackExecutor: Executor = ContextCompat.getMainExecutor(context),
     private val workerExecutor: Executor = GEOCODER_EXECUTOR,
-    locale: Locale = Locale.getDefault(),
+    private val localeProvider: () -> Locale = Locale::getDefault,
 ) : GeoLabelResolver {
-    private val geocoder = Geocoder(context.applicationContext, locale)
+    private val applicationContext = context.applicationContext
 
     override fun resolve(latitude: Double, longitude: Double, callback: (String) -> Unit) {
         require(latitude in -90.0..90.0)
@@ -31,6 +31,8 @@ class AndroidReverseGeocoder(
             callbackExecutor.execute { callback(fallback) }
             return
         }
+
+        val geocoder = Geocoder(applicationContext, localeProvider())
 
         if (Build.VERSION.SDK_INT >= 33) {
             runCatching {

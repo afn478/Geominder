@@ -14,6 +14,7 @@ import com.afn478.geominder.geofence.LocationFailure
 import com.afn478.geominder.geofence.LocationResult
 import com.afn478.geominder.geofence.NumericGeoInputParser
 import com.afn478.geominder.geofence.NumericGeoInputResult
+import com.afn478.geominder.localization.SupportedLanguage
 import com.afn478.geominder.localization.UiText
 import com.afn478.geominder.localization.resource
 import com.afn478.geominder.settings.AccentTheme
@@ -85,6 +86,14 @@ class SettingsViewModel(
     fun onThemeModeChange(mode: ThemeMode) = persist { repository.setThemeMode(mode) }
 
     fun onAccentThemeChange(accent: AccentTheme) = persist { repository.setAccentTheme(accent) }
+
+    fun onKeywordLanguageChange(
+        language: SupportedLanguage?,
+        onPersisted: () -> Unit = {},
+    ) = persist {
+        repository.setKeywordLanguage(language)
+        onPersisted()
+    }
 
     fun onRemoveTimeExpressionsFromTextChange(enabled: Boolean) = persist {
         repository.setRemoveTimeExpressionsFromText(enabled)

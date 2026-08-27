@@ -609,6 +609,7 @@ class ReminderListViewModelFactory(
     private val scheduleCommandHandler: ReminderScheduleCommandHandler,
     private val settingsRepository: SettingsRepository? = null,
     private val clock: Clock = Clock.systemDefaultZone(),
+    private val localeProvider: () -> Locale = Locale::getDefault,
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -619,6 +620,7 @@ class ReminderListViewModelFactory(
             repository = repository,
             scheduleCommandHandler = scheduleCommandHandler,
             clock = clock,
+            localeProvider = localeProvider,
             settingsRepository = settingsRepository,
         ) as T
     }

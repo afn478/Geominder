@@ -78,6 +78,10 @@
     <string name="sort_order_save_failed">Не удалось сохранить порядок сортировки</string>
     <string name="edit_to_rearm_reminder">Измените напоминание, чтобы активировать его снова</string>
     <string name="reminder_update_failed">Не удалось обновить напоминание</string>
+    <string name="language">Язык</string>
+    <string name="language_summary">Язык приложения и напоминаний</string>
+    <string name="language_description">Выберите язык приложения и текста напоминаний. «Системный» использует языковые настройки Android.</string>
+    <string name="language_system_default">Системный</string>
     <string name="appearance">Внешний вид</string>
     <string name="location_defaults">Местоположение по умолчанию</string>
     <string name="preset_times">Предустановленные значения времени</string>

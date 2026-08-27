@@ -10,7 +10,7 @@ interface SystemLanguageProvider {
     fun activeLanguage(): SupportedLanguage = SupportedLanguage.firstFrom(locales())
 }
 
-/** Reads the ordered locale preferences supplied by Android; no in-app language setting is used. */
+/** Reads the ordered locale preferences supplied by Android for the system-default choice. */
 class AndroidSystemLanguageProvider(
     context: Context,
 ) : SystemLanguageProvider {

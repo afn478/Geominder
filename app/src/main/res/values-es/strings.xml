@@ -78,6 +78,10 @@
     <string name="sort_order_save_failed">No se ha podido guardar el orden</string>
     <string name="edit_to_rearm_reminder">Edita este recordatorio para volver a activarlo</string>
     <string name="reminder_update_failed">No se ha podido actualizar el recordatorio</string>
+    <string name="language">Idioma</string>
+    <string name="language_summary">Idioma de la aplicación y los recordatorios</string>
+    <string name="language_description">Elige el idioma de la aplicación y del texto de los recordatorios. «Predeterminado del sistema» sigue tus preferencias de idioma de Android.</string>
+    <string name="language_system_default">Predeterminado del sistema</string>
     <string name="appearance">Apariencia</string>
     <string name="location_defaults">Valores predeterminados de ubicación</string>
     <string name="preset_times">Horas preestablecidas</string>

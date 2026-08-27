@@ -1,6 +1,7 @@
 package com.afn478.geominder.parser
 
 import com.afn478.geominder.domain.model.PresetLocation
+import com.afn478.geominder.localization.SupportedLanguage
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -236,10 +237,70 @@ class ReminderTextParserTest {
     }
 
     @Test
+    fun `keyword matching is Unicode case insensitive`() {
+        val examples = listOf(
+            SupportedLanguage.ENGLISH to ("morning" to LocalTime.of(8, 0)),
+            SupportedLanguage.GERMAN to ("frühstück" to LocalTime.of(8, 0)),
+            SupportedLanguage.FRENCH to ("déjeuner" to LocalTime.of(12, 0)),
+            SupportedLanguage.ITALIAN to ("mattina" to LocalTime.of(8, 0)),
+            SupportedLanguage.SPANISH to ("desayuno" to LocalTime.of(8, 0)),
+            SupportedLanguage.RUSSIAN to ("вечером" to LocalTime.of(18, 0)),
+        )
+
+        examples.forEach { (language, example) ->
+            val parser = ReminderTextParser.fromCompleteKeywordTable(
+                keywordTimes = mapOf(example.first to example.second),
+                language = language,
+            )
+            val uppercase = example.first.uppercase(language.locale)
+
+            assertEquals(
+                "$language should match Unicode uppercase keyword text",
+                example.second,
+                parser.parse(uppercase, context.copy(locale = language.locale)).dateTime?.time,
+            )
+        }
+    }
+
+    @Test
+    fun `keyword matching does not accept a substring of a larger word`() {
+        val parser = ReminderTextParser.fromCompleteKeywordTable(
+            keywordTimes = mapOf(
+                "night" to LocalTime.of(20, 0),
+                "tonight" to LocalTime.of(20, 0),
+            ),
+        )
+
+        assertTrue(parser.parse("overnight", context).detections.isEmpty())
+        assertEquals(LocalTime.of(20, 0), parser.parse("tonight", context).dateTime?.time)
+    }
+
+    @Test
     fun `removes date and time spans without removing text between them`() {
         val result = ReminderTextParser().parse("Tomorrow call home at 8:00", context)
 
         assertEquals("call home", result.textWithoutTimeExpression())
+    }
+
+    @Test
+    fun `combined date and time expose separate highlight spans`() {
+        val result = ReminderTextParser().parse("Tomorrow call home at 8:00", context)
+
+        assertEquals(
+            listOf("Tomorrow", "at 8:00"),
+            result.dateTime?.expressionSpans?.map { it.textFrom(result.sourceText) },
+        )
+    }
+
+    @Test
+    fun `ISO date-time separators are included in temporal spans`() {
+        val result = ReminderTextParser().parse("2026-08-05T08:05", context)
+
+        assertEquals(
+            listOf("2026-08-05", "T", "08:05"),
+            result.dateTime?.expressionSpans?.map { it.textFrom(result.sourceText) },
+        )
+        assertEquals("", result.textWithoutTimeExpression())
     }
 
     @Test
@@ -252,11 +313,13 @@ class ReminderTextParserTest {
 
     @Test
     fun `day month and next weekday resolve to upcoming dates`() {
-        val dayMonth = ReminderTextParser().parse("Renew on 25.12", context).dateTime
+        val dayMonthResult = ReminderTextParser().parse("Renew on 25.12", context)
+        val dayMonth = dayMonthResult.dateTime
         val nextMonday = ReminderTextParser().parse("Do it next monday", context).dateTime
         val friday = ReminderTextParser().parse("Send it on Friday", context).dateTime
 
         assertEquals(LocalDate.of(2026, 12, 25), dayMonth?.date)
+        assertTrue(dayMonthResult.issues.isEmpty())
         assertEquals(LocalDate.of(2026, 8, 31), nextMonday?.date)
         assertEquals(LocalDate.of(2026, 8, 28), friday?.date)
     }

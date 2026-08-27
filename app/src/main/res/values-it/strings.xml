@@ -78,6 +78,10 @@
     <string name="sort_order_save_failed">Non è stato possibile salvare l’ordinamento</string>
     <string name="edit_to_rearm_reminder">Modifica questo promemoria per riattivarlo</string>
     <string name="reminder_update_failed">Non è stato possibile aggiornare il promemoria</string>
+    <string name="language">Lingua</string>
+    <string name="language_summary">Lingua dell’app e dei promemoria</string>
+    <string name="language_description">Scegli la lingua dell’app e del testo dei promemoria. «Predefinita di sistema» segue le preferenze di lingua di Android.</string>
+    <string name="language_system_default">Predefinita di sistema</string>
     <string name="appearance">Aspetto</string>
     <string name="location_defaults">Impostazioni predefinite della posizione</string>
     <string name="preset_times">Orari predefiniti</string>

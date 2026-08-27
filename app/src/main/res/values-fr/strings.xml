@@ -78,6 +78,10 @@
     <string name="sort_order_save_failed">Impossible d’enregistrer l’ordre de tri</string>
     <string name="edit_to_rearm_reminder">Modifiez ce rappel pour le réactiver</string>
     <string name="reminder_update_failed">Impossible de mettre à jour le rappel</string>
+    <string name="language">Langue</string>
+    <string name="language_summary">Langue de l’application et des rappels</string>
+    <string name="language_description">Choisissez la langue de l’application et du texte des rappels. « Système » suit vos préférences de langue Android.</string>
+    <string name="language_system_default">Système</string>
     <string name="appearance">Apparence</string>
     <string name="location_defaults">Paramètres de lieu par défaut</string>
     <string name="preset_times">Heures prédéfinies</string>

@@ -1,6 +1,7 @@
 package com.afn478.geominder.settings
 
 import com.afn478.geominder.domain.model.PresetLocation
+import com.afn478.geominder.localization.SupportedLanguage
 import com.afn478.geominder.ui.add.DefaultGeoRadiusProvider
 import kotlinx.coroutines.flow.StateFlow
 import java.time.LocalTime
@@ -23,6 +24,8 @@ interface SettingsRepository : DefaultGeoRadiusProvider {
     suspend fun removeKeywordLocation(keyword: String)
 
     suspend fun resetKeywordLocations()
+
+    suspend fun setKeywordLanguage(language: SupportedLanguage?) {}
 
     suspend fun setRemoveTimeExpressionsFromText(enabled: Boolean) {}
 

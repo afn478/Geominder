@@ -78,6 +78,10 @@
     <string name="sort_order_save_failed">並べ替え順を保存できませんでした</string>
     <string name="edit_to_rearm_reminder">リマインダーを編集して再度有効にしてください</string>
     <string name="reminder_update_failed">リマインダーを更新できませんでした</string>
+    <string name="language">言語</string>
+    <string name="language_summary">アプリとリマインダーの言語</string>
+    <string name="language_description">アプリとリマインダーのテキストに使用する言語を選択します。「システムのデフォルト」は Android の言語設定に従います。</string>
+    <string name="language_system_default">システムのデフォルト</string>
     <string name="appearance">外観</string>
     <string name="location_defaults">場所のデフォルト設定</string>
     <string name="preset_times">時刻のプリセット</string>

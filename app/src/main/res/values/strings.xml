@@ -78,6 +78,10 @@
     <string name="sort_order_save_failed">The sort order could not be saved</string>
     <string name="edit_to_rearm_reminder">Edit this reminder to re-arm it</string>
     <string name="reminder_update_failed">The reminder could not be updated</string>
+    <string name="language">Language</string>
+    <string name="language_summary">App and reminder language</string>
+    <string name="language_description">Choose the language used for the app and reminder text. System default follows your Android language preferences.</string>
+    <string name="language_system_default">System default</string>
     <string name="appearance">Appearance</string>
     <string name="location_defaults">Location defaults</string>
     <string name="preset_locations">Preset locations</string>

@@ -13,6 +13,7 @@ import com.afn478.geominder.settings.RuntimePermissionState
 import com.afn478.geominder.settings.SettingsPermissionSnapshot
 import com.afn478.geominder.settings.SettingsRepository
 import com.afn478.geominder.localization.resourceId
+import com.afn478.geominder.localization.SupportedLanguage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -22,6 +23,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -76,6 +78,21 @@ class SettingsViewModelTest {
 
         assertFalse(repository.settings.value.removeTimeExpressionsFromText)
         assertFalse(viewModel.uiState.value.settings.removeTimeExpressionsFromText)
+    }
+
+    @Test
+    fun `language override is persisted and reflected in state`() {
+        viewModel.onKeywordLanguageChange(SupportedLanguage.FRENCH)
+
+        assertEquals(SupportedLanguage.FRENCH, repository.settings.value.keywordLanguage)
+        assertEquals(
+            SupportedLanguage.FRENCH,
+            repository.settings.value.keywordLanguageOverride,
+        )
+
+        viewModel.onKeywordLanguageChange(null)
+
+        assertNull(repository.settings.value.keywordLanguageOverride)
     }
 
     @Test
@@ -223,6 +240,13 @@ class SettingsViewModelTest {
 
         override suspend fun removeKeyword(keyword: String) {
             state.value = state.value.copy(keywordTimes = state.value.keywordTimes - keyword)
+        }
+
+        override suspend fun setKeywordLanguage(language: SupportedLanguage?) {
+            state.value = state.value.copy(
+                keywordLanguage = language ?: SupportedLanguage.ENGLISH,
+                keywordLanguageOverride = language,
+            )
         }
 
         override suspend fun resetKeywordTimes() {

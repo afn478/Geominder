@@ -49,11 +49,19 @@ enum class DurationUnit {
     MINUTES,
 }
 
+data class DurationComponent(
+    val amountGroup: String,
+    val unitGroup: String,
+    val required: Boolean = true,
+    val defaultUnit: DurationUnit? = null,
+)
+
 data class RelativeDurationRule(
     val regex: Regex,
-    val amountGroup: String = "amount",
-    val unitGroup: String = "unit",
     val unitTypes: Map<String, DurationUnit>,
+    val components: List<DurationComponent> = listOf(
+        DurationComponent(amountGroup = "amount", unitGroup = "unit"),
+    ),
 )
 
 /** All lexical rules that are safe to activate for one source language. */
@@ -69,7 +77,32 @@ data class TimeLanguagePack(
     val fromPrefixes: List<Regex>,
     val fromSuffixes: List<Regex>,
     val temporalJoiners: List<Regex> = defaultTemporalJoiners(language),
+    val unsupportedClockPatterns: List<Regex> = defaultUnsupportedClockPatterns(language),
 )
+
+private const val CJK_NUMERAL_CHARACTERS = "〇零一二三四五六七八九十百千万萬亿億兆两兩壱弐参拾"
+
+/** Seconds are intentionally outside the hour/minute grammar; exclude their shorter suffixes. */
+private fun defaultUnsupportedClockPatterns(language: SupportedLanguage): List<Regex> {
+    val unit = when (language) {
+        SupportedLanguage.ENGLISH -> "a\\.?m\\.?|p\\.?m\\.?"
+        SupportedLanguage.GERMAN -> "Uhr"
+        SupportedLanguage.FRENCH -> "h|heures?"
+        SupportedLanguage.ITALIAN -> "or(?:a|e)"
+        SupportedLanguage.SPANISH -> "horas?|h"
+        SupportedLanguage.RUSSIAN -> "час(?:а|ов)?|ч\\.?"
+        SupportedLanguage.JAPANESE -> "時|時間"
+        SupportedLanguage.CHINESE -> "点(?:钟)?|點(?:鐘)?|小时|小時"
+        SupportedLanguage.KOREAN -> "시|시간"
+    }
+    return listOf(
+        Regex(
+            "(?iu)(?<![\\p{N}])(?:\\d{1,2}|[$CJK_NUMERAL_CHARACTERS]+)" +
+                "(?:[:.：]\\d{1,2}|\\s*(?:$unit)\\s*\\d{1,2})" +
+                "[:.：]\\d{1,2}(?!\\d)",
+        ),
+    )
+}
 
 private fun defaultTemporalJoiners(language: SupportedLanguage): List<Regex> = when (language) {
     SupportedLanguage.ENGLISH -> listOf(

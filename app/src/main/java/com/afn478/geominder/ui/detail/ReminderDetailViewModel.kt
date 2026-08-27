@@ -40,12 +40,13 @@ class ReminderDetailViewModel(
 class ReminderDetailViewModelFactory(
     private val repository: ReminderRepository,
     private val reminderId: ReminderId,
+    private val locale: Locale = Locale.getDefault(),
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         require(modelClass.isAssignableFrom(ReminderDetailViewModel::class.java)) {
             "Unsupported ViewModel class: ${modelClass.name}"
         }
-        return ReminderDetailViewModel(repository, reminderId) as T
+        return ReminderDetailViewModel(repository, reminderId, locale = locale) as T
     }
 }

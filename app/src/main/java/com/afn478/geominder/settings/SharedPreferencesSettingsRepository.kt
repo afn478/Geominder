@@ -3,8 +3,10 @@ package com.afn478.geominder.settings
 import android.content.Context
 import android.content.SharedPreferences
 import com.afn478.geominder.domain.model.PresetLocation
+import com.afn478.geominder.localization.AppLanguagePreferences
 import com.afn478.geominder.localization.SupportedLanguage
 import com.afn478.geominder.parser.ReminderTextParser
+import com.afn478.geominder.parser.TimeLanguagePacks
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,7 +49,7 @@ class SharedPreferencesSettingsRepository(
     }
 
     override suspend fun resetKeywordTimes() {
-        updateKeywordTimes(defaultKeywordTimes)
+        updateKeywordTimes(keywordDefaults(_settings.value.keywordLanguage))
     }
 
     override suspend fun upsertKeywordLocation(keyword: String, location: PresetLocation) {
@@ -64,6 +66,34 @@ class SharedPreferencesSettingsRepository(
 
     override suspend fun resetKeywordLocations() {
         updateKeywordLocations(emptyMap())
+    }
+
+    override suspend fun setKeywordLanguage(language: SupportedLanguage?) {
+        val current = _settings.value
+        val effectiveLanguage = language ?: defaultLanguage
+        val keywordTimes = if (effectiveLanguage == current.keywordLanguage) {
+            current.keywordTimes
+        } else {
+            migrateKeywordTimes(
+                stored = current.keywordTimes,
+                storedLanguage = current.keywordLanguage,
+                activeDefaults = keywordDefaults(effectiveLanguage),
+            )
+        }
+        preferences.edit().apply {
+            if (language == null) {
+                remove(AppLanguagePreferences.KEY_LANGUAGE_OVERRIDE)
+            } else {
+                putString(AppLanguagePreferences.KEY_LANGUAGE_OVERRIDE, language.languageTag)
+            }
+            putString(KEY_KEYWORD_TIMES, SettingsCodec.encodeKeywordTimes(keywordTimes))
+            putString(KEY_KEYWORD_LANGUAGE, effectiveLanguage.languageTag)
+        }.apply()
+        _settings.value = current.copy(
+            keywordTimes = keywordTimes,
+            keywordLanguage = effectiveLanguage,
+            keywordLanguageOverride = language,
+        )
     }
 
     override suspend fun setRemoveTimeExpressionsFromText(enabled: Boolean) {
@@ -93,11 +123,10 @@ class SharedPreferencesSettingsRepository(
         val snapshot = entries.toMap()
         preferences.edit()
             .putString(KEY_KEYWORD_TIMES, SettingsCodec.encodeKeywordTimes(snapshot))
-            .putString(KEY_KEYWORD_LANGUAGE, defaultLanguage.languageTag)
+            .putString(KEY_KEYWORD_LANGUAGE, _settings.value.keywordLanguage.languageTag)
             .apply()
         _settings.value = _settings.value.copy(
             keywordTimes = snapshot,
-            keywordLanguage = defaultLanguage,
         )
     }
 
@@ -111,23 +140,27 @@ class SharedPreferencesSettingsRepository(
 
     private fun readSettings(): ReminderSettings {
         val storedKeywords = preferences.getString(KEY_KEYWORD_TIMES, null)
+        val keywordLanguageOverride = preferences
+            .getString(AppLanguagePreferences.KEY_LANGUAGE_OVERRIDE, null)
+            ?.let(SupportedLanguage::fromLanguageTagOrNull)
+        val activeLanguage = keywordLanguageOverride ?: defaultLanguage
         val storedLanguage = preferences.getString(KEY_KEYWORD_LANGUAGE, null)
             ?.let(SupportedLanguage::fromLanguageTag)
             ?: SupportedLanguage.ENGLISH
         val keywordTimes = storedKeywords
             ?.let(SettingsCodec::decodeKeywordTimes)
             ?.let { stored ->
-                if (storedLanguage == defaultLanguage) {
+                if (storedLanguage == activeLanguage) {
                     stored
                 } else {
                     migrateKeywordTimes(
                         stored = stored,
                         storedLanguage = storedLanguage,
-                        activeDefaults = defaultKeywordTimes,
+                        activeDefaults = keywordDefaults(activeLanguage),
                     )
                 }
             }
-            ?: defaultKeywordTimes
+            ?: keywordDefaults(activeLanguage)
         val keywordLocations = preferences.getString(KEY_KEYWORD_LOCATIONS, null)
             ?.let(SettingsCodec::decodeKeywordLocations)
             ?: emptyMap()
@@ -137,7 +170,8 @@ class SharedPreferencesSettingsRepository(
             ),
             keywordTimes = keywordTimes,
             keywordLocations = keywordLocations,
-            keywordLanguage = defaultLanguage,
+            keywordLanguage = activeLanguage,
+            keywordLanguageOverride = keywordLanguageOverride,
             removeTimeExpressionsFromText = preferences.getBoolean(
                 KEY_REMOVE_TIME_EXPRESSIONS,
                 true,
@@ -152,7 +186,7 @@ class SharedPreferencesSettingsRepository(
     }
 
     private companion object {
-        const val PREFERENCES_NAME = "reminder_settings"
+        const val PREFERENCES_NAME = AppLanguagePreferences.PREFERENCES_NAME
         const val KEY_DEFAULT_RADIUS = "default_geofence_radius_meters"
         const val KEY_KEYWORD_TIMES = "keyword_time_presets"
         const val KEY_KEYWORD_LOCATIONS = "keyword_location_presets"
@@ -163,6 +197,9 @@ class SharedPreferencesSettingsRepository(
         const val KEY_SORT_FIELD = "sort_field"
         const val KEY_SORT_DIRECTION = "sort_direction"
     }
+
+    private fun keywordDefaults(language: SupportedLanguage): Map<String, LocalTime> =
+        if (language == defaultLanguage) defaultKeywordTimes else TimeLanguagePacks.defaultsFor(language)
 }
 
 private fun migrateKeywordTimes(

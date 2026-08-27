@@ -13,6 +13,7 @@ data class ReminderSettings(
     val keywordTimes: Map<String, LocalTime> = KeywordTimeDictionary.DEFAULTS.toMap(),
     val keywordLocations: Map<String, PresetLocation> = emptyMap(),
     val keywordLanguage: SupportedLanguage = SupportedLanguage.ENGLISH,
+    val keywordLanguageOverride: SupportedLanguage? = null,
     val removeTimeExpressionsFromText: Boolean = true,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val accentTheme: AccentTheme = AccentTheme.DYNAMIC,

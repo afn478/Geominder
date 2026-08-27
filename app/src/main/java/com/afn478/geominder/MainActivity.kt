@@ -1,6 +1,7 @@
 package com.afn478.geominder
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -16,6 +17,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.afn478.geominder.localization.AppLanguagePreferences
 import com.afn478.geominder.settings.SettingsPermissionAction
 import com.afn478.geominder.settings.ThemeMode
 import com.afn478.geominder.ui.theme.ReminderTheme
@@ -26,6 +28,10 @@ class MainActivity : ComponentActivity() {
     private lateinit var notificationLauncher: ActivityResultLauncher<String>
     private lateinit var settingsLauncher: ActivityResultLauncher<Intent>
     private var offeredExactAlarmAccess = false
+
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLanguagePreferences.localizedContext(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,6 +58,7 @@ class MainActivity : ComponentActivity() {
                 ReminderApp(
                     container = (application as ReminderApplication).appContainer,
                     onPermissionAction = ::handlePermissionAction,
+                    onLanguageChanged = { recreate() },
                 )
             }
         }

@@ -14,6 +14,7 @@ files.
 - Snooze alerts for 10 minutes, dismiss them, or mark them done.
 - Use color tags, sorting, trash, restore, and bulk actions.
 - Choose a theme and accent color.
+- Choose the language used by the app and reminder parser.
 
 ## Create a reminder
 
@@ -22,8 +23,9 @@ files.
 3. Check the detected time or location. Tap a trigger to edit it, or open the details to add one.
 4. Save the reminder.
 
-The parser runs locally. It uses the first supported language in Android's ordered language
-preferences and falls back to English.
+The parser runs locally. By default, the app and parser use the first supported language in
+Android's ordered language preferences and fall back to English. Choose a supported language in
+**Settings > Language** to use it for both the interface and reminder parsing.
 
 ### Examples
 

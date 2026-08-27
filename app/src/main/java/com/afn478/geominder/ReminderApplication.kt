@@ -29,6 +29,7 @@ import com.afn478.geominder.geofence.GeofenceRegistrar
 import com.afn478.geominder.integration.ApplicationFeatureRuntime
 import com.afn478.geominder.integration.ReminderSchedulingCoordinator
 import com.afn478.geominder.localization.AndroidSystemLanguageProvider
+import com.afn478.geominder.localization.AppLanguagePreferences
 import com.afn478.geominder.localization.SystemLanguageProvider
 import com.afn478.geominder.parser.ReminderTextParserFactory
 import com.afn478.geominder.settings.AndroidSettingsPermissionStatusProvider
@@ -110,7 +111,10 @@ private class DefaultAppContainer(application: Application) : AppContainer {
     )
     override val currentLocationProvider: CurrentLocationProvider =
         FusedCurrentLocationProvider(applicationContext)
-    override val geoLabelResolver: GeoLabelResolver = AndroidReverseGeocoder(applicationContext)
+    override val geoLabelResolver: GeoLabelResolver = AndroidReverseGeocoder(
+        context = applicationContext,
+        localeProvider = { AppLanguagePreferences.locale(applicationContext) },
+    )
     override val permissionStatusProvider: SettingsPermissionStatusProvider =
         AndroidSettingsPermissionStatusProvider(
             context = applicationContext,

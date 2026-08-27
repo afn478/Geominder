@@ -2,6 +2,7 @@
 
 package com.afn478.geominder.alert
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -57,6 +58,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.afn478.geominder.ReminderApplication
 import com.afn478.geominder.R
+import com.afn478.geominder.localization.AppLanguagePreferences
 import com.afn478.geominder.ui.theme.ReminderTheme
 import kotlin.math.PI
 import kotlin.math.cos
@@ -64,6 +66,10 @@ import kotlin.math.max
 import kotlin.math.sin
 
 class FullScreenAlertActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLanguagePreferences.localizedContext(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setShowWhenLocked(true)

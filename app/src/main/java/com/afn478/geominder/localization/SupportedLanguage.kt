@@ -25,11 +25,17 @@ enum class SupportedLanguage(
             language.languageTag.equals(locale.language, ignoreCase = true)
         } ?: ENGLISH
 
-        fun fromLanguageTag(languageTag: String?): SupportedLanguage = languageTag
+        fun fromLanguageTagOrNull(languageTag: String?): SupportedLanguage? = languageTag
             ?.let(Locale::forLanguageTag)
             ?.takeIf { it.language.isNotBlank() }
-            ?.let(::fromLocale)
-            ?: ENGLISH
+            ?.let { locale ->
+                entries.firstOrNull { language ->
+                    language.languageTag.equals(locale.language, ignoreCase = true)
+                }
+            }
+
+        fun fromLanguageTag(languageTag: String?): SupportedLanguage =
+            fromLanguageTagOrNull(languageTag) ?: ENGLISH
 
         /** Returns the first supported preference, preserving the system's ordering. */
         fun firstFrom(locales: Iterable<Locale>): SupportedLanguage = locales

@@ -13,7 +13,8 @@ class DateTimeHighlightTransformationTest {
 
     @Test
     fun `highlights the detected source span without changing text`() {
-        val transformed = transform(SourceSpan(start = 9, endExclusive = 13)).filter(AnnotatedString(source))
+        val transformed = transform(listOf(SourceSpan(start = 9, endExclusive = 13)))
+            .filter(AnnotatedString(source))
 
         assertEquals(source, transformed.text.text)
         assertEquals(1, transformed.text.spanStyles.size)
@@ -22,8 +23,22 @@ class DateTimeHighlightTransformationTest {
     }
 
     @Test
+    fun `highlights multiple disjoint expression spans`() {
+        val transformed = transform(
+            listOf(
+                SourceSpan(start = 0, endExclusive = 3),
+                SourceSpan(start = 9, endExclusive = 13),
+            ),
+        ).filter(AnnotatedString(source))
+
+        assertEquals(2, transformed.text.spanStyles.size)
+        assertEquals(listOf(0, 9), transformed.text.spanStyles.map { it.start })
+        assertEquals(listOf(3, 13), transformed.text.spanStyles.map { it.end })
+    }
+
+    @Test
     fun `uses identity offset mapping`() {
-        val mapping = transform(SourceSpan(9, 13)).filter(AnnotatedString(source)).offsetMapping
+        val mapping = transform(listOf(SourceSpan(9, 13))).filter(AnnotatedString(source)).offsetMapping
 
         listOf(0, 4, 9, 12, source.length).forEach { offset ->
             assertEquals(offset, mapping.originalToTransformed(offset))
@@ -34,25 +49,25 @@ class DateTimeHighlightTransformationTest {
 
     @Test
     fun `invalid or stale spans safely produce no highlight`() {
-        val cases = listOf<SourceSpan?>(
-            null,
-            SourceSpan(9, 9),
-            SourceSpan(9, source.length + 1),
+        val cases = listOf(
+            emptyList(),
+            listOf(SourceSpan(9, 9)),
+            listOf(SourceSpan(9, source.length + 1)),
         )
 
-        cases.forEach { span ->
-            val result = transform(span).filter(AnnotatedString(source))
+        cases.forEach { spans ->
+            val result = transform(spans).filter(AnnotatedString(source))
             assertEquals(source, result.text.text)
             assertTrue(result.text.spanStyles.isEmpty())
         }
 
-        val mismatch = transform(SourceSpan(9, 13)).filter(AnnotatedString("Buy milk"))
+        val mismatch = transform(listOf(SourceSpan(9, 13))).filter(AnnotatedString("Buy milk"))
         assertEquals("Buy milk", mismatch.text.text)
         assertTrue(mismatch.text.spanStyles.isEmpty())
     }
 
-    private fun transform(span: SourceSpan?) = DateTimeHighlightTransformation(
-        span = span,
+    private fun transform(spans: List<SourceSpan>) = DateTimeHighlightTransformation(
+        spans = spans,
         source = source,
         background = Color.Yellow,
         foreground = Color.Black,

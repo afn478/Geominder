@@ -66,7 +66,7 @@ private class KeywordLocationMatcher(
         .map(::keywordPattern)
         .takeIf { it.isNotEmpty() }
         ?.joinToString("|")
-        ?.let { Regex(it, setOf(RegexOption.IGNORE_CASE)) }
+        ?.let { Regex("(?iu)$it") }
 
     fun findAll(source: String): Sequence<KeywordLocationMatch> = regex
         ?.findAll(source)
@@ -82,21 +82,6 @@ private class KeywordLocationMatcher(
 
     private fun keywordPattern(keyword: String): String {
         val phrase = keyword.split(' ').joinToString("\\s+") { Regex.escape(it) }
-        return if (keyword.requiresScriptBoundary()) {
-            "(?<![\\p{L}\\p{N}])$phrase(?![\\p{L}\\p{N}])"
-        } else {
-            phrase
-        }
-    }
-}
-
-private fun String.requiresScriptBoundary(): Boolean = none { character ->
-    when (Character.UnicodeScript.of(character.code)) {
-        Character.UnicodeScript.HAN,
-        Character.UnicodeScript.HANGUL,
-        Character.UnicodeScript.HIRAGANA,
-        Character.UnicodeScript.KATAKANA,
-        -> true
-        else -> false
+        return "(?<![\\p{L}\\p{N}])$phrase(?![\\p{L}\\p{N}])"
     }
 }

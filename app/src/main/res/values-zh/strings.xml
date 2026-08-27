@@ -78,6 +78,10 @@
     <string name="sort_order_save_failed">无法保存排序方式</string>
     <string name="edit_to_rearm_reminder">编辑此提醒以重新启用</string>
     <string name="reminder_update_failed">无法更新提醒</string>
+    <string name="language">语言</string>
+    <string name="language_summary">应用和提醒语言</string>
+    <string name="language_description">选择应用和提醒文本使用的语言。“系统默认”会遵循 Android 的语言偏好。</string>
+    <string name="language_system_default">系统默认</string>
     <string name="appearance">外观</string>
     <string name="location_defaults">位置默认设置</string>
     <string name="preset_times">预设时间</string>

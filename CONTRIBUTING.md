@@ -130,9 +130,10 @@ Language work spans parser rules, preset data, and Android resources:
 5. Add parser coverage to `TimeLanguagePacksTest` and `ReminderTextParserTest`.
 6. Check date order, day-part placement, relative dates, relative durations, and localized examples.
 
-The parser uses the first supported language in Android's ordered locale preferences. Custom preset
-times are persisted with their source language and migrated when the active language changes. Keep
-user-facing state as `UiText.Resource` so Compose resolves it at the UI boundary.
+The app and parser use the first supported language in Android's ordered locale preferences by
+default. A language selected in **Settings > Language** applies to both the interface and parser.
+Custom preset times are persisted with their source language and migrated when the active language
+changes. Keep user-facing state as `UiText.Resource` so Compose resolves it at the UI boundary.
 
 The `values-en-rGB` overlay contains British English spellings, terms, and examples. Keep the
 default English resources American English when changing regional behavior.

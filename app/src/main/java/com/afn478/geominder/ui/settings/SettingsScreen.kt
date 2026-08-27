@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Palette
@@ -39,6 +40,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -77,6 +79,7 @@ import com.afn478.geominder.BuildConfig
 import com.afn478.geominder.R
 import com.afn478.geominder.geofence.GeoInputError
 import com.afn478.geominder.geofence.GeoInputField
+import com.afn478.geominder.localization.SupportedLanguage
 import com.afn478.geominder.localization.UiText
 import com.afn478.geominder.localization.resource
 import com.afn478.geominder.settings.AccentTheme
@@ -89,6 +92,7 @@ import com.afn478.geominder.ui.theme.resolveDarkTheme
 import com.afn478.geominder.ui.text.resolve
 
 private enum class SettingsSubsection(@androidx.annotation.StringRes val titleRes: Int) {
+    LANGUAGE(R.string.language),
     APPEARANCE(R.string.appearance),
     LOCATION(R.string.location_defaults),
     PRESET_LOCATIONS(R.string.preset_locations),
@@ -105,6 +109,11 @@ private data class SettingsSubsectionEntry(
 )
 
 private val settingsSubsectionEntries = listOf(
+    SettingsSubsectionEntry(
+        subsection = SettingsSubsection.LANGUAGE,
+        summaryRes = R.string.language_summary,
+        icon = Icons.Default.Language,
+    ),
     SettingsSubsectionEntry(
         subsection = SettingsSubsection.APPEARANCE,
         summaryRes = R.string.theme_and_accent_color,
@@ -150,6 +159,7 @@ private val settingsSubsectionEntries = listOf(
 @Composable
 fun SettingsRoute(
     viewModel: SettingsViewModel,
+    onKeywordLanguageChanged: () -> Unit,
     onPermissionAction: (SettingsPermissionAction) -> Unit,
     onBack: () -> Unit,
     onExportBackup: () -> Unit,
@@ -171,6 +181,9 @@ fun SettingsRoute(
 
     SettingsScreen(
         state = state,
+        onKeywordLanguageChange = { language ->
+            viewModel.onKeywordLanguageChange(language, onKeywordLanguageChanged)
+        },
         onRadiusChange = viewModel::onRadiusChange,
         onThemeModeChange = viewModel::onThemeModeChange,
         onAccentThemeChange = viewModel::onAccentThemeChange,
@@ -211,6 +224,7 @@ fun SettingsRoute(
 @Composable
 fun SettingsScreen(
     state: SettingsUiState,
+    onKeywordLanguageChange: (SupportedLanguage?) -> Unit,
     onRadiusChange: (String) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onAccentThemeChange: (AccentTheme) -> Unit,
@@ -292,6 +306,13 @@ fun SettingsScreen(
                     onSelect = { selectedSubsection = it },
                 )
 
+                SettingsSubsection.LANGUAGE -> SettingsSubpage(pageModifier) {
+                    LanguageSection(
+                        state = state,
+                        onKeywordLanguageChange = onKeywordLanguageChange,
+                    )
+                }
+
                 SettingsSubsection.APPEARANCE -> SettingsSubpage(pageModifier) {
                     AppearanceSection(state, onThemeModeChange, onAccentThemeChange)
                 }
@@ -359,6 +380,42 @@ fun SettingsScreen(
                         DebugAlertSection(onShowDebugFullScreenReminder)
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LanguageSection(
+    state: SettingsUiState,
+    onKeywordLanguageChange: (SupportedLanguage?) -> Unit,
+) {
+    SettingsSection(title = stringResource(R.string.language)) {
+        Text(
+            text = stringResource(R.string.language_description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            item(key = "system-default") {
+                FilterChip(
+                    selected = state.settings.keywordLanguageOverride == null,
+                    onClick = { onKeywordLanguageChange(null) },
+                    label = { Text(stringResource(R.string.language_system_default)) },
+                )
+            }
+            items(
+                items = SupportedLanguage.entries.toList(),
+                key = SupportedLanguage::languageTag,
+            ) { language ->
+                FilterChip(
+                    selected = state.settings.keywordLanguageOverride == language,
+                    onClick = { onKeywordLanguageChange(language) },
+                    label = { Text(language.nativeDisplayName()) },
+                )
             }
         }
     }
@@ -1140,3 +1197,8 @@ private fun AccentTheme.localizedLabel(): String = stringResource(
         AccentTheme.SLATE -> R.string.accent_slate
     },
 )
+
+private fun SupportedLanguage.nativeDisplayName(): String =
+    locale.getDisplayLanguage(locale)
+        .ifBlank { languageTag }
+        .replaceFirstChar { it.titlecase(locale) }

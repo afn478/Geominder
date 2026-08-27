@@ -50,4 +50,19 @@ class ReminderTextParserFactoryTest {
 
         assertEquals(LocalTime.of(8, 30), result.dateTime?.time)
     }
+
+    @Test
+    fun `factory can create a parser for the selected language`() {
+        val factory = ReminderTextParserFactory(
+            object : SystemLanguageProvider {
+                override fun locales(): List<Locale> = listOf(Locale.US)
+            },
+        )
+
+        val parser = factory.create(language = SupportedLanguage.GERMAN)
+
+        assertEquals(SupportedLanguage.GERMAN, parser.language)
+        assertEquals(LocalTime.of(8, 0), parser.keywordTimes["morgens"])
+        assertFalse(parser.keywordTimes.containsKey("morning"))
+    }
 }
