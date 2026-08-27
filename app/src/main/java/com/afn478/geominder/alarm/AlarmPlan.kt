@@ -13,6 +13,7 @@ data class AlarmPlan(
 enum class NoAlarmReason {
     NOT_PENDING,
     NO_TIME_TRIGGER,
+    TIME_TRIGGER_EXPIRED,
 }
 
 sealed interface ReminderAlarmPlan {
@@ -54,6 +55,19 @@ object AlarmPlanner {
         )
     }
 
+    /** Plans a reminder for registration, omitting a one-shot time trigger that has elapsed. */
+    fun forReminder(reminder: Reminder, now: Instant): ReminderAlarmPlan {
+        val decision = forReminder(reminder)
+        if (
+            decision is ReminderAlarmPlan.Schedule &&
+            decision.plan.identity.kind == AlarmKind.TIME &&
+            decision.plan.triggerAt.isBefore(now)
+        ) {
+            return ReminderAlarmPlan.None(NoAlarmReason.TIME_TRIGGER_EXPIRED)
+        }
+        return decision
+    }
+
     fun gatedCheck(
         reminderId: ReminderId,
         triggerId: TriggerId,
@@ -78,4 +92,3 @@ object AlarmPlanner {
         triggerAt = checkAt,
     )
 }
-

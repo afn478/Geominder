@@ -4,6 +4,7 @@ import com.afn478.geominder.alarm.AlarmPlan
 import com.afn478.geominder.alarm.AlarmPlanner
 import com.afn478.geominder.alarm.AlarmScheduleResult
 import com.afn478.geominder.alarm.ExactAlarmScheduler
+import com.afn478.geominder.alarm.NoAlarmReason
 import com.afn478.geominder.alarm.ReminderAlarmPlan
 import com.afn478.geominder.domain.model.GeoTrigger
 import com.afn478.geominder.domain.model.Reminder
@@ -76,6 +77,24 @@ class BootResyncCoordinatorTest {
         assertEquals(1, report.registeredGeofenceCount)
         assertEquals(combined.id, scheduler.scheduled.single().id)
         assertEquals(activeFrom, registrar.specs.single().activeFrom)
+    }
+
+    @Test
+    fun `expired time trigger is ignored during resynchronization`() = runBlocking {
+        val expired = reminder(id = "expired", withTime = true)
+        val scheduler = RecordingAlarmScheduler(
+            scheduleResult = AlarmScheduleResult.NotApplicable(NoAlarmReason.TIME_TRIGGER_EXPIRED),
+        )
+
+        val report = coordinator(
+            reminders = listOf(expired),
+            scheduler = scheduler,
+            registrar = RecordingGeofenceRegistrar(),
+        ).resynchronize()
+
+        assertTrue(report.isFullySuccessful)
+        assertEquals(0, report.scheduledAlarmCount)
+        assertEquals(listOf(expired.id), scheduler.scheduled.map(Reminder::id))
     }
 
     @Test
@@ -244,6 +263,7 @@ private class FakeRepository(
 
 private class RecordingAlarmScheduler(
     private val failingReminderId: ReminderId? = null,
+    private val scheduleResult: AlarmScheduleResult? = null,
 ) : ExactAlarmScheduler {
     val scheduled = mutableListOf<Reminder>()
     val plans = mutableMapOf<ReminderId, AlarmPlan>()
@@ -251,6 +271,7 @@ private class RecordingAlarmScheduler(
     override fun schedule(reminder: Reminder): AlarmScheduleResult {
         scheduled += reminder
         if (reminder.id == failingReminderId) error("alarm failure")
+        scheduleResult?.let { return it }
         val plan = (AlarmPlanner.forReminder(reminder) as ReminderAlarmPlan.Schedule).plan
         plans[reminder.id] = plan
         return AlarmScheduleResult.Scheduled(plan = plan, scheduledAt = plan.triggerAt)

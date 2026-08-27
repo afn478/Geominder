@@ -2,6 +2,7 @@ package com.afn478.geominder.integration
 
 import com.afn478.geominder.alarm.AlarmScheduleResult
 import com.afn478.geominder.alarm.ExactAlarmScheduler
+import com.afn478.geominder.alarm.NoAlarmReason
 import com.afn478.geominder.backup.PostImportScheduler
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.geofence.GeofenceOperationCallback
@@ -22,8 +23,11 @@ class ReminderSchedulingCoordinator(
 ) : ReminderPostSaveActions, ReminderScheduleCommandHandler, PostImportScheduler {
     override suspend fun scheduleTimeTrigger(reminder: Reminder) {
         val result = exactAlarmScheduler.schedule(reminder)
-        if (result !is AlarmScheduleResult.Scheduled) {
-            throw ReminderSchedulingException("Time trigger was not scheduled: $result")
+        when (result) {
+            is AlarmScheduleResult.Scheduled -> Unit
+            is AlarmScheduleResult.NotApplicable
+                if result.reason == NoAlarmReason.TIME_TRIGGER_EXPIRED -> Unit
+            else -> throw ReminderSchedulingException("Time trigger was not scheduled: $result")
         }
     }
 

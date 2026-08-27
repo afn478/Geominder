@@ -3,6 +3,7 @@ package com.afn478.geominder.integration
 import com.afn478.geominder.alarm.AlarmScheduleResult
 import com.afn478.geominder.alarm.AlarmScheduleMode
 import com.afn478.geominder.alarm.ExactAlarmScheduler
+import com.afn478.geominder.alarm.NoAlarmReason
 import com.afn478.geominder.domain.model.GeoTrigger
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
@@ -22,6 +23,21 @@ class ReminderSchedulingCoordinatorTest {
     @Test
     fun scheduleCombinedReminderActivatesBothTriggerKinds() = runBlocking {
         val alarms = FakeExactAlarmScheduler()
+        val geofences = FakeGeofenceRegistrar()
+        val coordinator = ReminderSchedulingCoordinator(alarms, geofences)
+        val reminder = combinedReminder()
+
+        coordinator.schedule(reminder)
+
+        assertEquals(listOf(reminder), alarms.scheduled)
+        assertEquals(listOf(reminder.geoTrigger!!.id), geofences.registered)
+    }
+
+    @Test
+    fun `expired time trigger is skipped while other trigger kinds are registered`() = runBlocking {
+        val alarms = FakeExactAlarmScheduler(
+            scheduleResult = AlarmScheduleResult.NotApplicable(NoAlarmReason.TIME_TRIGGER_EXPIRED),
+        )
         val geofences = FakeGeofenceRegistrar()
         val coordinator = ReminderSchedulingCoordinator(alarms, geofences)
         val reminder = combinedReminder()
@@ -74,12 +90,15 @@ class ReminderSchedulingCoordinatorTest {
         createdAt = Instant.parse("2030-01-01T08:00:00Z"),
     )
 
-    private class FakeExactAlarmScheduler : ExactAlarmScheduler {
+    private class FakeExactAlarmScheduler(
+        private val scheduleResult: AlarmScheduleResult? = null,
+    ) : ExactAlarmScheduler {
         val scheduled = mutableListOf<Reminder>()
         val cancelled = mutableListOf<Reminder>()
 
         override fun schedule(reminder: Reminder): AlarmScheduleResult {
             scheduled += reminder
+            scheduleResult?.let { return it }
             val trigger = requireNotNull(reminder.timeTrigger)
             val plan = com.afn478.geominder.alarm.AlarmPlanner.forReminder(reminder)
                 as com.afn478.geominder.alarm.ReminderAlarmPlan.Schedule

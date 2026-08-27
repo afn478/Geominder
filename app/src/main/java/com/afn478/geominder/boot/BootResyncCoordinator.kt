@@ -2,6 +2,7 @@ package com.afn478.geominder.boot
 
 import com.afn478.geominder.alarm.AlarmScheduleResult
 import com.afn478.geominder.alarm.ExactAlarmScheduler
+import com.afn478.geominder.alarm.NoAlarmReason
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.TriggerId
@@ -102,22 +103,29 @@ class BootResyncCoordinator(
         return BootResyncReport(
             loadedReminderCount = reminders.size,
             ignoredInactiveCount = reminders.size - activeReminders.size,
-            scheduledAlarmCount = alarmResults.count { it == null },
+            scheduledAlarmCount = alarmResults.count(AlarmRestoreOutcome::scheduled),
             registeredGeofenceCount = geofenceResults.count { it == null },
-            failures = alarmResults.filterNotNull() + geofenceResults.filterNotNull(),
+            failures = alarmResults.mapNotNull(AlarmRestoreOutcome::failure) +
+                geofenceResults.filterNotNull(),
         )
     }
 
-    private fun restoreAlarms(reminders: List<Reminder>): List<BootResyncFailure?> = reminders
+    private fun restoreAlarms(reminders: List<Reminder>): List<AlarmRestoreOutcome> = reminders
         .filter { reminder -> reminder.needsAlarmRegistration() }
         .map { reminder ->
             try {
                 when (val result = alarmScheduler.schedule(reminder)) {
-                    is AlarmScheduleResult.Scheduled -> null
-                    else -> BootResyncFailure.AlarmRejected(reminder.id, result)
+                    is AlarmScheduleResult.Scheduled -> AlarmRestoreOutcome(scheduled = true)
+                    is AlarmScheduleResult.NotApplicable
+                        if result.reason == NoAlarmReason.TIME_TRIGGER_EXPIRED -> AlarmRestoreOutcome()
+                    else -> AlarmRestoreOutcome(
+                        failure = BootResyncFailure.AlarmRejected(reminder.id, result),
+                    )
                 }
             } catch (error: Throwable) {
-                BootResyncFailure.AlarmException(reminder.id, error)
+                AlarmRestoreOutcome(
+                    failure = BootResyncFailure.AlarmException(reminder.id, error),
+                )
             }
         }
 
@@ -182,6 +190,11 @@ class BootResyncCoordinator(
 
     private fun Reminder.needsAlarmRegistration(): Boolean =
         snoozedUntil != null || timeTrigger != null
+
+    private data class AlarmRestoreOutcome(
+        val scheduled: Boolean = false,
+        val failure: BootResyncFailure? = null,
+    )
 
     private sealed interface GeofenceRegistrationOutcome {
         data object Success : GeofenceRegistrationOutcome

@@ -44,6 +44,44 @@ class AlarmPlannerTest {
     }
 
     @Test
+    fun `past pending time reminder is not scheduled`() {
+        val now = Instant.parse("2026-08-25T09:00:00Z")
+        val reminder = reminder(
+            exactAt = Instant.parse("2026-08-25T08:00:00Z"),
+        )
+
+        assertEquals(
+            ReminderAlarmPlan.None(NoAlarmReason.TIME_TRIGGER_EXPIRED),
+            AlarmPlanner.forReminder(reminder, now),
+        )
+    }
+
+    @Test
+    fun `future snooze remains schedulable even when original time has elapsed`() {
+        val snoozedUntil = Instant.parse("2026-08-25T09:30:00Z")
+        val reminder = reminder(
+            status = ReminderStatus.SNOOZED,
+            exactAt = Instant.parse("2026-08-25T08:00:00Z"),
+            snoozedUntil = snoozedUntil,
+        )
+
+        val result = AlarmPlanner.forReminder(
+            reminder,
+            Instant.parse("2026-08-25T09:00:00Z"),
+        )
+
+        assertEquals(
+            ReminderAlarmPlan.Schedule(
+                AlarmPlan(
+                    identity = AlarmIdentity(AlarmKind.SNOOZE, reminder.id),
+                    triggerAt = snoozedUntil,
+                ),
+            ),
+            result,
+        )
+    }
+
+    @Test
     fun `disabled reminder is not scheduled`() {
         val reminder = reminder(
             enabled = false,
@@ -96,4 +134,3 @@ class AlarmPlannerTest {
         )
     }
 }
-

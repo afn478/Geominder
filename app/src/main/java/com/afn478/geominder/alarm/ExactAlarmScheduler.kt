@@ -11,7 +11,7 @@ import java.time.Instant
 sealed interface AlarmScheduleResult {
     data class Scheduled(
         val plan: AlarmPlan,
-        /** Past deadlines are scheduled for now so AlarmManager delivers them promptly. */
+        /** Instant passed to AlarmManager after applying the alarm kind's scheduling policy. */
         val scheduledAt: Instant,
         val scheduleMode: AlarmScheduleMode = AlarmScheduleMode.EXACT,
         val deliveryMode: AlarmDeliveryMode = AlarmDeliveryMode.FULL_SCREEN_ELIGIBLE,
@@ -104,10 +104,13 @@ class AndroidExactAlarmScheduler(
     private val intentFactory = AlarmIntentFactory(context.applicationContext)
 
     override fun schedule(reminder: Reminder): AlarmScheduleResult {
-        val decision = AlarmPlanner.forReminder(reminder)
+        val decision = AlarmPlanner.forReminder(reminder, clock.instant())
         if (decision is ReminderAlarmPlan.None) {
-            if (decision.reason == NoAlarmReason.NOT_PENDING) {
-                cancel(reminder)
+            when (decision.reason) {
+                NoAlarmReason.NOT_PENDING -> cancel(reminder)
+                NoAlarmReason.TIME_TRIGGER_EXPIRED ->
+                    reminder.timeTrigger?.let { cancelTime(reminder.id, it.id) }
+                NoAlarmReason.NO_TIME_TRIGGER -> Unit
             }
             return AlarmScheduleResult.NotApplicable(decision.reason)
         }
@@ -157,7 +160,16 @@ class AndroidExactAlarmScheduler(
     }
 
     private fun schedule(plan: AlarmPlan): AlarmScheduleResult {
-        val scheduledAt = maxOf(plan.triggerAt, clock.instant())
+        val now = clock.instant()
+        if (
+            plan.identity.kind == AlarmKind.TIME &&
+            plan.triggerAt.isBefore(now)
+        ) {
+            cancel(plan.identity)
+            return AlarmScheduleResult.NotApplicable(NoAlarmReason.TIME_TRIGGER_EXPIRED)
+        }
+
+        val scheduledAt = maxOf(plan.triggerAt, now)
         return when (val decision = AlarmSchedulingPolicy.forCapabilities(
             permissionController.capabilities(),
         )) {
