@@ -73,7 +73,8 @@ Keep the release keystore outside the repository. CI expects these GitHub Action
 The release build reads the corresponding environment variables and writes the decoded keystore only
 to the CI runner's temporary directory. The workflow verifies the signature, checks the APK version
 against a release tag when one is used, and uploads one universal APK plus its SHA-256 checksum.
-For a tag-triggered run, it also publishes those files as assets on the matching GitHub Release.
+For a tag-triggered run, the same job also publishes those files as assets on the matching GitHub
+Release.
 
 ## Install on a device
 

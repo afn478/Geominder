@@ -7,14 +7,12 @@ on:
       - "v*.*.*"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
     name: Build signed universal APK
     runs-on: ubuntu-latest
-    outputs:
-      version_name: ${{ steps.stage-release.outputs.version_name }}
 
     steps:
       - name: Check out repository
@@ -124,25 +122,11 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  publish:
-    name: Publish GitHub release
-    if: github.ref_type == 'tag'
-    needs: build
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: Download release assets
-        uses: actions/download-artifact@v4
-        with:
-          name: geominder-${{ needs.build.outputs.version_name }}-universal-apk
-          path: dist
-
-      - name: Create or update GitHub release
+      - name: Publish GitHub release
+        if: github.ref_type == 'tag'
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION_NAME: ${{ needs.build.outputs.version_name }}
+          VERSION_NAME: ${{ steps.stage-release.outputs.version_name }}
         shell: bash
         run: |
           set -euo pipefail
