@@ -13,8 +13,6 @@ jobs:
   build:
     name: Build signed universal APK
     runs-on: ubuntu-latest
-    env:
-      ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/geominder-upload.jks
 
     steps:
       - name: Check out repository
@@ -61,9 +59,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_KEYSTORE_PATH"
-          chmod 600 "$ANDROID_KEYSTORE_PATH"
-          test -s "$ANDROID_KEYSTORE_PATH"
+          keystore_path="$RUNNER_TEMP/geominder-upload.jks"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
+          chmod 600 "$keystore_path"
+          test -s "$keystore_path"
+          echo "ANDROID_KEYSTORE_PATH=$keystore_path" >> "$GITHUB_ENV"
 
       - name: Build signed release APK
         env:
