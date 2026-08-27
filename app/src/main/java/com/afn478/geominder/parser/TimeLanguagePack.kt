@@ -68,4 +68,29 @@ data class TimeLanguagePack(
     val nextWords: Set<String>,
     val fromPrefixes: List<Regex>,
     val fromSuffixes: List<Regex>,
+    val temporalJoiners: List<Regex> = defaultTemporalJoiners(language),
 )
+
+private fun defaultTemporalJoiners(language: SupportedLanguage): List<Regex> = when (language) {
+    SupportedLanguage.ENGLISH -> listOf(
+        Regex("(?iu)(?<![\\p{L}\\p{N}])(?:at|on|by)"),
+    )
+    SupportedLanguage.GERMAN -> listOf(
+        Regex("(?iu)(?<![\\p{L}\\p{N}])(?:am|an|um|gegen|ab|bis)"),
+    )
+    SupportedLanguage.FRENCH -> listOf(
+        Regex("(?iu)(?<![\\p{L}\\p{N}])(?:le|la|les|au|aux|à|a|vers|pour|dès|des)"),
+    )
+    SupportedLanguage.ITALIAN -> listOf(
+        Regex("(?iu)(?<![\\p{L}\\p{N}])(?:il|lo|la|i|gli|le|al|allo|alla|alle|a|verso|ore|entro)"),
+    )
+    SupportedLanguage.SPANISH -> listOf(
+        Regex("(?iu)(?<![\\p{L}\\p{N}])(?:el|la|los|las|al|a|sobre|para|hasta)"),
+    )
+    SupportedLanguage.RUSSIAN -> listOf(
+        Regex("(?iu)(?<![\\p{L}\\p{N}])(?:в|во|на|к|ко|до|с)"),
+    )
+    SupportedLanguage.JAPANESE -> listOf(Regex("に"))
+    SupportedLanguage.CHINESE -> listOf(Regex("在"))
+    SupportedLanguage.KOREAN -> listOf(Regex("에"))
+}

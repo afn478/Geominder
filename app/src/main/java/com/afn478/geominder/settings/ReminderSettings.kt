@@ -11,6 +11,7 @@ data class ReminderSettings(
     val defaultGeofenceRadiusMeters: Double = SettingsValidation.DEFAULT_RADIUS_METERS,
     val keywordTimes: Map<String, LocalTime> = KeywordTimeDictionary.DEFAULTS.toMap(),
     val keywordLanguage: SupportedLanguage = SupportedLanguage.ENGLISH,
+    val removeTimeExpressionsFromText: Boolean = true,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val accentTheme: AccentTheme = AccentTheme.DYNAMIC,
     val sortOrder: ReminderSortOrder = ReminderSortOrder.DEFAULT,

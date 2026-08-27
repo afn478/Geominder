@@ -110,6 +110,8 @@
     <string name="metres">metros</string>
     <string name="save_radius">Guardar radio</string>
     <string name="preset_times_description">Las palabras clave como «mañana» se reconocen mientras escribes un recordatorio.</string>
+    <string name="remove_time_expressions_from_text">Eliminar expresiones de tiempo del texto del recordatorio</string>
+    <string name="remove_time_expressions_from_text_description">Al guardar, elimina del texto del recordatorio las fechas y horas reconocidas.</string>
     <string name="add_preset">Añadir preajuste</string>
     <string name="edit">Editar</string>
     <string name="remove">Quitar</string>

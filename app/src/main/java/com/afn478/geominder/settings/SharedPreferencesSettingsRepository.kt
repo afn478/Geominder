@@ -49,6 +49,11 @@ class SharedPreferencesSettingsRepository(
         updateKeywordTimes(defaultKeywordTimes)
     }
 
+    override suspend fun setRemoveTimeExpressionsFromText(enabled: Boolean) {
+        preferences.edit().putBoolean(KEY_REMOVE_TIME_EXPRESSIONS, enabled).apply()
+        _settings.value = _settings.value.copy(removeTimeExpressionsFromText = enabled)
+    }
+
     override suspend fun setThemeMode(mode: ThemeMode) {
         preferences.edit().putString(KEY_THEME_MODE, mode.name).apply()
         _settings.value = _settings.value.copy(themeMode = mode)
@@ -104,6 +109,10 @@ class SharedPreferencesSettingsRepository(
             ),
             keywordTimes = keywordTimes,
             keywordLanguage = defaultLanguage,
+            removeTimeExpressionsFromText = preferences.getBoolean(
+                KEY_REMOVE_TIME_EXPRESSIONS,
+                true,
+            ),
             themeMode = ThemeMode.fromStorage(preferences.getString(KEY_THEME_MODE, null)),
             accentTheme = AccentTheme.fromStorage(preferences.getString(KEY_ACCENT_THEME, null)),
             sortOrder = SettingsCodec.decodeSortOrder(
@@ -118,6 +127,7 @@ class SharedPreferencesSettingsRepository(
         const val KEY_DEFAULT_RADIUS = "default_geofence_radius_meters"
         const val KEY_KEYWORD_TIMES = "keyword_time_presets"
         const val KEY_KEYWORD_LANGUAGE = "keyword_time_language"
+        const val KEY_REMOVE_TIME_EXPRESSIONS = "remove_time_expressions_from_text"
         const val KEY_THEME_MODE = "theme_mode"
         const val KEY_ACCENT_THEME = "accent_theme"
         const val KEY_SORT_FIELD = "sort_field"

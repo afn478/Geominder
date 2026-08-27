@@ -110,6 +110,8 @@
     <string name="metres">mètres</string>
     <string name="save_radius">Enregistrer le rayon</string>
     <string name="preset_times_description">Les mots-clés comme « matin » sont reconnus pendant la saisie d’un rappel.</string>
+    <string name="remove_time_expressions_from_text">Supprimer les expressions temporelles du texte du rappel</string>
+    <string name="remove_time_expressions_from_text_description">Lors de l’enregistrement, supprimer du texte les dates et heures reconnues.</string>
     <string name="add_preset">Ajouter une heure prédéfinie</string>
     <string name="edit">Modifier</string>
     <string name="remove">Supprimer</string>

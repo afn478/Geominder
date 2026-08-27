@@ -43,7 +43,7 @@ class AddReminderViewModelTest {
     )
 
     @Test
-    fun `typing parses offline and an edited time is persisted with source text intact`() {
+    fun `typing parses offline and an edited time is persisted with filtered display text`() {
         val repository = FakeReminderRepository()
         val actions = RecordingPostSaveActions()
         val viewModel = viewModel(repository = repository, actions = actions)
@@ -59,11 +59,30 @@ class AddReminderViewModelTest {
 
         val saved = repository.saved.single()
         assertEquals(source, saved.sourceText)
-        assertEquals("Call home tomorrow at 8:00", saved.title)
+        assertEquals("Call home", saved.title)
+        assertEquals("Call home", saved.text)
         assertEquals(Instant.parse("2026-08-30T18:15:00Z"), saved.timeTrigger?.exactAt)
         assertEquals(listOf(saved), actions.scheduled)
         assertTrue(actions.registered.isEmpty())
         assertEquals(saved, viewModel.uiState.value.savedReminder)
+    }
+
+    @Test
+    fun `time expression filtering can be disabled`() {
+        val repository = FakeReminderRepository()
+        val viewModel = viewModel(
+            repository = repository,
+            removeTimeExpressionsFromText = false,
+        )
+        val source = "Call home tomorrow at 8:00"
+
+        viewModel.onSourceTextChange(source)
+        viewModel.save()
+
+        val saved = repository.saved.single()
+        assertEquals(source, saved.sourceText)
+        assertEquals(source, saved.title)
+        assertEquals(source, saved.text)
     }
 
     @Test
@@ -612,6 +631,7 @@ class AddReminderViewModelTest {
         labelResolver: GeoLabelResolver = GeoLabelResolver { latitude, longitude, callback ->
             callback("near $latitude, $longitude")
         },
+        removeTimeExpressionsFromText: Boolean = true,
         editingReminderId: ReminderId? = null,
     ): AddReminderViewModel = AddReminderViewModel(
         repository = repository,
@@ -620,6 +640,7 @@ class AddReminderViewModelTest {
         locationProvider = locationProvider,
         geoLabelResolver = labelResolver,
         postSaveActions = actions,
+        removeTimeExpressionsFromText = removeTimeExpressionsFromText,
         clock = clock,
         localeProvider = { Locale.US },
         injectedScope = CoroutineScope(Dispatchers.Unconfined),

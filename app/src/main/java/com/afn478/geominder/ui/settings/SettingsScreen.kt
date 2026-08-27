@@ -40,6 +40,7 @@ import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -156,6 +157,7 @@ fun SettingsRoute(
         onRadiusChange = viewModel::onRadiusChange,
         onThemeModeChange = viewModel::onThemeModeChange,
         onAccentThemeChange = viewModel::onAccentThemeChange,
+        onRemoveTimeExpressionsFromTextChange = viewModel::onRemoveTimeExpressionsFromTextChange,
         onSaveRadius = viewModel::saveRadius,
         onAddKeyword = viewModel::beginAddKeyword,
         onEditKeyword = viewModel::beginEditKeyword,
@@ -183,6 +185,7 @@ fun SettingsScreen(
     onRadiusChange: (String) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onAccentThemeChange: (AccentTheme) -> Unit,
+    onRemoveTimeExpressionsFromTextChange: (Boolean) -> Unit,
     onSaveRadius: () -> Unit,
     onAddKeyword: () -> Unit,
     onEditKeyword: (String) -> Unit,
@@ -263,6 +266,7 @@ fun SettingsScreen(
                     onEditKeyword = onEditKeyword,
                     onKeywordChange = onKeywordChange,
                     onKeywordTimeChange = onKeywordTimeChange,
+                    onRemoveTimeExpressionsFromTextChange = onRemoveTimeExpressionsFromTextChange,
                     onSaveKeyword = onSaveKeyword,
                     onCancelKeywordEdit = onCancelKeywordEdit,
                     onRemoveKeyword = onRemoveKeyword,
@@ -555,6 +559,7 @@ private fun KeywordSection(
     onEditKeyword: (String) -> Unit,
     onKeywordChange: (String) -> Unit,
     onKeywordTimeChange: (String) -> Unit,
+    onRemoveTimeExpressionsFromTextChange: (Boolean) -> Unit,
     onSaveKeyword: () -> Unit,
     onCancelKeywordEdit: () -> Unit,
     onRemoveKeyword: (String) -> Unit,
@@ -566,6 +571,27 @@ private fun KeywordSection(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.remove_time_expressions_from_text),
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Text(
+                    text = stringResource(R.string.remove_time_expressions_from_text_description),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Switch(
+                checked = state.settings.removeTimeExpressionsFromText,
+                onCheckedChange = onRemoveTimeExpressionsFromTextChange,
+            )
+        }
 
         if (state.keywordEditorVisible) {
             KeywordEditor(

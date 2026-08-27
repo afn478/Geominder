@@ -17,6 +17,8 @@ interface SettingsRepository : DefaultGeoRadiusProvider {
 
     suspend fun resetKeywordTimes()
 
+    suspend fun setRemoveTimeExpressionsFromText(enabled: Boolean) {}
+
     suspend fun setThemeMode(mode: ThemeMode) {}
 
     suspend fun setAccentTheme(accent: AccentTheme) {}

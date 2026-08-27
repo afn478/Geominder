@@ -57,6 +57,7 @@ class AddReminderViewModel(
     private val geoLabelResolver: GeoLabelResolver,
     private val postSaveActions: ReminderPostSaveActions,
     private val defaultReminderTitle: String = DEFAULT_REMINDER_TEXT,
+    private val removeTimeExpressionsFromText: Boolean = true,
     private val clock: Clock = Clock.systemDefaultZone(),
     private val localeProvider: () -> Locale = Locale::getDefault,
     private val injectedScope: CoroutineScope? = null,
@@ -708,7 +709,11 @@ class AddReminderViewModel(
         }
 
         val now = clock.instant()
-        val trimmedText = state.sourceText.trim()
+        val trimmedText = if (removeTimeExpressionsFromText) {
+            (state.parseResult?.textWithoutTimeExpression() ?: state.sourceText).trim()
+        } else {
+            state.sourceText.trim()
+        }
         val displayText = trimmedText.ifBlank { defaultReminderTitle }
         return ReminderBuildResult.Valid(
             Reminder(
@@ -852,6 +857,7 @@ class AddReminderViewModelFactory(
     private val geoLabelResolver: GeoLabelResolver,
     private val postSaveActions: ReminderPostSaveActions,
     private val defaultReminderTitle: String = "Reminder",
+    private val removeTimeExpressionsFromText: Boolean = true,
     private val clock: Clock = Clock.systemDefaultZone(),
     private val editingReminderId: ReminderId? = null,
 ) : ViewModelProvider.Factory {
@@ -868,6 +874,7 @@ class AddReminderViewModelFactory(
             geoLabelResolver = geoLabelResolver,
             postSaveActions = postSaveActions,
             defaultReminderTitle = defaultReminderTitle,
+            removeTimeExpressionsFromText = removeTimeExpressionsFromText,
             clock = clock,
             editingReminderId = editingReminderId,
         ) as T

@@ -72,6 +72,10 @@ class SettingsViewModel(
 
     fun onAccentThemeChange(accent: AccentTheme) = persist { repository.setAccentTheme(accent) }
 
+    fun onRemoveTimeExpressionsFromTextChange(enabled: Boolean) = persist {
+        repository.setRemoveTimeExpressionsFromText(enabled)
+    }
+
     fun saveRadius() {
         when (val validation = SettingsValidation.radius(_uiState.value.radiusText)) {
             is ValidationResult.Invalid -> {

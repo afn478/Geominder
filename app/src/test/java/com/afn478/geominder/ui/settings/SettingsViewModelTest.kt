@@ -63,6 +63,16 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `time expression text filtering setting is persisted and reflected in state`() {
+        assertTrue(repository.settings.value.removeTimeExpressionsFromText)
+
+        viewModel.onRemoveTimeExpressionsFromTextChange(false)
+
+        assertFalse(repository.settings.value.removeTimeExpressionsFromText)
+        assertFalse(viewModel.uiState.value.settings.removeTimeExpressionsFromText)
+    }
+
+    @Test
     fun `keyword can be added edited renamed and removed`() {
         viewModel.beginAddKeyword()
         viewModel.onKeywordChange("After Work")
@@ -154,6 +164,10 @@ class SettingsViewModelTest {
             state.value = ReminderSettings(
                 defaultGeofenceRadiusMeters = state.value.defaultGeofenceRadiusMeters,
             )
+        }
+
+        override suspend fun setRemoveTimeExpressionsFromText(enabled: Boolean) {
+            state.value = state.value.copy(removeTimeExpressionsFromText = enabled)
         }
     }
 }

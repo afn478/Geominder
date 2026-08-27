@@ -110,6 +110,8 @@
     <string name="metres">メートル</string>
     <string name="save_radius">半径を保存</string>
     <string name="preset_times_description">リマインダーの入力中に、「朝」などのキーワードが認識されます。</string>
+    <string name="remove_time_expressions_from_text">リマインダーのテキストから時刻表現を削除</string>
+    <string name="remove_time_expressions_from_text_description">保存時に、認識した日付と時刻をリマインダーのテキストから削除します。</string>
     <string name="add_preset">定型時刻を追加</string>
     <string name="edit">編集</string>
     <string name="remove">削除</string>

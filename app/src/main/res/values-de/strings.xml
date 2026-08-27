@@ -110,6 +110,8 @@
     <string name="metres">Meter</string>
     <string name="save_radius">Radius speichern</string>
     <string name="preset_times_description">Schlüsselwörter wie „morgens“ werden erkannt, während du eine Erinnerung eingibst.</string>
+    <string name="remove_time_expressions_from_text">Zeitangaben aus dem Erinnerungstext entfernen</string>
+    <string name="remove_time_expressions_from_text_description">Beim Speichern erkannte Datums- und Zeitangaben aus dem Erinnerungstext entfernen.</string>
     <string name="add_preset">Voreinstellung hinzufügen</string>
     <string name="edit">Bearbeiten</string>
     <string name="remove">Entfernen</string>

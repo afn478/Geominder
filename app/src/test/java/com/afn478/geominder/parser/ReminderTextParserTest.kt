@@ -162,6 +162,13 @@ class ReminderTextParserTest {
     }
 
     @Test
+    fun `removes date and time spans without removing text between them`() {
+        val result = ReminderTextParser().parse("Tomorrow call home at 8:00", context)
+
+        assertEquals("call home", result.textWithoutTimeExpression())
+    }
+
+    @Test
     fun `twenty minute duration resolves from the fixed context instant`() {
         val result = ReminderTextParser().parse("Check oven in 20 minutes", context)
 

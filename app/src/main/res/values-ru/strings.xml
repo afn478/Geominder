@@ -110,6 +110,8 @@
     <string name="metres">метров</string>
     <string name="save_radius">Сохранить радиус</string>
     <string name="preset_times_description">Ключевые слова, например «утро», распознаются во время ввода напоминания.</string>
+    <string name="remove_time_expressions_from_text">Удалять обозначения времени из текста напоминания</string>
+    <string name="remove_time_expressions_from_text_description">При сохранении удалять распознанные даты и время из текста напоминания.</string>
     <string name="add_preset">Добавить предустановку</string>
     <string name="edit">Изменить</string>
     <string name="remove">Удалить</string>

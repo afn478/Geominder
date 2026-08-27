@@ -110,6 +110,8 @@
     <string name="metres">米</string>
     <string name="save_radius">保存半径</string>
     <string name="preset_times_description">输入提醒时会识别“早上”等关键词。</string>
+    <string name="remove_time_expressions_from_text">从提醒文本中删除时间表达式</string>
+    <string name="remove_time_expressions_from_text_description">保存时，从提醒文本中删除已识别的日期和时间。</string>
     <string name="add_preset">添加预设</string>
     <string name="edit">编辑</string>
     <string name="remove">删除</string>

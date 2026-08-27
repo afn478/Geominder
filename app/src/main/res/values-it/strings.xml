@@ -110,6 +110,8 @@
     <string name="metres">metri</string>
     <string name="save_radius">Salva raggio</string>
     <string name="preset_times_description">Parole chiave come «mattina» vengono riconosciute mentre scrivi un promemoria.</string>
+    <string name="remove_time_expressions_from_text">Rimuovi le espressioni temporali dal testo del promemoria</string>
+    <string name="remove_time_expressions_from_text_description">Durante il salvataggio, rimuove dal testo le date e gli orari riconosciuti.</string>
     <string name="add_preset">Aggiungi preimpostazione</string>
     <string name="edit">Modifica</string>
     <string name="remove">Rimuovi</string>

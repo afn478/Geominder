@@ -110,6 +110,8 @@
     <string name="metres">metres</string>
     <string name="save_radius">Save radius</string>
     <string name="preset_times_description">Keywords such as “morning” are recognized while you type a reminder.</string>
+    <string name="remove_time_expressions_from_text">Remove time expressions from reminder text</string>
+    <string name="remove_time_expressions_from_text_description">When saving, remove recognized dates and times from the reminder text.</string>
     <string name="add_preset">Add preset</string>
     <string name="edit">Edit</string>
     <string name="remove">Remove</string>

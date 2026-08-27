@@ -176,6 +176,7 @@ fun ReminderApp(
                 container = container,
                 settingsSnapshotKey = settings.hashCode(),
                 keywordTimes = settings.keywordTimes,
+                removeTimeExpressionsFromText = settings.removeTimeExpressionsFromText,
                 editingReminderId = reminderId,
                 onBack = navController::popBackStack,
                 onSaved = {
@@ -234,6 +235,7 @@ fun ReminderApp(
             container = container,
             settingsSnapshotKey = settings.hashCode(),
             keywordTimes = settings.keywordTimes,
+            removeTimeExpressionsFromText = settings.removeTimeExpressionsFromText,
             session = session,
             onDismiss = { addComposerSession = null },
         )
@@ -246,6 +248,7 @@ private fun AddReminderDialog(
     container: AppContainer,
     settingsSnapshotKey: Int,
     keywordTimes: Map<String, LocalTime>,
+    removeTimeExpressionsFromText: Boolean,
     session: Int,
     onDismiss: () -> Unit,
 ) {
@@ -283,6 +286,7 @@ private fun AddReminderDialog(
             geoLabelResolver = container.geoLabelResolver,
             postSaveActions = container.schedulingCoordinator,
             defaultReminderTitle = stringResource(R.string.reminder),
+            removeTimeExpressionsFromText = removeTimeExpressionsFromText,
         ),
     )
     val state by addViewModel.uiState.collectAsStateWithLifecycle()
@@ -407,6 +411,7 @@ private fun AddReminderHost(
     container: AppContainer,
     settingsSnapshotKey: Int,
     keywordTimes: Map<String, LocalTime>,
+    removeTimeExpressionsFromText: Boolean,
     editingReminderId: ReminderId? = null,
     onBack: () -> Unit,
     onSaved: () -> Unit,
@@ -421,6 +426,7 @@ private fun AddReminderHost(
             geoLabelResolver = container.geoLabelResolver,
             postSaveActions = container.schedulingCoordinator,
             defaultReminderTitle = stringResource(R.string.reminder),
+            removeTimeExpressionsFromText = removeTimeExpressionsFromText,
             editingReminderId = editingReminderId,
         ),
     )

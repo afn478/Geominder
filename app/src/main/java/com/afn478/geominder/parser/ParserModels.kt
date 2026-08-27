@@ -72,6 +72,7 @@ data class DateTimeDetection(
     val zoneId: ZoneId,
     val precision: TemporalPrecision,
     val role: TemporalRole = TemporalRole.REMINDER_TRIGGER,
+    val expressionSpans: List<SourceSpan> = listOf(span),
 ) : EditableDetection {
     override val type: DetectionType = DetectionType.DATE_TIME
 
@@ -146,6 +147,36 @@ data class ParseResult(
     val gps: GpsDetection?
         get() = detections.filterIsInstance<GpsDetection>().firstOrNull()
 
+    /** Returns the source text with the recognized temporal expression removed. */
+    fun textWithoutTimeExpression(): String {
+        val spans = dateTime?.expressionSpans
+            .orEmpty()
+            .filter { span ->
+                span.start < span.endExclusive &&
+                    span.start >= 0 &&
+                    span.endExclusive <= sourceText.length
+            }
+            .sortedBy(SourceSpan::start)
+        if (spans.isEmpty()) {
+            return sourceText
+        }
+
+        val filteredText = buildString {
+            var cursor = 0
+            spans.forEach { span ->
+                if (span.start >= cursor) {
+                    append(sourceText, cursor, span.start)
+                }
+                cursor = maxOf(cursor, span.endExclusive)
+            }
+            append(sourceText, cursor, sourceText.length)
+        }
+
+        return filteredText
+            .replace(INLINE_WHITESPACE, " ")
+            .trim()
+    }
+
     /** Applies the value committed by an editable chip and returns a new parse result. */
     fun applyEdit(edit: DetectionEdit): ParseResult {
         var found = false
@@ -179,6 +210,8 @@ data class ParseResult(
         return copy(detections = edited)
     }
 }
+
+private val INLINE_WHITESPACE = Regex("[\\t ]+")
 
 internal fun resolveLocalDateTime(
     date: LocalDate,

@@ -81,6 +81,7 @@ class ReminderTextParser private constructor(
                 } else {
                     TemporalRole.REMINDER_TRIGGER
                 },
+                expressionSpans = listOf(duration.span),
             )
         }
         if (date == null && time == null) return null
@@ -103,6 +104,16 @@ class ReminderTextParser private constructor(
             date != null -> TemporalPrecision.DATE
             else -> TemporalPrecision.TIME
         }
+        val expressionSpans = buildList {
+            date?.span?.let { dateSpan ->
+                add(dateSpan)
+                addAll(temporalJoinerSpans(source, dateSpan))
+            }
+            time?.span?.let { timeSpan ->
+                add(timeSpan)
+                addAll(temporalJoinerSpans(source, timeSpan))
+            }
+        }
 
         return DateTimeDetection(
             id = detectionId(DetectionType.DATE_TIME, span),
@@ -123,7 +134,18 @@ class ReminderTextParser private constructor(
             } else {
                 TemporalRole.REMINDER_TRIGGER
             },
+            expressionSpans = expressionSpans,
         )
+    }
+
+    private fun temporalJoinerSpans(source: String, temporalSpan: SourceSpan): List<SourceSpan> {
+        val precedingText = source.substring(0, temporalSpan.start)
+        return languagePack.temporalJoiners.flatMap { joiner ->
+            joiner.findAll(precedingText)
+                .filter { match -> precedingText.substring(match.range.last + 1).isBlank() }
+                .map { match -> match.range.toSpan() }
+                .toList()
+        }
     }
 
     private fun isIntroducedByFrom(source: String, temporalSpan: SourceSpan): Boolean =
