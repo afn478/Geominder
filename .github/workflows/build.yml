@@ -1,11 +1,20 @@
-name: Build Android app
+name: Build Android release
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: read
 
 jobs:
   build:
+    name: Build signed universal APK
     runs-on: ubuntu-latest
+    env:
+      ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/geominder-upload.jks
 
     steps:
       - name: Check out repository
@@ -20,11 +29,95 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug
+      - name: Check signing secrets
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ANDROID_KEYSTORE_BASE64" || {
+            echo "::error::ANDROID_KEYSTORE_BASE64 is not configured"
+            exit 1
+          }
+          test -n "$ANDROID_KEYSTORE_PASSWORD" || {
+            echo "::error::ANDROID_KEYSTORE_PASSWORD is not configured"
+            exit 1
+          }
+          test -n "$ANDROID_KEY_PASSWORD" || {
+            echo "::error::ANDROID_KEY_PASSWORD is not configured"
+            exit 1
+          }
+          test -n "$ANDROID_KEY_ALIAS" || {
+            echo "::error::ANDROID_KEY_ALIAS is not configured"
+            exit 1
+          }
 
-      - name: Upload debug APK
+      - name: Restore signing keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$ANDROID_KEYSTORE_PATH"
+          chmod 600 "$ANDROID_KEYSTORE_PATH"
+          test -s "$ANDROID_KEYSTORE_PATH"
+
+      - name: Build signed release APK
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: ./gradlew --no-daemon :app:assembleRelease
+
+      - name: Verify and stage universal APK
+        id: stage-release
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          apk_path="app/build/outputs/apk/release/app-release.apk"
+          test -f "$apk_path" || {
+            echo "::error::Signed release APK was not produced"
+            exit 1
+          }
+
+          apk_count="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | wc -l | tr -d ' ')"
+          test "$apk_count" = "1" || {
+            echo "::error::Expected exactly one universal APK, found $apk_count"
+            find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print
+            exit 1
+          }
+
+          apksigner_path="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          aapt2_path="$(find "$ANDROID_HOME/build-tools" -type f -name aapt2 | sort -V | tail -n 1)"
+          test -x "$apksigner_path"
+          test -x "$aapt2_path"
+
+          "$apksigner_path" verify --verbose "$apk_path"
+
+          version_name="$("$aapt2_path" dump badging "$apk_path" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p" | head -n 1)"
+          test -n "$version_name" || {
+            echo "::error::Could not read the APK version"
+            exit 1
+          }
+
+          if [[ "${GITHUB_REF_TYPE:-}" == "tag" && "${GITHUB_REF_NAME:-}" != "v${version_name}" ]]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match APK version ${version_name}"
+            exit 1
+          fi
+
+          mkdir -p dist
+          cp "$apk_path" "dist/geominder-${version_name}-universal.apk"
+          sha256sum "dist/geominder-${version_name}-universal.apk" > "dist/geominder-${version_name}-universal.apk.sha256"
+          echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
+
+      - name: Upload signed universal APK
         uses: actions/upload-artifact@v4
         with:
-          name: geominder-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: geominder-${{ steps.stage-release.outputs.version_name }}-universal-apk
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30

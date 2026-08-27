@@ -44,7 +44,7 @@ Run commands from the repository root.
 | `./gradlew assembleDebug` | Build the debug APK. |
 | `./gradlew testDebugUnitTest` | Run the JVM unit-test suite. |
 | `./gradlew lint` | Run Android lint. |
-| `./gradlew assembleRelease` | Build the minified release variant. Signing is not configured in this repository. |
+| `./gradlew assembleRelease` | Build the minified release variant. Set the signing environment variables below to sign it. |
 | `./gradlew tasks --all` | List available Gradle tasks. |
 
 The main local verification command is:
@@ -60,6 +60,19 @@ app/build/outputs/apk/debug/app-debug.apk
 ```
 
 The first build may download the Gradle distribution and dependencies from the configured repositories.
+
+## Signed release builds
+
+Keep the release keystore outside the repository. CI expects these GitHub Actions secrets:
+
+- `ANDROID_KEYSTORE_BASE64`: the Base64-encoded `.jks` file.
+- `ANDROID_KEYSTORE_PASSWORD`: the keystore password.
+- `ANDROID_KEY_PASSWORD`: the key password.
+- `ANDROID_KEY_ALIAS`: the key alias.
+
+The release build reads the corresponding environment variables and writes the decoded keystore only
+to the CI runner's temporary directory. The workflow verifies the signature, checks the APK version
+against a release tag when one is used, and uploads one universal APK plus its SHA-256 checksum.
 
 ## Install on a device
 
