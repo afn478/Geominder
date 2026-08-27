@@ -264,7 +264,6 @@ fun AddReminderScreen(
             onActiveFromEnabledChange = onActiveFromEnabledChange,
             onActiveFromDateChange = onActiveFromDateChange,
             onActiveFromTimeChange = onActiveFromTimeChange,
-            onSave = onSave,
             modifier = modifier,
         )
         return
@@ -404,7 +403,6 @@ private fun EditReminderContent(
     onActiveFromEnabledChange: (Boolean) -> Unit,
     onActiveFromDateChange: (String) -> Unit,
     onActiveFromTimeChange: (String) -> Unit,
-    onSave: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -429,10 +427,10 @@ private fun EditReminderContent(
                 label = { Text(stringResource(R.string.reminder_text)) },
                 placeholder = { Text(stringResource(R.string.reminder_text_placeholder)) },
                 supportingText = { Text(stringResource(R.string.natural_language_supporting)) },
-                minLines = 2,
+                singleLine = false,
+                minLines = 1,
                 maxLines = 4,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { onSave() }),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
                 modifier = Modifier.fillMaxWidth(),
             )
 
