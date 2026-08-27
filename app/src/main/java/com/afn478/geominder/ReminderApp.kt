@@ -24,11 +24,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberStandardBottomSheetState
 import androidx.compose.runtime.Composable
@@ -69,6 +67,7 @@ import com.afn478.geominder.settings.SettingsPermissionAction
 import com.afn478.geominder.ui.add.AddReminderRoute
 import com.afn478.geominder.ui.add.AddReminderViewModel
 import com.afn478.geominder.ui.add.AddReminderViewModelFactory
+import com.afn478.geominder.ui.appbar.ReachableScaffold
 import com.afn478.geominder.ui.detail.ReminderDetailRoute
 import com.afn478.geominder.ui.detail.ReminderDetailViewModel
 import com.afn478.geominder.ui.detail.ReminderDetailViewModelFactory
@@ -436,41 +435,36 @@ private fun AddReminderHost(
     )
     val backDescription = stringResource(R.string.back)
     val saveChangesDescription = stringResource(R.string.save_changes)
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(screenTitle)
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
+    ReachableScaffold(
+        title = screenTitle,
+        compactTitleStartPadding = 56.dp,
+        navigationIcon = {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = backDescription,
+                )
+            }
+        },
+        actions = {
+            if (editingReminderId != null) {
+                IconButton(
+                    onClick = addViewModel::save,
+                    enabled = state.editingReminderId != null && !state.isSaving,
+                ) {
+                    if (state.isSaving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(12.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = backDescription,
+                            imageVector = Icons.Default.Check,
+                            contentDescription = saveChangesDescription,
                         )
                     }
-                },
-                actions = {
-                    if (editingReminderId != null) {
-                        IconButton(
-                            onClick = addViewModel::save,
-                            enabled = state.editingReminderId != null && !state.isSaving,
-                        ) {
-                            if (state.isSaving) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.padding(12.dp),
-                                    strokeWidth = 2.dp,
-                                )
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = saveChangesDescription,
-                                )
-                            }
-                        }
-                    }
-                },
-            )
+                }
+            }
         },
     ) { contentPadding ->
         AddReminderRoute(

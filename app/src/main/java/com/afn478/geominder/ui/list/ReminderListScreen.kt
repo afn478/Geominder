@@ -9,7 +9,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -44,9 +43,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
@@ -54,11 +51,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarState
-import androidx.compose.material3.TopAppBarScrollBehavior
-import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -72,18 +64,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -95,6 +82,7 @@ import com.afn478.geominder.localization.resource
 import com.afn478.geominder.settings.ReminderSortDirection
 import com.afn478.geominder.settings.ReminderSortField
 import com.afn478.geominder.settings.ReminderSortOrder
+import com.afn478.geominder.ui.appbar.ReachableScaffold
 import com.afn478.geominder.ui.tag.ReminderTagChips
 import com.afn478.geominder.ui.tag.ReminderTrashChip
 import com.afn478.geominder.ui.tag.color
@@ -150,234 +138,104 @@ fun ReminderListScreen(
     onDismissMessage: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val windowHeight = maxHeight
-        val snackbarHostState = remember { SnackbarHostState() }
-        val dismissLabel = stringResource(R.string.dismiss)
-        val deletedMessage = stringResource(R.string.reminder_deleted)
-        val undoLabel = stringResource(R.string.undo)
-        val messageText = state.message?.resolve()
-        LaunchedEffect(state.message) {
-            messageText?.let { message ->
-                snackbarHostState.showSnackbar(
-                    message = message,
-                    actionLabel = dismissLabel,
-                    duration = SnackbarDuration.Short,
-                )
-                onDismissMessage()
-            }
-        }
-        LaunchedEffect(state.undoDeleteReminderId) {
-            val reminderId = state.undoDeleteReminderId ?: return@LaunchedEffect
-            val result = snackbarHostState.showSnackbar(
-                message = deletedMessage,
-                actionLabel = undoLabel,
+    val snackbarHostState = remember { SnackbarHostState() }
+    val dismissLabel = stringResource(R.string.dismiss)
+    val deletedMessage = stringResource(R.string.reminder_deleted)
+    val undoLabel = stringResource(R.string.undo)
+    val messageText = state.message?.resolve()
+    LaunchedEffect(state.message) {
+        messageText?.let { message ->
+            snackbarHostState.showSnackbar(
+                message = message,
+                actionLabel = dismissLabel,
                 duration = SnackbarDuration.Short,
             )
-            if (result == SnackbarResult.ActionPerformed) {
-                onUndoDelete(reminderId)
-            }
-            onUndoDeleteNoticeConsumed(reminderId)
-        }
-        val useReachableAppBar = shouldUseReachableAppBar(
-            windowHeight = windowHeight,
-            windowWidth = maxWidth,
-        )
-        val appBarState = rememberTopAppBarState()
-        val scrollBehavior = if (useReachableAppBar) {
-            TopAppBarDefaults.exitUntilCollapsedScrollBehavior(appBarState)
-        } else {
-            null
-        }
-        val scaffoldModifier = Modifier
-            .fillMaxSize()
-            .then(
-                scrollBehavior?.let { Modifier.nestedScroll(it.nestedScrollConnection) }
-                    ?: Modifier,
-            )
-
-        Scaffold(
-            modifier = scaffoldModifier,
-            topBar = {
-                if (scrollBehavior == null) {
-                    ReminderCompactTopAppBar(
-                        onOpenSettings = onOpenSettings,
-                        sortOrder = state.sortOrder,
-                        onSortOrderChange = onSortOrderChange,
-                    )
-                } else {
-                    ReminderReachableTopAppBar(
-                        onOpenSettings = onOpenSettings,
-                        sortOrder = state.sortOrder,
-                        onSortOrderChange = onSortOrderChange,
-                        expandedHeight = reachableAppBarExpandedHeight(windowHeight),
-                        appBarState = appBarState,
-                        scrollBehavior = scrollBehavior,
-                    )
-                }
-            },
-            bottomBar = {
-                Column {
-                    ReminderTagChips(
-                        selectedTag = state.selectedTag,
-                        onTagClick = onTagFilterClick,
-                        modifier = Modifier.fillMaxWidth(),
-                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
-                        compact = true,
-                        trailingContent = {
-                            ReminderTrashChip(
-                                selected = state.showTrash,
-                                onClick = onToggleTrash,
-                            )
-                        },
-                    )
-                    NewReminderLauncher(onClick = onAddReminder)
-                }
-            },
-            snackbarHost = {
-                SnackbarHost(
-                    hostState = snackbarHostState,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
-            },
-        ) { contentPadding ->
-            when {
-                state.isLoading -> LoadingContent(
-                    modifier = Modifier.padding(contentPadding),
-                )
-
-                state.isEmpty -> EmptyReminderContent(
-                    title = when {
-                        state.showTrash && state.selectedTag == null ->
-                            UiText.resource(R.string.empty_recycling_bin)
-                        state.selectedTag != null ->
-                            UiText.resource(R.string.no_reminders_found)
-                        else -> UiText.resource(R.string.nothing_to_remember)
-                    },
-                    description = when {
-                        state.showTrash && state.selectedTag == null ->
-                            UiText.resource(R.string.deleted_reminders_will_appear)
-                        state.selectedTag != null ->
-                            UiText.resource(R.string.no_tagged_reminders)
-                        else -> UiText.resource(R.string.empty_reminders_description)
-                    },
-                    modifier = Modifier.padding(contentPadding),
-                )
-
-                else -> ReminderItems(
-                    items = state.items,
-                    busyReminderIds = state.busyReminderIds,
-                    onOpenReminder = onOpenReminder,
-                    onEditReminder = onEditReminder,
-                    onSetCompleted = onSetCompleted,
-                    onDeleteReminder = onDeleteReminder,
-                    onRestoreReminder = onRestoreReminder,
-                    inTrash = state.showTrash,
-                    modifier = Modifier.padding(contentPadding),
-                )
-            }
+            onDismissMessage()
         }
     }
-}
+    LaunchedEffect(state.undoDeleteReminderId) {
+        val reminderId = state.undoDeleteReminderId ?: return@LaunchedEffect
+        val result = snackbarHostState.showSnackbar(
+            message = deletedMessage,
+            actionLabel = undoLabel,
+            duration = SnackbarDuration.Short,
+        )
+        if (result == SnackbarResult.ActionPerformed) {
+            onUndoDelete(reminderId)
+        }
+        onUndoDeleteNoticeConsumed(reminderId)
+    }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ReminderCompactTopAppBar(
-    onOpenSettings: () -> Unit,
-    sortOrder: ReminderSortOrder,
-    onSortOrderChange: (ReminderSortOrder) -> Unit,
-) {
-    TopAppBar(
-        title = { Text(stringResource(R.string.reminders)) },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.background,
-            scrolledContainerColor = MaterialTheme.colorScheme.background,
-        ),
+    ReachableScaffold(
+        title = stringResource(R.string.reminders),
+        modifier = modifier,
         actions = {
             ReminderOverflowMenu(
                 onOpenSettings = onOpenSettings,
-                sortOrder = sortOrder,
+                sortOrder = state.sortOrder,
                 onSortOrderChange = onSortOrderChange,
             )
         },
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ReminderReachableTopAppBar(
-    onOpenSettings: () -> Unit,
-    sortOrder: ReminderSortOrder,
-    onSortOrderChange: (ReminderSortOrder) -> Unit,
-    expandedHeight: Dp,
-    appBarState: TopAppBarState,
-    scrollBehavior: TopAppBarScrollBehavior,
-) {
-    Box {
-        LargeTopAppBar(
-            title = { Spacer(Modifier) },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.background,
-                scrolledContainerColor = MaterialTheme.colorScheme.background,
-            ),
-            actions = {
-                ReminderOverflowMenu(
-                    onOpenSettings = onOpenSettings,
-                    sortOrder = sortOrder,
-                    onSortOrderChange = onSortOrderChange,
+        bottomBar = {
+            Column {
+                ReminderTagChips(
+                    selectedTag = state.selectedTag,
+                    onTagClick = onTagFilterClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp),
+                    compact = true,
+                    trailingContent = {
+                        ReminderTrashChip(
+                            selected = state.showTrash,
+                            onClick = onToggleTrash,
+                        )
+                    },
                 )
-            },
-            expandedHeight = expandedHeight,
-            scrollBehavior = scrollBehavior,
-        )
-        MorphingTopAppBarTitle(
-            collapsedFraction = appBarState.collapsedFraction,
-            modifier = Modifier.matchParentSize(),
-        )
-    }
-}
+                NewReminderLauncher(onClick = onAddReminder)
+            }
+        },
+        snackbarHost = {
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+        },
+    ) { contentPadding ->
+        when {
+            state.isLoading -> LoadingContent(
+                modifier = Modifier.padding(contentPadding),
+            )
 
-@Composable
-private fun MorphingTopAppBarTitle(
-    collapsedFraction: Float,
-    modifier: Modifier = Modifier,
-) {
-    BoxWithConstraints(modifier = modifier) {
-        val density = LocalDensity.current
-        var titleWidthPx by remember { mutableIntStateOf(0) }
-        val compactTitleStartPx = with(density) { COMPACT_TITLE_START_PADDING.toPx() }
-        val expandedTitleOffsetYPx = with(density) {
-            EXPANDED_TITLE_VERTICAL_OFFSET.toPx()
-        }
-        val compactTitleOffsetYPx = TopAppBarDefaults.windowInsets.getTop(density) / 2f
-        val containerWidthPx = with(density) { maxWidth.toPx() }
-        val expansionFraction = (1f - collapsedFraction).coerceIn(0f, 1f)
-        val expandedTitleStartPx = if (titleWidthPx > 0) {
-            (containerWidthPx - titleWidthPx) / 2f
-        } else {
-            compactTitleStartPx
-        }
-        val titleTranslationX = compactTitleStartPx +
-            (expandedTitleStartPx - compactTitleStartPx) * expansionFraction
-        val titleTranslationY = compactTitleOffsetYPx +
-            (expandedTitleOffsetYPx - compactTitleOffsetYPx) * expansionFraction
-        val titleScale = 1f +
-            (EXPANDED_TITLE_SCALE - 1f) * expansionFraction
-
-        Text(
-            text = stringResource(R.string.reminders),
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .onSizeChanged { titleWidthPx = it.width }
-                .graphicsLayer {
-                    translationX = titleTranslationX
-                    translationY = titleTranslationY
-                    scaleX = titleScale
-                    scaleY = titleScale
-                    transformOrigin = TransformOrigin.Center
+            state.isEmpty -> EmptyReminderContent(
+                title = when {
+                    state.showTrash && state.selectedTag == null ->
+                        UiText.resource(R.string.empty_recycling_bin)
+                    state.selectedTag != null ->
+                        UiText.resource(R.string.no_reminders_found)
+                    else -> UiText.resource(R.string.nothing_to_remember)
                 },
-        )
+                description = when {
+                    state.showTrash && state.selectedTag == null ->
+                        UiText.resource(R.string.deleted_reminders_will_appear)
+                    state.selectedTag != null ->
+                        UiText.resource(R.string.no_tagged_reminders)
+                    else -> UiText.resource(R.string.empty_reminders_description)
+                },
+                modifier = Modifier.padding(contentPadding),
+            )
+
+            else -> ReminderItems(
+                items = state.items,
+                busyReminderIds = state.busyReminderIds,
+                onOpenReminder = onOpenReminder,
+                onEditReminder = onEditReminder,
+                onSetCompleted = onSetCompleted,
+                onDeleteReminder = onDeleteReminder,
+                onRestoreReminder = onRestoreReminder,
+                inTrash = state.showTrash,
+                modifier = Modifier.padding(contentPadding),
+            )
+        }
     }
 }
 
@@ -537,28 +395,6 @@ private val SORT_MENU_OPTIONS = listOf(
         labelRes = R.string.sort_due_date_descending,
     ),
 )
-
-internal fun shouldUseReachableAppBar(
-    windowHeight: Dp,
-    windowWidth: Dp,
-): Boolean =
-    windowHeight >= REACHABLE_APP_BAR_MIN_WINDOW_HEIGHT && windowHeight > windowWidth
-
-@OptIn(ExperimentalMaterial3Api::class)
-internal fun reachableAppBarExpandedHeight(
-    windowHeight: Dp,
-): Dp =
-    (windowHeight * REACHABLE_APP_BAR_HEIGHT_FRACTION).coerceIn(
-        minimumValue = TopAppBarDefaults.LargeAppBarExpandedHeight,
-        maximumValue = REACHABLE_APP_BAR_MAX_EXPANDED_HEIGHT,
-    )
-
-private const val REACHABLE_APP_BAR_HEIGHT_FRACTION = 0.40f
-private const val EXPANDED_TITLE_SCALE = 1.55f
-private val COMPACT_TITLE_START_PADDING = 24.dp
-private val EXPANDED_TITLE_VERTICAL_OFFSET = 20.dp
-private val REACHABLE_APP_BAR_MIN_WINDOW_HEIGHT = 580.dp
-private val REACHABLE_APP_BAR_MAX_EXPANDED_HEIGHT = 360.dp
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)

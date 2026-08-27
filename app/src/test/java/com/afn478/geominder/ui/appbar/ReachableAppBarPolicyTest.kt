@@ -1,4 +1,4 @@
-package com.afn478.geominder.ui.list
+package com.afn478.geominder.ui.appbar
 
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
@@ -6,7 +6,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-class ReminderListLayoutPolicyTest {
+class ReachableAppBarPolicyTest {
     @Test
     fun `reachable app bar is limited to tall portrait windows`() {
         assertTrue(shouldUseReachableAppBar(windowHeight = 800.dp, windowWidth = 400.dp))

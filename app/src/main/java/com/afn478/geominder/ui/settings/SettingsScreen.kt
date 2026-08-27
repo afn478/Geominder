@@ -38,14 +38,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -73,6 +72,7 @@ import com.afn478.geominder.settings.AccentTheme
 import com.afn478.geominder.settings.PermissionUiItem
 import com.afn478.geominder.settings.SettingsPermissionAction
 import com.afn478.geominder.settings.ThemeMode
+import com.afn478.geominder.ui.appbar.ReachableScaffold
 import com.afn478.geominder.ui.theme.accentSwatchColor
 import com.afn478.geominder.ui.theme.resolveDarkTheme
 import com.afn478.geominder.ui.text.resolve
@@ -211,31 +211,32 @@ fun SettingsScreen(
         selectedSubsection = null
     }
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(stringResource(selectedSubsection?.titleRes ?: R.string.settings))
+    val pageScrollState = rememberScrollState()
+    val title = stringResource(selectedSubsection?.titleRes ?: R.string.settings)
+    LaunchedEffect(selectedSubsection) {
+        pageScrollState.scrollTo(0)
+    }
+
+    ReachableScaffold(
+        title = title,
+        modifier = modifier,
+        compactTitleStartPadding = 56.dp,
+        navigationIcon = {
+            IconButton(
+                onClick = {
+                    if (selectedSubsection == null) onBack() else selectedSubsection = null
                 },
-                navigationIcon = {
-                    IconButton(
-                        onClick = {
-                            if (selectedSubsection == null) onBack() else selectedSubsection = null
-                        },
-                    ) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.back),
-                        )
-                    }
-                },
-            )
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.back),
+                )
+            }
         },
     ) { contentPadding ->
         val pageModifier = Modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
+            .verticalScroll(pageScrollState)
             .padding(contentPadding)
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .navigationBarsPadding()
