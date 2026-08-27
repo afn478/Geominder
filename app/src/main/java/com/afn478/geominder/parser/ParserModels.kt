@@ -89,6 +89,8 @@ data class GpsDetection(
     override val confidence: Double,
     val latitude: Double,
     val longitude: Double,
+    /** Non-null when the coordinates came from a named location preset. */
+    val radiusMeters: Double? = null,
 ) : EditableDetection {
     override val type: DetectionType = DetectionType.GPS
 
@@ -98,6 +100,9 @@ data class GpsDetection(
         }
         require(longitude.isFinite() && longitude in -180.0..180.0) {
             "Longitude must be between -180 and 180"
+        }
+        require(radiusMeters == null || radiusMeters.isFinite() && radiusMeters > 0.0) {
+            "Preset radius must be a positive finite value"
         }
         require(confidence in 0.0..1.0) { "Confidence must be between zero and one" }
     }

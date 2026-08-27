@@ -63,6 +63,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.afn478.geominder.alert.AlertIntentFactory
 import com.afn478.geominder.backup.CalendarDocumentContract
+import com.afn478.geominder.domain.model.PresetLocation
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.localization.UiText
 import com.afn478.geominder.localization.resource
@@ -178,6 +179,7 @@ fun ReminderApp(
                 container = container,
                 settingsSnapshotKey = settings.hashCode(),
                 keywordTimes = settings.keywordTimes,
+                keywordLocations = settings.keywordLocations,
                 removeTimeExpressionsFromText = settings.removeTimeExpressionsFromText,
                 editingReminderId = reminderId,
                 onBack = navController::popBackStack,
@@ -209,6 +211,7 @@ fun ReminderApp(
                 factory = SettingsViewModelFactory(
                     repository = container.settingsRepository,
                     permissionStatusProvider = container.permissionStatusProvider,
+                    locationProvider = container.currentLocationProvider,
                 ),
             )
             SettingsRoute(
@@ -237,6 +240,7 @@ fun ReminderApp(
             container = container,
             settingsSnapshotKey = settings.hashCode(),
             keywordTimes = settings.keywordTimes,
+            keywordLocations = settings.keywordLocations,
             removeTimeExpressionsFromText = settings.removeTimeExpressionsFromText,
             session = session,
             onDismiss = { addComposerSession = null },
@@ -250,6 +254,7 @@ private fun AddReminderDialog(
     container: AppContainer,
     settingsSnapshotKey: Int,
     keywordTimes: Map<String, LocalTime>,
+    keywordLocations: Map<String, PresetLocation>,
     removeTimeExpressionsFromText: Boolean,
     session: Int,
     onDismiss: () -> Unit,
@@ -282,7 +287,10 @@ private fun AddReminderDialog(
         key = "add-composer-$settingsSnapshotKey-$session",
         factory = AddReminderViewModelFactory(
             repository = container.reminderRepository,
-            parser = container.parserFactory.fromCompleteKeywordTable(keywordTimes),
+            parser = container.parserFactory.fromCompleteKeywordTable(
+                keywordTimes = keywordTimes,
+                keywordLocations = keywordLocations,
+            ),
             defaultGeoRadiusProvider = container.settingsRepository,
             locationProvider = container.currentLocationProvider,
             geoLabelResolver = container.geoLabelResolver,
@@ -422,6 +430,7 @@ private fun AddReminderHost(
     container: AppContainer,
     settingsSnapshotKey: Int,
     keywordTimes: Map<String, LocalTime>,
+    keywordLocations: Map<String, PresetLocation>,
     removeTimeExpressionsFromText: Boolean,
     editingReminderId: ReminderId? = null,
     onBack: () -> Unit,
@@ -431,7 +440,10 @@ private fun AddReminderHost(
         key = "add-$settingsSnapshotKey",
         factory = AddReminderViewModelFactory(
             repository = container.reminderRepository,
-            parser = container.parserFactory.fromCompleteKeywordTable(keywordTimes),
+            parser = container.parserFactory.fromCompleteKeywordTable(
+                keywordTimes = keywordTimes,
+                keywordLocations = keywordLocations,
+            ),
             defaultGeoRadiusProvider = container.settingsRepository,
             locationProvider = container.currentLocationProvider,
             geoLabelResolver = container.geoLabelResolver,

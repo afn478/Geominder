@@ -266,4 +266,14 @@
     <string name="invalid_coordinates">座標が有効な緯度または経度の範囲外です</string>
     <string name="invalid_time">時刻が有効な範囲外です</string>
     <string name="invalid_date">日付が無効です</string>
+    <string name="preset_locations">場所のプリセット</string>
+    <string name="recognized_keyword_locations">認識される場所のキーワード</string>
+    <string name="preset_locations_description">「自宅」などのキーワードはリマインダーの入力中に認識され、保存した座標と半径が使用されます。</string>
+    <string name="add_preset_location">場所のプリセットを追加</string>
+    <string name="edit_preset_location">場所のプリセットを編集</string>
+    <string name="save_preset_location">場所のプリセットを保存</string>
+    <string name="location_keyword_placeholder">自宅</string>
+    <string name="preset_location_summary">%1$s · 半径 %2$s メートル</string>
+    <string name="no_preset_locations">場所のプリセットはありません。名前付きの場所を認識するには追加してください。</string>
+    <string name="reset_preset_locations">場所のプリセットをリセット</string>
 </resources>

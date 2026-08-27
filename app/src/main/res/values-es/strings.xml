@@ -266,4 +266,14 @@
     <string name="invalid_coordinates">Las coordenadas están fuera del intervalo válido de latitud y longitud</string>
     <string name="invalid_time">La hora está fuera del intervalo válido</string>
     <string name="invalid_date">La fecha no es válida</string>
+    <string name="preset_locations">Ubicaciones preestablecidas</string>
+    <string name="recognized_keyword_locations">Ubicaciones de palabras clave reconocidas</string>
+    <string name="preset_locations_description">Las palabras clave como «en casa» se reconocen mientras escribes un recordatorio y usan las coordenadas y el radio guardados.</string>
+    <string name="add_preset_location">Añadir ubicación preestablecida</string>
+    <string name="edit_preset_location">Editar ubicación preestablecida</string>
+    <string name="save_preset_location">Guardar ubicación preestablecida</string>
+    <string name="location_keyword_placeholder">en casa</string>
+    <string name="preset_location_summary">%1$s · radio %2$s metros</string>
+    <string name="no_preset_locations">No hay ubicaciones preestablecidas. Añade una para reconocer un lugar con nombre.</string>
+    <string name="reset_preset_locations">Restablecer ubicaciones preestablecidas</string>
 </resources>

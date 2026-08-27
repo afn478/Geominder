@@ -1,6 +1,7 @@
 package com.afn478.geominder.ui.list
 
 import com.afn478.geominder.R
+import com.afn478.geominder.domain.model.PresetLocation
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
@@ -478,6 +479,12 @@ class ReminderListViewModelTest {
         override suspend fun removeKeyword(keyword: String) {}
 
         override suspend fun resetKeywordTimes() {}
+
+        override suspend fun upsertKeywordLocation(keyword: String, location: PresetLocation) {}
+
+        override suspend fun removeKeywordLocation(keyword: String) {}
+
+        override suspend fun resetKeywordLocations() {}
 
         override suspend fun setSortOrder(sortOrder: ReminderSortOrder) {
             state.value = state.value.copy(sortOrder = sortOrder)

@@ -1,5 +1,6 @@
 package com.afn478.geominder.parser
 
+import com.afn478.geominder.domain.model.PresetLocation
 import com.afn478.geominder.localization.SupportedLanguage
 import java.text.DateFormatSymbols
 import java.time.DateTimeException
@@ -20,21 +21,25 @@ data class ParserOptions(
 class ReminderTextParser private constructor(
     private val languagePack: TimeLanguagePack,
     private val keywordDictionary: KeywordTimeDictionary,
+    private val keywordLocationDictionary: KeywordLocationDictionary,
     private val options: ParserOptions = ParserOptions(),
 ) {
     constructor(
         keywordOverrides: Map<String, LocalTime> = emptyMap(),
         options: ParserOptions = ParserOptions(),
         language: SupportedLanguage = SupportedLanguage.fromLocale(Locale.getDefault()),
+        keywordLocationOverrides: Map<String, PresetLocation> = emptyMap(),
     ) : this(
         languagePack = TimeLanguagePacks.forLanguage(language),
         keywordDictionary = KeywordTimeDictionary(keywordOverrides, language),
+        keywordLocationDictionary = KeywordLocationDictionary(keywordLocationOverrides),
         options = options,
     )
 
     val language: SupportedLanguage = languagePack.language
     val keywordTimes: Map<String, LocalTime> = keywordDictionary.entries
     val defaultKeywordTimes: Map<String, LocalTime> = keywordDictionary.defaultEntries
+    val keywordLocations: Map<String, PresetLocation> = keywordLocationDictionary.entries
 
     fun parse(
         sourceText: String,
@@ -203,6 +208,17 @@ class ReminderTextParser private constructor(
                 issues = issues,
             )?.let(candidates::add)
         }
+        keywordLocationDictionary.findMatches(source).forEach { match ->
+            candidates += GpsCandidate(
+                span = match.span,
+                // An explicit coordinate pair is a more precise override when both are present.
+                priority = 70,
+                confidence = 0.95,
+                latitude = match.location.latitude,
+                longitude = match.location.longitude,
+                radiusMeters = match.location.radiusMeters,
+            )
+        }
 
         val best = candidates.best() ?: return null
         return GpsDetection(
@@ -213,6 +229,7 @@ class ReminderTextParser private constructor(
             confidence = best.confidence,
             latitude = best.latitude,
             longitude = best.longitude,
+            radiusMeters = best.radiusMeters,
         )
     }
 
@@ -542,6 +559,7 @@ class ReminderTextParser private constructor(
         override val confidence: Double,
         val latitude: Double,
         val longitude: Double,
+        val radiusMeters: Double? = null,
     ) : Candidate
 
     private interface Candidate {
@@ -567,9 +585,11 @@ class ReminderTextParser private constructor(
             keywordTimes: Map<String, LocalTime>,
             options: ParserOptions = ParserOptions(),
             language: SupportedLanguage = SupportedLanguage.fromLocale(Locale.getDefault()),
+            keywordLocations: Map<String, PresetLocation> = emptyMap(),
         ): ReminderTextParser = ReminderTextParser(
             languagePack = TimeLanguagePacks.forLanguage(language),
             keywordDictionary = KeywordTimeDictionary.fromCompleteTable(keywordTimes, language),
+            keywordLocationDictionary = KeywordLocationDictionary.fromCompleteTable(keywordLocations),
             options = options,
         )
 

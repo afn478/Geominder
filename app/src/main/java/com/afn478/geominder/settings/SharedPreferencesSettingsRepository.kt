@@ -2,6 +2,7 @@ package com.afn478.geominder.settings
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.afn478.geominder.domain.model.PresetLocation
 import com.afn478.geominder.localization.SupportedLanguage
 import com.afn478.geominder.parser.ReminderTextParser
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,6 +50,22 @@ class SharedPreferencesSettingsRepository(
         updateKeywordTimes(defaultKeywordTimes)
     }
 
+    override suspend fun upsertKeywordLocation(keyword: String, location: PresetLocation) {
+        val normalized = (SettingsValidation.keyword(keyword) as? ValidationResult.Valid)?.value
+            ?: throw IllegalArgumentException("Invalid preset keyword")
+        updateKeywordLocations(_settings.value.keywordLocations + (normalized to location))
+    }
+
+    override suspend fun removeKeywordLocation(keyword: String) {
+        val normalized = (SettingsValidation.keyword(keyword) as? ValidationResult.Valid)?.value
+            ?: return
+        updateKeywordLocations(_settings.value.keywordLocations - normalized)
+    }
+
+    override suspend fun resetKeywordLocations() {
+        updateKeywordLocations(emptyMap())
+    }
+
     override suspend fun setRemoveTimeExpressionsFromText(enabled: Boolean) {
         preferences.edit().putBoolean(KEY_REMOVE_TIME_EXPRESSIONS, enabled).apply()
         _settings.value = _settings.value.copy(removeTimeExpressionsFromText = enabled)
@@ -84,6 +101,14 @@ class SharedPreferencesSettingsRepository(
         )
     }
 
+    private fun updateKeywordLocations(entries: Map<String, PresetLocation>) {
+        val snapshot = entries.toSortedMap()
+        preferences.edit()
+            .putString(KEY_KEYWORD_LOCATIONS, SettingsCodec.encodeKeywordLocations(snapshot))
+            .apply()
+        _settings.value = _settings.value.copy(keywordLocations = snapshot)
+    }
+
     private fun readSettings(): ReminderSettings {
         val storedKeywords = preferences.getString(KEY_KEYWORD_TIMES, null)
         val storedLanguage = preferences.getString(KEY_KEYWORD_LANGUAGE, null)
@@ -103,11 +128,15 @@ class SharedPreferencesSettingsRepository(
                 }
             }
             ?: defaultKeywordTimes
+        val keywordLocations = preferences.getString(KEY_KEYWORD_LOCATIONS, null)
+            ?.let(SettingsCodec::decodeKeywordLocations)
+            ?: emptyMap()
         return ReminderSettings(
             defaultGeofenceRadiusMeters = SettingsCodec.decodeRadius(
                 preferences.getString(KEY_DEFAULT_RADIUS, null),
             ),
             keywordTimes = keywordTimes,
+            keywordLocations = keywordLocations,
             keywordLanguage = defaultLanguage,
             removeTimeExpressionsFromText = preferences.getBoolean(
                 KEY_REMOVE_TIME_EXPRESSIONS,
@@ -126,6 +155,7 @@ class SharedPreferencesSettingsRepository(
         const val PREFERENCES_NAME = "reminder_settings"
         const val KEY_DEFAULT_RADIUS = "default_geofence_radius_meters"
         const val KEY_KEYWORD_TIMES = "keyword_time_presets"
+        const val KEY_KEYWORD_LOCATIONS = "keyword_location_presets"
         const val KEY_KEYWORD_LANGUAGE = "keyword_time_language"
         const val KEY_REMOVE_TIME_EXPRESSIONS = "remove_time_expressions_from_text"
         const val KEY_THEME_MODE = "theme_mode"

@@ -6,6 +6,7 @@ import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
 import com.afn478.geominder.domain.model.ReminderTag
 import com.afn478.geominder.domain.model.GeoTrigger
+import com.afn478.geominder.domain.model.PresetLocation
 import com.afn478.geominder.domain.model.TimeTrigger
 import com.afn478.geominder.domain.model.TriggerId
 import com.afn478.geominder.domain.repository.ReminderRepository
@@ -116,6 +117,32 @@ class AddReminderViewModelTest {
         assertEquals(Instant.parse("2026-08-25T09:30:00Z"), geo.activeFrom)
         assertEquals(listOf(saved), actions.registered)
         assertTrue(actions.scheduled.isEmpty())
+    }
+
+    @Test
+    fun `named location preset fills the geo trigger and its configured radius`() {
+        val repository = FakeReminderRepository()
+        val actions = RecordingPostSaveActions()
+        val viewModel = viewModel(
+            repository = repository,
+            actions = actions,
+            parser = ReminderTextParser(
+                keywordLocationOverrides = mapOf(
+                    "at home" to PresetLocation(40.7128, -74.0060, 275.0),
+                ),
+            ),
+        )
+
+        viewModel.onSourceTextChange("At home do this")
+        viewModel.save()
+
+        val saved = repository.saved.single()
+        val geo = requireNotNull(saved.geoTrigger)
+        assertEquals(40.7128, geo.latitude, 0.0)
+        assertEquals(-74.0060, geo.longitude, 0.0)
+        assertEquals(275.0, geo.radiusMeters, 0.0)
+        assertEquals("At home do this", saved.title)
+        assertEquals(listOf(saved), actions.registered)
     }
 
     @Test
@@ -684,6 +711,7 @@ class AddReminderViewModelTest {
     private fun viewModel(
         repository: FakeReminderRepository = FakeReminderRepository(),
         actions: RecordingPostSaveActions = RecordingPostSaveActions(),
+        parser: ReminderTextParser = ReminderTextParser(),
         radiusMeters: Double = 150.0,
         locationProvider: CurrentLocationProvider = CurrentLocationProvider {
             CancellationHandle {}
@@ -695,7 +723,7 @@ class AddReminderViewModelTest {
         editingReminderId: ReminderId? = null,
     ): AddReminderViewModel = AddReminderViewModel(
         repository = repository,
-        parser = ReminderTextParser(),
+        parser = parser,
         defaultGeoRadiusProvider = DefaultGeoRadiusProvider { radiusMeters },
         locationProvider = locationProvider,
         geoLabelResolver = labelResolver,

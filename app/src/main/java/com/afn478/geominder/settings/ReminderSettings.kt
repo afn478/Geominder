@@ -1,5 +1,6 @@
 package com.afn478.geominder.settings
 
+import com.afn478.geominder.domain.model.PresetLocation
 import com.afn478.geominder.localization.SupportedLanguage
 import com.afn478.geominder.parser.KeywordTimeDictionary
 import java.time.LocalTime
@@ -10,6 +11,7 @@ import java.util.Locale
 data class ReminderSettings(
     val defaultGeofenceRadiusMeters: Double = SettingsValidation.DEFAULT_RADIUS_METERS,
     val keywordTimes: Map<String, LocalTime> = KeywordTimeDictionary.DEFAULTS.toMap(),
+    val keywordLocations: Map<String, PresetLocation> = emptyMap(),
     val keywordLanguage: SupportedLanguage = SupportedLanguage.ENGLISH,
     val removeTimeExpressionsFromText: Boolean = true,
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
@@ -37,7 +39,7 @@ sealed interface ValidationResult<out T> {
 }
 
 object SettingsValidation {
-    const val DEFAULT_RADIUS_METERS = 100.0
+    const val DEFAULT_RADIUS_METERS = PresetLocation.DEFAULT_RADIUS_METERS
     const val MIN_RADIUS_METERS = 1.0
     const val MAX_RADIUS_METERS = 100_000.0
     const val MAX_KEYWORD_LENGTH = 40

@@ -4,6 +4,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.afn478.geominder.R
+import com.afn478.geominder.domain.model.PresetLocation
+import com.afn478.geominder.geofence.CancellationHandle
+import com.afn478.geominder.geofence.ClipboardGeoInputParser
+import com.afn478.geominder.geofence.CurrentLocationProvider
+import com.afn478.geominder.geofence.GeoInputError
+import com.afn478.geominder.geofence.GeoInputField
+import com.afn478.geominder.geofence.LocationFailure
+import com.afn478.geominder.geofence.LocationResult
+import com.afn478.geominder.geofence.NumericGeoInputParser
+import com.afn478.geominder.geofence.NumericGeoInputResult
 import com.afn478.geominder.localization.UiText
 import com.afn478.geominder.localization.resource
 import com.afn478.geominder.settings.AccentTheme
@@ -28,6 +38,7 @@ class SettingsViewModel(
     private val permissionStatusProvider: SettingsPermissionStatusProvider,
     private val injectedScope: CoroutineScope? = null,
     private val localeProvider: () -> Locale = Locale::getDefault,
+    private val locationProvider: CurrentLocationProvider? = null,
 ) : ViewModel() {
     private val initialSettings = repository.settings.value
     private val locale = localeProvider()
@@ -42,6 +53,9 @@ class SettingsViewModel(
         ),
     )
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
+
+    private var locationRequest: CancellationHandle? = null
+    private var locationRequestVersion = 0L
 
     init {
         workScope().launch {
@@ -173,6 +187,197 @@ class SettingsViewModel(
         }
     }
 
+    fun beginAddLocation() {
+        cancelLocationRequest()
+        _uiState.update {
+            it.copy(
+                locationEditorVisible = true,
+                editingLocationKeyword = null,
+                locationKeywordText = "",
+                locationLatitudeText = "",
+                locationLongitudeText = "",
+                locationRadiusText = SettingsValidation.formatRadius(
+                    it.settings.defaultGeofenceRadiusMeters,
+                ),
+                locationKeywordError = null,
+                locationInputErrors = emptyMap(),
+                locationError = null,
+                isLocatingLocation = false,
+                persistenceError = null,
+            )
+        }
+    }
+
+    fun beginEditLocation(keyword: String) {
+        val location = _uiState.value.settings.keywordLocations[keyword] ?: return
+        cancelLocationRequest()
+        _uiState.update {
+            it.copy(
+                locationEditorVisible = true,
+                editingLocationKeyword = keyword,
+                locationKeywordText = keyword,
+                locationLatitudeText = location.latitude.toPlainString(),
+                locationLongitudeText = location.longitude.toPlainString(),
+                locationRadiusText = SettingsValidation.formatRadius(location.radiusMeters),
+                locationKeywordError = null,
+                locationInputErrors = emptyMap(),
+                locationError = null,
+                isLocatingLocation = false,
+                persistenceError = null,
+            )
+        }
+    }
+
+    fun onLocationKeywordChange(value: String) {
+        _uiState.update {
+            it.copy(
+                locationKeywordText = value,
+                locationKeywordError = null,
+                locationError = null,
+                persistenceError = null,
+            )
+        }
+    }
+
+    fun onLocationLatitudeChange(value: String) {
+        updateLocationText(latitude = value)
+    }
+
+    fun onLocationLongitudeChange(value: String) {
+        updateLocationText(longitude = value)
+    }
+
+    fun onLocationRadiusChange(value: String) {
+        updateLocationText(radius = value)
+    }
+
+    fun pasteLocation(clipboardText: String) {
+        val coordinates = ClipboardGeoInputParser.parse(clipboardText)
+        if (coordinates == null) {
+            _uiState.update {
+                it.copy(locationError = UiText.resource(R.string.invalid_clipboard_coordinates))
+            }
+            return
+        }
+        _uiState.update {
+            it.copy(
+                locationEditorVisible = true,
+                locationLatitudeText = coordinates.latitude.toPlainString(),
+                locationLongitudeText = coordinates.longitude.toPlainString(),
+                locationInputErrors = emptyMap(),
+                locationError = null,
+                persistenceError = null,
+            )
+        }
+    }
+
+    fun locateLocation() {
+        locationRequest?.cancel()
+        val provider = locationProvider
+        if (provider == null) {
+            _uiState.update {
+                it.copy(
+                    isLocatingLocation = false,
+                    locationError = LocationFailure.NO_LOCATION.userMessage(),
+                )
+            }
+            return
+        }
+
+        val version = ++locationRequestVersion
+        _uiState.update {
+            it.copy(
+                locationEditorVisible = true,
+                isLocatingLocation = true,
+                locationError = null,
+            )
+        }
+        locationRequest = provider.locate { result ->
+            if (version != locationRequestVersion) return@locate
+            locationRequest = null
+            when (result) {
+                is LocationResult.Available -> {
+                    val fix = result.fix
+                    _uiState.update {
+                        it.copy(
+                            locationLatitudeText = fix.latitude.toPlainString(),
+                            locationLongitudeText = fix.longitude.toPlainString(),
+                            locationInputErrors = emptyMap(),
+                            locationError = null,
+                            isLocatingLocation = false,
+                        )
+                    }
+                }
+
+                is LocationResult.Unavailable -> {
+                    _uiState.update {
+                        it.copy(
+                            isLocatingLocation = false,
+                            locationError = result.reason.userMessage(),
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    fun saveLocation() {
+        val state = _uiState.value
+        val keyword = SettingsValidation.keyword(state.locationKeywordText)
+        val geo = NumericGeoInputParser(
+            defaultRadiusMeters = state.settings.defaultGeofenceRadiusMeters,
+        ).parse(
+            latitudeText = state.locationLatitudeText,
+            longitudeText = state.locationLongitudeText,
+            radiusText = state.locationRadiusText,
+        )
+        if (keyword is ValidationResult.Invalid || geo is NumericGeoInputResult.Invalid) {
+            _uiState.update {
+                it.copy(
+                    locationKeywordError = (keyword as? ValidationResult.Invalid)?.error?.toUiText(),
+                    locationInputErrors = (geo as? NumericGeoInputResult.Invalid)?.errors.orEmpty(),
+                )
+            }
+            return
+        }
+
+        keyword as ValidationResult.Valid
+        geo as NumericGeoInputResult.Valid
+        persist {
+            val originalKeyword = state.editingLocationKeyword
+            if (originalKeyword != null && originalKeyword != keyword.value) {
+                repository.removeKeywordLocation(originalKeyword)
+            }
+            repository.upsertKeywordLocation(
+                keyword.value,
+                PresetLocation(
+                    latitude = geo.value.latitude,
+                    longitude = geo.value.longitude,
+                    radiusMeters = geo.value.radiusMeters,
+                ),
+            )
+            clearLocationEditor()
+        }
+    }
+
+    fun cancelLocationEdit() {
+        clearLocationEditor()
+    }
+
+    fun removeLocation(keyword: String) {
+        persist {
+            repository.removeKeywordLocation(keyword)
+            if (_uiState.value.editingLocationKeyword == keyword) clearLocationEditor()
+        }
+    }
+
+    fun resetKeywordLocations() {
+        persist {
+            repository.resetKeywordLocations()
+            clearLocationEditor()
+        }
+    }
+
     fun refreshPermissionStatus() {
         _uiState.update { it.copy(permissionItems = permissionItems()) }
     }
@@ -188,6 +393,49 @@ class SettingsViewModel(
                 keywordTimeError = null,
             )
         }
+    }
+
+    private fun updateLocationText(
+        latitude: String? = null,
+        longitude: String? = null,
+        radius: String? = null,
+    ) {
+        _uiState.update {
+            it.copy(
+                locationLatitudeText = latitude ?: it.locationLatitudeText,
+                locationLongitudeText = longitude ?: it.locationLongitudeText,
+                locationRadiusText = radius ?: it.locationRadiusText,
+                locationInputErrors = emptyMap(),
+                locationError = null,
+                persistenceError = null,
+            )
+        }
+    }
+
+    private fun clearLocationEditor() {
+        cancelLocationRequest()
+        _uiState.update {
+            it.copy(
+                locationEditorVisible = false,
+                editingLocationKeyword = null,
+                locationKeywordText = "",
+                locationLatitudeText = "",
+                locationLongitudeText = "",
+                locationRadiusText = SettingsValidation.formatRadius(
+                    it.settings.defaultGeofenceRadiusMeters,
+                ),
+                locationKeywordError = null,
+                locationInputErrors = emptyMap(),
+                locationError = null,
+                isLocatingLocation = false,
+            )
+        }
+    }
+
+    private fun cancelLocationRequest() {
+        locationRequest?.cancel()
+        locationRequest = null
+        locationRequestVersion++
     }
 
     private fun permissionItems() = SettingsPermissionPolicy.items(
@@ -210,6 +458,28 @@ class SettingsViewModel(
     }
 
     private fun workScope(): CoroutineScope = injectedScope ?: viewModelScope
+
+    override fun onCleared() {
+        locationRequest?.cancel()
+        locationRequest = null
+        super.onCleared()
+    }
+
+    private fun Double.toPlainString(): String = when {
+        this == toLong().toDouble() -> toLong().toString()
+        else -> toString()
+    }
+
+    private fun LocationFailure.userMessage(): UiText = UiText.resource(
+        when (this) {
+            LocationFailure.PERMISSION_REQUIRED -> R.string.location_permission_required
+            LocationFailure.BACKGROUND_PERMISSION_REQUIRED -> R.string.background_location_permission_required
+            LocationFailure.LOCATION_DISABLED -> R.string.location_services_disabled
+            LocationFailure.PLAY_SERVICES_UNAVAILABLE -> R.string.play_services_unavailable
+            LocationFailure.NO_LOCATION -> R.string.no_current_location
+            LocationFailure.REQUEST_FAILED -> R.string.location_request_failed
+        },
+    )
 }
 
 private fun ValidationError.toUiText(): UiText = UiText.resource(
@@ -228,6 +498,7 @@ class SettingsViewModelFactory(
     private val repository: SettingsRepository,
     private val permissionStatusProvider: SettingsPermissionStatusProvider,
     private val localeProvider: () -> Locale = Locale::getDefault,
+    private val locationProvider: CurrentLocationProvider? = null,
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -238,6 +509,7 @@ class SettingsViewModelFactory(
             repository = repository,
             permissionStatusProvider = permissionStatusProvider,
             localeProvider = localeProvider,
+            locationProvider = locationProvider,
         ) as T
     }
 }

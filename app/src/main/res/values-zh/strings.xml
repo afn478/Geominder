@@ -266,4 +266,14 @@
     <string name="invalid_coordinates">坐标超出有效的纬度/经度范围</string>
     <string name="invalid_time">时间超出有效范围</string>
     <string name="invalid_date">日期无效</string>
+    <string name="preset_locations">预设位置</string>
+    <string name="recognized_keyword_locations">识别的关键词位置</string>
+    <string name="preset_locations_description">输入提醒时会识别“在家”等关键词，并使用已保存的坐标和半径。</string>
+    <string name="add_preset_location">添加预设位置</string>
+    <string name="edit_preset_location">编辑预设位置</string>
+    <string name="save_preset_location">保存预设位置</string>
+    <string name="location_keyword_placeholder">在家</string>
+    <string name="preset_location_summary">%1$s · 半径 %2$s 米</string>
+    <string name="no_preset_locations">没有预设位置。添加一个即可识别命名地点。</string>
+    <string name="reset_preset_locations">重置预设位置</string>
 </resources>

@@ -198,9 +198,12 @@ class AddReminderViewModel(
             parsedSource
         }
         val gps = parsed.gps
+        val gpsRadius = gps?.radiusMeters
         val parsedActiveFrom = parsed.dateTime?.takeIf { it.role == TemporalRole.GEO_ACTIVE_FROM }
         val gpsChanged = gps != null &&
-            (gps.latitude != previousGps?.latitude || gps.longitude != previousGps.longitude)
+            (gps.latitude != previousGps?.latitude ||
+                gps.longitude != previousGps.longitude ||
+                gps.radiusMeters != previousGps.radiusMeters)
 
         _uiState.update { state ->
             state.copy(
@@ -216,6 +219,11 @@ class AddReminderViewModel(
                 geoEditorVisible = state.geoEditorVisible || gps != null,
                 latitudeText = gps?.latitude?.toPlainString() ?: state.latitudeText,
                 longitudeText = gps?.longitude?.toPlainString() ?: state.longitudeText,
+                radiusText = when {
+                    gpsChanged && gpsRadius != null -> gpsRadius.toPlainString()
+                    gpsChanged && previousGps?.radiusMeters != null -> defaultRadiusText()
+                    else -> state.radiusText
+                },
                 geoLabel = if (gpsChanged) null else state.geoLabel,
                 geoInputErrors = emptyMap(),
                 saveError = null,

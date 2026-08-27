@@ -2,6 +2,10 @@
 
 Geominder is an Android reminder app for scheduling reminders by time or location.
 
+Named location presets can be configured under Settings > Preset locations. A preset pairs a
+keyword such as “at home” with coordinates and a geofence radius; typing that keyword in a new
+reminder creates the corresponding location trigger.
+
 ## Build locally
 
 ```bash

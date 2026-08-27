@@ -1,5 +1,6 @@
 package com.afn478.geominder.parser
 
+import com.afn478.geominder.domain.model.PresetLocation
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -99,6 +100,53 @@ class ReminderTextParserTest {
 
         assertNull(result.gps)
         assertNotNull(result.dateTime)
+    }
+
+    @Test
+    fun `named location preset becomes a GPS detection with its configured radius`() {
+        val home = PresetLocation(
+            latitude = 40.7128,
+            longitude = -74.0060,
+            radiusMeters = 275.0,
+        )
+        val parser = ReminderTextParser.fromCompleteKeywordTable(
+            keywordTimes = emptyMap(),
+            keywordLocations = mapOf("At Home" to home),
+        )
+
+        val result = parser.parse("at home do this", context)
+
+        assertEquals("at home", result.gps?.sourceLabel)
+        assertEquals(40.7128, result.gps?.latitude ?: 0.0, 0.0)
+        assertEquals(-74.0060, result.gps?.longitude ?: 0.0, 0.0)
+        assertEquals(275.0, result.gps?.radiusMeters ?: 0.0, 0.0)
+        assertEquals(0, result.detections.count { it.type == DetectionType.DATE_TIME })
+    }
+
+    @Test
+    fun `explicit coordinates win over a named location preset`() {
+        val parser = ReminderTextParser(
+            keywordLocationOverrides = mapOf(
+                "home" to PresetLocation(40.7128, -74.0060, 275.0),
+            ),
+        )
+
+        val gps = parser.parse("At home near 40.7580, -73.9855", context).gps
+
+        assertEquals(40.7580, gps?.latitude ?: 0.0, 0.0)
+        assertEquals(-73.9855, gps?.longitude ?: 0.0, 0.0)
+        assertNull(gps?.radiusMeters)
+    }
+
+    @Test
+    fun `complete location table can remove all named location detections`() {
+        val parser = ReminderTextParser.fromCompleteKeywordTable(
+            keywordTimes = emptyMap(),
+            keywordLocations = emptyMap(),
+        )
+
+        assertTrue(parser.keywordLocations.isEmpty())
+        assertNull(parser.parse("at home do this", context).gps)
     }
 
     @Test

@@ -3,6 +3,11 @@ package com.afn478.geominder.ui.settings
 import com.afn478.geominder.R
 import com.afn478.geominder.alarm.ExactAlarmPermissionState
 import com.afn478.geominder.alarm.FullScreenIntentPermissionState
+import com.afn478.geominder.domain.model.PresetLocation
+import com.afn478.geominder.geofence.CancellationHandle
+import com.afn478.geominder.geofence.CurrentLocationProvider
+import com.afn478.geominder.geofence.LocationFix
+import com.afn478.geominder.geofence.LocationResult
 import com.afn478.geominder.settings.ReminderSettings
 import com.afn478.geominder.settings.RuntimePermissionState
 import com.afn478.geominder.settings.SettingsPermissionSnapshot
@@ -20,6 +25,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.time.Instant
 import java.time.LocalTime
 import java.util.Locale
 
@@ -109,6 +115,65 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun `location preset can be added renamed and removed`() {
+        viewModel.beginAddLocation()
+        viewModel.onLocationKeywordChange("At Home")
+        viewModel.onLocationLatitudeChange("40.7128")
+        viewModel.onLocationLongitudeChange("-74.0060")
+        viewModel.onLocationRadiusChange("275")
+        viewModel.saveLocation()
+
+        assertEquals(
+            PresetLocation(40.7128, -74.0060, 275.0),
+            repository.settings.value.keywordLocations["at home"],
+        )
+
+        viewModel.beginEditLocation("at home")
+        viewModel.onLocationKeywordChange("Home")
+        viewModel.onLocationRadiusChange("300")
+        viewModel.saveLocation()
+
+        assertTrue(repository.settings.value.keywordLocations["at home"] == null)
+        assertEquals(
+            300.0,
+            requireNotNull(repository.settings.value.keywordLocations["home"]).radiusMeters,
+            0.0,
+        )
+
+        viewModel.removeLocation("home")
+        assertTrue(repository.settings.value.keywordLocations.isEmpty())
+    }
+
+    @Test
+    fun `location preset current location button fills coordinates`() {
+        val localViewModel = SettingsViewModel(
+            repository = repository,
+            permissionStatusProvider = { permissionSnapshot(fineGranted = true) },
+            injectedScope = CoroutineScope(Dispatchers.Unconfined + job),
+            locationProvider = CurrentLocationProvider { callback ->
+                callback(
+                    LocationResult.Available(
+                        LocationFix(
+                            latitude = 47.3769,
+                            longitude = 8.5417,
+                            accuracyMeters = 12f,
+                            measuredAt = Instant.parse("2026-08-24T10:15:00Z"),
+                        ),
+                    ),
+                )
+                CancellationHandle {}
+            },
+        )
+
+        localViewModel.beginAddLocation()
+        localViewModel.locateLocation()
+
+        assertEquals("47.3769", localViewModel.uiState.value.locationLatitudeText)
+        assertEquals("8.5417", localViewModel.uiState.value.locationLongitudeText)
+        assertFalse(localViewModel.uiState.value.isLocatingLocation)
+    }
+
+    @Test
     fun `reset restores parser defaults`() {
         repository.state.value = ReminderSettings(keywordTimes = emptyMap())
 
@@ -164,6 +229,22 @@ class SettingsViewModelTest {
             state.value = ReminderSettings(
                 defaultGeofenceRadiusMeters = state.value.defaultGeofenceRadiusMeters,
             )
+        }
+
+        override suspend fun upsertKeywordLocation(keyword: String, location: PresetLocation) {
+            state.value = state.value.copy(
+                keywordLocations = state.value.keywordLocations + (keyword to location),
+            )
+        }
+
+        override suspend fun removeKeywordLocation(keyword: String) {
+            state.value = state.value.copy(
+                keywordLocations = state.value.keywordLocations - keyword,
+            )
+        }
+
+        override suspend fun resetKeywordLocations() {
+            state.value = state.value.copy(keywordLocations = emptyMap())
         }
 
         override suspend fun setRemoveTimeExpressionsFromText(enabled: Boolean) {

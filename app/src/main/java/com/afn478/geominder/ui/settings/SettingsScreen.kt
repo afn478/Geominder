@@ -1,10 +1,11 @@
 package com.afn478.geominder.ui.settings
 
-import androidx.compose.animation.Crossfade
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -22,15 +23,20 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -48,16 +54,17 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -68,7 +75,10 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.afn478.geominder.BuildConfig
 import com.afn478.geominder.R
+import com.afn478.geominder.geofence.GeoInputError
+import com.afn478.geominder.geofence.GeoInputField
 import com.afn478.geominder.localization.UiText
+import com.afn478.geominder.localization.resource
 import com.afn478.geominder.settings.AccentTheme
 import com.afn478.geominder.settings.PermissionUiItem
 import com.afn478.geominder.settings.SettingsPermissionAction
@@ -81,6 +91,7 @@ import com.afn478.geominder.ui.text.resolve
 private enum class SettingsSubsection(@androidx.annotation.StringRes val titleRes: Int) {
     APPEARANCE(R.string.appearance),
     LOCATION(R.string.location_defaults),
+    PRESET_LOCATIONS(R.string.preset_locations),
     PRESET_TIMES(R.string.preset_times),
     PERMISSIONS(R.string.permissions),
     BACKUP(R.string.backup),
@@ -102,6 +113,11 @@ private val settingsSubsectionEntries = listOf(
     SettingsSubsectionEntry(
         subsection = SettingsSubsection.LOCATION,
         summaryRes = R.string.default_geofence_radius_summary,
+        icon = Icons.Default.LocationOn,
+    ),
+    SettingsSubsectionEntry(
+        subsection = SettingsSubsection.PRESET_LOCATIONS,
+        summaryRes = R.string.recognized_keyword_locations,
         icon = Icons.Default.LocationOn,
     ),
     SettingsSubsectionEntry(
@@ -168,6 +184,18 @@ fun SettingsRoute(
         onCancelKeywordEdit = viewModel::cancelKeywordEdit,
         onRemoveKeyword = viewModel::removeKeyword,
         onResetKeywords = viewModel::resetKeywordTimes,
+        onAddLocation = viewModel::beginAddLocation,
+        onEditLocation = viewModel::beginEditLocation,
+        onLocationKeywordChange = viewModel::onLocationKeywordChange,
+        onLocationLatitudeChange = viewModel::onLocationLatitudeChange,
+        onLocationLongitudeChange = viewModel::onLocationLongitudeChange,
+        onLocationRadiusChange = viewModel::onLocationRadiusChange,
+        onPasteLocation = viewModel::pasteLocation,
+        onLocateLocation = viewModel::locateLocation,
+        onSaveLocation = viewModel::saveLocation,
+        onCancelLocationEdit = viewModel::cancelLocationEdit,
+        onRemoveLocation = viewModel::removeLocation,
+        onResetLocations = viewModel::resetKeywordLocations,
         onPermissionAction = onPermissionAction,
         onBack = onBack,
         onExportBackup = onExportBackup,
@@ -196,6 +224,18 @@ fun SettingsScreen(
     onCancelKeywordEdit: () -> Unit,
     onRemoveKeyword: (String) -> Unit,
     onResetKeywords: () -> Unit,
+    onAddLocation: () -> Unit,
+    onEditLocation: (String) -> Unit,
+    onLocationKeywordChange: (String) -> Unit,
+    onLocationLatitudeChange: (String) -> Unit,
+    onLocationLongitudeChange: (String) -> Unit,
+    onLocationRadiusChange: (String) -> Unit,
+    onPasteLocation: (String) -> Unit,
+    onLocateLocation: () -> Unit,
+    onSaveLocation: () -> Unit,
+    onCancelLocationEdit: () -> Unit,
+    onRemoveLocation: (String) -> Unit,
+    onResetLocations: () -> Unit,
     onPermissionAction: (SettingsPermissionAction) -> Unit,
     onBack: () -> Unit,
     onExportBackup: () -> Unit,
@@ -261,6 +301,24 @@ fun SettingsScreen(
                         state = state,
                         onRadiusChange = onRadiusChange,
                         onSaveRadius = onSaveRadius,
+                    )
+                }
+
+                SettingsSubsection.PRESET_LOCATIONS -> SettingsSubpage(pageModifier) {
+                    LocationPresetSection(
+                        state = state,
+                        onAddLocation = onAddLocation,
+                        onEditLocation = onEditLocation,
+                        onLocationKeywordChange = onLocationKeywordChange,
+                        onLocationLatitudeChange = onLocationLatitudeChange,
+                        onLocationLongitudeChange = onLocationLongitudeChange,
+                        onLocationRadiusChange = onLocationRadiusChange,
+                        onPasteLocation = onPasteLocation,
+                        onLocateLocation = onLocateLocation,
+                        onSaveLocation = onSaveLocation,
+                        onCancelLocationEdit = onCancelLocationEdit,
+                        onRemoveLocation = onRemoveLocation,
+                        onResetLocations = onResetLocations,
                     )
                 }
 
@@ -360,12 +418,16 @@ private fun SettingsSubsectionRow(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.primaryContainer,
             ) {
-                Icon(
-                    imageVector = entry.icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.padding(8.dp),
-                )
+                if (entry.subsection == SettingsSubsection.PRESET_LOCATIONS) {
+                    PresetLocationSettingsIcon()
+                } else {
+                    Icon(
+                        imageVector = entry.icon,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(8.dp),
+                    )
+                }
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -382,6 +444,36 @@ private fun SettingsSubsectionRow(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PresetLocationSettingsIcon() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(8.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Default.LocationOn,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.fillMaxSize(),
+        )
+        Surface(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(14.dp),
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.primaryContainer,
+        ) {
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.padding(1.dp),
             )
         }
     }
@@ -558,6 +650,241 @@ private fun RadiusSection(
         Button(onClick = onSaveRadius) { Text(stringResource(R.string.save_radius)) }
     }
 }
+
+@Composable
+@Suppress("DEPRECATION")
+private fun LocationPresetSection(
+    state: SettingsUiState,
+    onAddLocation: () -> Unit,
+    onEditLocation: (String) -> Unit,
+    onLocationKeywordChange: (String) -> Unit,
+    onLocationLatitudeChange: (String) -> Unit,
+    onLocationLongitudeChange: (String) -> Unit,
+    onLocationRadiusChange: (String) -> Unit,
+    onPasteLocation: (String) -> Unit,
+    onLocateLocation: () -> Unit,
+    onSaveLocation: () -> Unit,
+    onCancelLocationEdit: () -> Unit,
+    onRemoveLocation: (String) -> Unit,
+    onResetLocations: () -> Unit,
+) {
+    val clipboardManager = LocalClipboardManager.current
+    SettingsSection(title = stringResource(R.string.preset_locations)) {
+        Text(
+            text = stringResource(R.string.preset_locations_description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+
+        if (state.locationEditorVisible) {
+            LocationPresetEditor(
+                state = state,
+                onKeywordChange = onLocationKeywordChange,
+                onLatitudeChange = onLocationLatitudeChange,
+                onLongitudeChange = onLocationLongitudeChange,
+                onRadiusChange = onLocationRadiusChange,
+                onPasteLocation = {
+                    onPasteLocation(clipboardManager.getText()?.text.orEmpty())
+                },
+                onLocate = onLocateLocation,
+                onSave = onSaveLocation,
+                onCancel = onCancelLocationEdit,
+            )
+        } else {
+            Button(onClick = onAddLocation) { Text(stringResource(R.string.add_preset_location)) }
+        }
+
+        state.keywordLocations.forEachIndexed { index, item ->
+            if (index > 0) HorizontalDivider()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(vertical = 12.dp),
+                ) {
+                    Text(item.keyword, style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = stringResource(
+                            R.string.preset_location_summary,
+                            item.formattedCoordinates,
+                            item.formattedRadius,
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Row {
+                    TextButton(onClick = { onEditLocation(item.keyword) }) {
+                        Text(stringResource(R.string.edit))
+                    }
+                    TextButton(onClick = { onRemoveLocation(item.keyword) }) {
+                        Text(stringResource(R.string.remove))
+                    }
+                }
+            }
+        }
+        if (state.keywordLocations.isEmpty()) {
+            Text(
+                text = stringResource(R.string.no_preset_locations),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        TextButton(onClick = onResetLocations) {
+            Text(stringResource(R.string.reset_preset_locations))
+        }
+    }
+}
+
+@Composable
+private fun LocationPresetEditor(
+    state: SettingsUiState,
+    onKeywordChange: (String) -> Unit,
+    onLatitudeChange: (String) -> Unit,
+    onLongitudeChange: (String) -> Unit,
+    onRadiusChange: (String) -> Unit,
+    onPasteLocation: () -> Unit,
+    onLocate: () -> Unit,
+    onSave: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    val focusManager = LocalFocusManager.current
+    val locatingDescription = stringResource(R.string.locating_current_position)
+    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = stringResource(
+                        if (state.isEditingLocation) R.string.edit_preset_location
+                        else R.string.add_preset_location,
+                    ),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = onPasteLocation) {
+                    Icon(
+                        imageVector = Icons.Default.ContentPaste,
+                        contentDescription = stringResource(R.string.paste_location),
+                    )
+                }
+            }
+            OutlinedTextField(
+                value = state.locationKeywordText,
+                onValueChange = onKeywordChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text(stringResource(R.string.keyword)) },
+                placeholder = { Text(stringResource(R.string.location_keyword_placeholder)) },
+                singleLine = true,
+                isError = state.locationKeywordError != null,
+                supportingText = state.locationKeywordError?.let { error -> { Text(error.resolve()) } },
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) },
+                ),
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                PresetLocationNumberField(
+                    value = state.locationLatitudeText,
+                    onValueChange = onLatitudeChange,
+                    label = stringResource(R.string.latitude),
+                    error = state.locationInputErrors[GeoInputField.LATITUDE],
+                    modifier = Modifier.weight(1f),
+                )
+                PresetLocationNumberField(
+                    value = state.locationLongitudeText,
+                    onValueChange = onLongitudeChange,
+                    label = stringResource(R.string.longitude),
+                    error = state.locationInputErrors[GeoInputField.LONGITUDE],
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(
+                    onClick = onLocate,
+                    enabled = !state.isLocatingLocation,
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    if (state.isLocatingLocation) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .semantics {
+                                    contentDescription = locatingDescription
+                                },
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.MyLocation,
+                            contentDescription = stringResource(R.string.locate_current_position),
+                        )
+                    }
+                }
+            }
+            PresetLocationNumberField(
+                value = state.locationRadiusText,
+                onValueChange = onRadiusChange,
+                label = stringResource(R.string.radius_metres),
+                error = state.locationInputErrors[GeoInputField.RADIUS],
+                modifier = Modifier.fillMaxWidth(),
+            )
+            state.locationError?.let {
+                Text(
+                    text = it.resolve(),
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onSave) {
+                    Text(
+                        stringResource(
+                            if (state.isEditingLocation) R.string.save_preset_location
+                            else R.string.add_preset_location,
+                        ),
+                    )
+                }
+                TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PresetLocationNumberField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    error: GeoInputError?,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        modifier = modifier,
+        singleLine = true,
+        isError = error != null,
+        supportingText = error?.let { { Text(it.userMessage().resolve()) } },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+    )
+}
+
+private fun GeoInputError.userMessage(): UiText = UiText.resource(
+    when (this) {
+        GeoInputError.REQUIRED -> R.string.required
+        GeoInputError.NOT_A_NUMBER -> R.string.enter_a_number
+        GeoInputError.OUT_OF_RANGE -> R.string.out_of_range
+        GeoInputError.NOT_POSITIVE -> R.string.must_be_positive
+    },
+)
 
 @Composable
 private fun KeywordSection(
