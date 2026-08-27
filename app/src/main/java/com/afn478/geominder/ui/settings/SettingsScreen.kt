@@ -54,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
@@ -65,59 +66,62 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.afn478.geominder.BuildConfig
+import com.afn478.geominder.R
+import com.afn478.geominder.localization.UiText
+import com.afn478.geominder.settings.AccentTheme
 import com.afn478.geominder.settings.PermissionUiItem
 import com.afn478.geominder.settings.SettingsPermissionAction
-import com.afn478.geominder.settings.AccentTheme
 import com.afn478.geominder.settings.ThemeMode
 import com.afn478.geominder.ui.theme.accentSwatchColor
 import com.afn478.geominder.ui.theme.resolveDarkTheme
+import com.afn478.geominder.ui.text.resolve
 
-private enum class SettingsSubsection(val title: String) {
-    APPEARANCE("Appearance"),
-    LOCATION("Location defaults"),
-    PRESET_TIMES("Preset times"),
-    PERMISSIONS("Permissions"),
-    BACKUP("Backup"),
-    DEBUG("Debug"),
+private enum class SettingsSubsection(@androidx.annotation.StringRes val titleRes: Int) {
+    APPEARANCE(R.string.appearance),
+    LOCATION(R.string.location_defaults),
+    PRESET_TIMES(R.string.preset_times),
+    PERMISSIONS(R.string.permissions),
+    BACKUP(R.string.backup),
+    DEBUG(R.string.debug),
 }
 
 private data class SettingsSubsectionEntry(
     val subsection: SettingsSubsection,
-    val summary: String,
+    @androidx.annotation.StringRes val summaryRes: Int,
     val icon: ImageVector,
 )
 
 private val settingsSubsectionEntries = listOf(
     SettingsSubsectionEntry(
         subsection = SettingsSubsection.APPEARANCE,
-        summary = "Theme and accent color",
+        summaryRes = R.string.theme_and_accent_color,
         icon = Icons.Default.Palette,
     ),
     SettingsSubsectionEntry(
         subsection = SettingsSubsection.LOCATION,
-        summary = "Default geofence radius",
+        summaryRes = R.string.default_geofence_radius_summary,
         icon = Icons.Default.LocationOn,
     ),
     SettingsSubsectionEntry(
         subsection = SettingsSubsection.PRESET_TIMES,
-        summary = "Recognized keyword times",
+        summaryRes = R.string.recognized_keyword_times,
         icon = Icons.Default.Schedule,
     ),
     SettingsSubsectionEntry(
         subsection = SettingsSubsection.PERMISSIONS,
-        summary = "Location, notification, and alarm access",
+        summaryRes = R.string.permission_access_summary,
         icon = Icons.Default.Security,
     ),
     SettingsSubsectionEntry(
         subsection = SettingsSubsection.BACKUP,
-        summary = "Export or restore reminders",
+        summaryRes = R.string.export_restore_reminders,
         icon = Icons.Default.Folder,
     ),
 ).let { entries ->
     if (BuildConfig.DEBUG) {
         entries + SettingsSubsectionEntry(
             subsection = SettingsSubsection.DEBUG,
-            summary = "Test the lock-screen alert behavior",
+            summaryRes = R.string.test_lock_screen_alert,
             icon = Icons.Default.BugReport,
         )
     } else {
@@ -132,7 +136,7 @@ fun SettingsRoute(
     onBack: () -> Unit,
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
-    backupStatus: String?,
+    backupStatus: UiText?,
     backupInProgress: Boolean,
     onShowDebugFullScreenReminder: () -> Unit,
     modifier: Modifier = Modifier,
@@ -192,7 +196,7 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
-    backupStatus: String?,
+    backupStatus: UiText?,
     backupInProgress: Boolean,
     onShowDebugFullScreenReminder: () -> Unit,
     modifier: Modifier = Modifier,
@@ -208,14 +212,19 @@ fun SettingsScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text(selectedSubsection?.title ?: "Settings") },
+                title = {
+                    Text(stringResource(selectedSubsection?.titleRes ?: R.string.settings))
+                },
                 navigationIcon = {
                     IconButton(
                         onClick = {
                             if (selectedSubsection == null) onBack() else selectedSubsection = null
                         },
                     ) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.back),
+                        )
                     }
                 },
             )
@@ -289,7 +298,7 @@ fun SettingsScreen(
 @Composable
 private fun SettingsSubsectionList(
     modifier: Modifier,
-    persistenceError: String?,
+    persistenceError: UiText?,
     onSelect: (SettingsSubsection) -> Unit,
 ) {
     Column(
@@ -301,7 +310,7 @@ private fun SettingsSubsectionList(
         }
         persistenceError?.let {
             Text(
-                text = it,
+                text = it.resolve(),
                 modifier = Modifier.padding(top = 16.dp),
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodyMedium,
@@ -320,7 +329,10 @@ private fun SettingsSubsectionRow(
             .fillMaxWidth()
             .clickable(
                 role = Role.Button,
-                onClickLabel = "Open ${entry.subsection.title}",
+                onClickLabel = stringResource(
+                    R.string.open_settings_section,
+                    stringResource(entry.subsection.titleRes),
+                ),
                 onClick = onClick,
             ),
         shape = MaterialTheme.shapes.extraLarge,
@@ -346,11 +358,11 @@ private fun SettingsSubsectionRow(
             }
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = entry.subsection.title,
+                    text = stringResource(entry.subsection.titleRes),
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Text(
-                    text = entry.summary,
+                    text = stringResource(entry.summaryRes),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -399,27 +411,30 @@ private fun AppearanceSection(
         themeMode = state.settings.themeMode,
     )
 
-    SettingsSection(title = "Appearance") {
-        Text("Theme", style = MaterialTheme.typography.titleMedium)
+    SettingsSection(title = stringResource(R.string.appearance)) {
+        Text(stringResource(R.string.theme), style = MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ThemeMode.values().forEach { mode ->
                 androidx.compose.material3.FilterChip(
                     selected = state.settings.themeMode == mode,
                     onClick = { onThemeModeChange(mode) },
-                    label = { Text(mode.name.lowercase().replaceFirstChar(Char::uppercase)) },
+                    label = { Text(mode.localizedLabel()) },
                 )
             }
         }
-        Text("Accent", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.accent), style = MaterialTheme.typography.titleMedium)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(AccentTheme.values().toList(), key = { accent -> accent.name }) { accent ->
                 val selected = state.settings.accentTheme == accent
-                val label = accent.name.lowercase().replaceFirstChar(Char::uppercase)
+                val label = accent.localizedLabel()
+                val accessibilityLabel = stringResource(
+                    if (selected) R.string.accent_color_selected else R.string.accent_color,
+                    label,
+                )
                 IconButton(
                     onClick = { onAccentThemeChange(accent) },
                     modifier = Modifier.semantics {
-                        contentDescription = "Accent color: $label" +
-                            if (selected) ", selected" else ""
+                        contentDescription = accessibilityLabel
                     },
                 ) {
                     Surface(
@@ -450,29 +465,29 @@ private fun AppearanceSection(
 private fun BackupSection(
     onExportBackup: () -> Unit,
     onImportBackup: () -> Unit,
-    status: String?,
+    status: UiText?,
     inProgress: Boolean,
 ) {
-    SettingsSection(title = "Backup") {
+    SettingsSection(title = stringResource(R.string.backup)) {
         Text(
-            text = "Export or restore reminders as an iCalendar (.ics) document.",
+            text = stringResource(R.string.backup_description),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = onExportBackup, enabled = !inProgress) {
-                Text("Export .ics")
+                Text(stringResource(R.string.export_ics))
             }
             Button(onClick = onImportBackup, enabled = !inProgress) {
-                Text("Import .ics")
+                Text(stringResource(R.string.import_ics))
             }
         }
         if (inProgress) {
-            Text("Working…", style = MaterialTheme.typography.bodyMedium)
+            Text(stringResource(R.string.working), style = MaterialTheme.typography.bodyMedium)
         }
         status?.let {
             Text(
-                text = it,
+                text = it.resolve(),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -484,14 +499,14 @@ private fun BackupSection(
 private fun DebugAlertSection(
     onShowDebugFullScreenReminder: () -> Unit,
 ) {
-    SettingsSection(title = "Debug") {
+    SettingsSection(title = stringResource(R.string.debug)) {
         Text(
-            text = "Launch a test full-screen reminder to check wake, timeout, and lock-screen behavior.",
+            text = stringResource(R.string.debug_alert_description),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Button(onClick = onShowDebugFullScreenReminder) {
-            Text("Show full-screen reminder")
+            Text(stringResource(R.string.show_full_screen_reminder))
         }
     }
 }
@@ -503,9 +518,9 @@ private fun RadiusSection(
     onSaveRadius: () -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
-    SettingsSection(title = "Location defaults") {
+    SettingsSection(title = stringResource(R.string.location_defaults)) {
         Text(
-            text = "Used for new arrival reminders. You can still change the radius on each reminder.",
+            text = stringResource(R.string.location_defaults_description),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -513,11 +528,11 @@ private fun RadiusSection(
             value = state.radiusText,
             onValueChange = onRadiusChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Default geofence radius") },
-            suffix = { Text("metres") },
+            label = { Text(stringResource(R.string.default_geofence_radius)) },
+            suffix = { Text(stringResource(R.string.metres)) },
             singleLine = true,
             isError = state.radiusError != null,
-            supportingText = state.radiusError?.let { error -> { Text(error) } },
+            supportingText = state.radiusError?.let { error -> { Text(error.resolve()) } },
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Decimal,
                 imeAction = ImeAction.Done,
@@ -529,7 +544,7 @@ private fun RadiusSection(
                 },
             ),
         )
-        Button(onClick = onSaveRadius) { Text("Save radius") }
+        Button(onClick = onSaveRadius) { Text(stringResource(R.string.save_radius)) }
     }
 }
 
@@ -545,9 +560,9 @@ private fun KeywordSection(
     onRemoveKeyword: (String) -> Unit,
     onResetKeywords: () -> Unit,
 ) {
-    SettingsSection(title = "Preset times") {
+    SettingsSection(title = stringResource(R.string.preset_times)) {
         Text(
-            text = "Keywords such as “morning” are recognized while you type a reminder.",
+            text = stringResource(R.string.preset_times_description),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -561,7 +576,7 @@ private fun KeywordSection(
                 onCancel = onCancelKeywordEdit,
             )
         } else {
-            Button(onClick = onAddKeyword) { Text("Add preset") }
+            Button(onClick = onAddKeyword) { Text(stringResource(R.string.add_preset)) }
         }
 
         state.keywordTimes.forEachIndexed { index, item ->
@@ -583,19 +598,25 @@ private fun KeywordSection(
                     )
                 }
                 Row {
-                    TextButton(onClick = { onEditKeyword(item.keyword) }) { Text("Edit") }
-                    TextButton(onClick = { onRemoveKeyword(item.keyword) }) { Text("Remove") }
+                    TextButton(onClick = { onEditKeyword(item.keyword) }) {
+                        Text(stringResource(R.string.edit))
+                    }
+                    TextButton(onClick = { onRemoveKeyword(item.keyword) }) {
+                        Text(stringResource(R.string.remove))
+                    }
                 }
             }
         }
         if (state.keywordTimes.isEmpty()) {
             Text(
-                text = "No preset keywords. Add one to recognize a named time.",
+                text = stringResource(R.string.no_preset_keywords),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        TextButton(onClick = onResetKeywords) { Text("Reset preset times") }
+        TextButton(onClick = onResetKeywords) {
+            Text(stringResource(R.string.reset_preset_times))
+        }
     }
 }
 
@@ -614,18 +635,20 @@ private fun KeywordEditor(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                text = if (state.isEditingKeyword) "Edit preset" else "Add preset",
+                text = stringResource(
+                    if (state.isEditingKeyword) R.string.edit_preset else R.string.add_preset,
+                ),
                 style = MaterialTheme.typography.titleMedium,
             )
             OutlinedTextField(
                 value = state.keywordText,
                 onValueChange = onKeywordChange,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Keyword") },
-                placeholder = { Text("after work") },
+                label = { Text(stringResource(R.string.keyword)) },
+                placeholder = { Text(stringResource(R.string.keyword_placeholder)) },
                 singleLine = true,
                 isError = state.keywordError != null,
-                supportingText = state.keywordError?.let { error -> { Text(error) } },
+                supportingText = state.keywordError?.let { error -> { Text(error.resolve()) } },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
                 keyboardActions = KeyboardActions(
                     onNext = { focusManager.moveFocus(FocusDirection.Down) },
@@ -635,7 +658,7 @@ private fun KeywordEditor(
                 value = state.keywordTimeText,
                 onValueChange = onKeywordTimeChange,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Time") },
+                label = { Text(stringResource(R.string.time)) },
                 placeholder = {
                     Text(com.afn478.geominder.settings.SettingsValidation.formatTime(
                         java.time.LocalTime.of(17, 30),
@@ -644,7 +667,7 @@ private fun KeywordEditor(
                 },
                 singleLine = true,
                 isError = state.keywordTimeError != null,
-                supportingText = state.keywordTimeError?.let { error -> { Text(error) } },
+                supportingText = state.keywordTimeError?.let { error -> { Text(error.resolve()) } },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Text,
                     imeAction = ImeAction.Done,
@@ -658,9 +681,13 @@ private fun KeywordEditor(
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onSaveKeyword) {
-                    Text(if (state.isEditingKeyword) "Save preset" else "Add preset")
+                    Text(
+                        stringResource(
+                            if (state.isEditingKeyword) R.string.save_preset else R.string.add_preset,
+                        ),
+                    )
                 }
-                TextButton(onClick = onCancel) { Text("Cancel") }
+                TextButton(onClick = onCancel) { Text(stringResource(R.string.cancel)) }
             }
         }
     }
@@ -671,9 +698,9 @@ private fun PermissionSection(
     items: List<PermissionUiItem>,
     onPermissionAction: (SettingsPermissionAction) -> Unit,
 ) {
-    SettingsSection(title = "Permissions") {
+    SettingsSection(title = stringResource(R.string.permissions)) {
         Text(
-            text = "Statuses refresh when you return from Android settings.",
+            text = stringResource(R.string.permissions_description),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -695,9 +722,9 @@ private fun PermissionRow(
             .padding(vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(item.title, style = MaterialTheme.typography.titleMedium)
+        Text(item.title.resolve(), style = MaterialTheme.typography.titleMedium)
         Text(
-            text = item.status,
+            text = item.status.resolve(),
             style = MaterialTheme.typography.labelLarge,
             color = if (item.action == null) {
                 MaterialTheme.colorScheme.primary
@@ -706,14 +733,14 @@ private fun PermissionRow(
             },
         )
         Text(
-            text = item.explanation,
+            text = item.explanation.resolve(),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         val action = item.action
         val label = item.actionLabel
         if (action != null && label != null) {
-            TextButton(onClick = { onPermissionAction(action) }) { Text(label) }
+            TextButton(onClick = { onPermissionAction(action) }) { Text(label.resolve()) }
         }
     }
 }
@@ -728,3 +755,28 @@ private fun SettingsSection(
         content()
     }
 }
+
+@Composable
+private fun ThemeMode.localizedLabel(): String = stringResource(
+    when (this) {
+        ThemeMode.SYSTEM -> R.string.theme_system
+        ThemeMode.LIGHT -> R.string.theme_light
+        ThemeMode.DARK -> R.string.theme_dark
+        ThemeMode.BLACK -> R.string.theme_black
+    },
+)
+
+@Composable
+private fun AccentTheme.localizedLabel(): String = stringResource(
+    when (this) {
+        AccentTheme.DYNAMIC -> R.string.accent_dynamic
+        AccentTheme.SUNSET -> R.string.accent_sunset
+        AccentTheme.OCEAN -> R.string.accent_ocean
+        AccentTheme.FOREST -> R.string.accent_forest
+        AccentTheme.PLUM -> R.string.accent_plum
+        AccentTheme.CITRUS -> R.string.accent_citrus
+        AccentTheme.ROSE -> R.string.accent_rose
+        AccentTheme.SKY -> R.string.accent_sky
+        AccentTheme.SLATE -> R.string.accent_slate
+    },
+)

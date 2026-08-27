@@ -22,7 +22,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.afn478.geominder.R
+import com.afn478.geominder.ui.text.resolve
+import com.afn478.geominder.ui.text.resolveNearbyLabel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,12 +50,12 @@ fun ReminderDetailScreen(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text(state.title ?: "Reminder") },
+                title = { Text(state.title ?: stringResource(R.string.reminder)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = stringResource(R.string.back),
                         )
                     }
                 },
@@ -67,7 +71,10 @@ fun ReminderDetailScreen(
             ) {
                 CircularProgressIndicator()
             }
-            state.isNotFound -> DetailMessage("Reminder not found.", Modifier.padding(padding))
+            state.isNotFound -> DetailMessage(
+                stringResource(R.string.reminder_not_found),
+                Modifier.padding(padding),
+            )
             else -> DetailContent(state, Modifier.padding(padding))
         }
     }
@@ -92,21 +99,26 @@ private fun DetailContent(state: ReminderDetailUiState, modifier: Modifier) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        state.sourceText?.let { DetailField("Source", it) }
-        state.text?.takeIf { it.isNotBlank() }?.let { DetailField("Text", it) }
-        state.lifecycleLabel?.let { DetailField("Status", it) }
-        state.timeText?.let { DetailField("Time", it) }
-        if (state.geoCoordinates != null) {
-            DetailField("Location", state.geoLabel ?: state.geoCoordinates)
-            DetailField("Coordinates", state.geoCoordinates)
-            state.geoRadius?.let { DetailField("Radius", it) }
-            state.geoActiveFrom?.let { DetailField("Active from", it) }
+        state.sourceText?.let { DetailField(stringResource(R.string.source), it) }
+        state.text?.takeIf { it.isNotBlank() }?.let { DetailField(stringResource(R.string.text), it) }
+        state.lifecycleLabel?.let {
+            DetailField(stringResource(R.string.status), it.resolve())
         }
-        DetailField("Created", state.createdAt ?: "")
-        state.updatedAt?.let { DetailField("Updated", it) }
-        state.triggeredAt?.let { DetailField("Triggered", it) }
-        state.snoozedUntil?.let { DetailField("Snoozed until", it) }
-        state.dismissedAt?.let { DetailField("Dismissed", it) }
+        state.timeText?.let { DetailField(stringResource(R.string.time), it) }
+        if (state.geoCoordinates != null) {
+            DetailField(
+                stringResource(R.string.location),
+                state.geoLabel?.resolveNearbyLabel() ?: state.geoCoordinates,
+            )
+            DetailField(stringResource(R.string.coordinates), state.geoCoordinates)
+            state.geoRadius?.let { DetailField(stringResource(R.string.radius), it) }
+            state.geoActiveFrom?.let { DetailField(stringResource(R.string.active_from), it) }
+        }
+        DetailField(stringResource(R.string.created), state.createdAt ?: "")
+        state.updatedAt?.let { DetailField(stringResource(R.string.updated), it) }
+        state.triggeredAt?.let { DetailField(stringResource(R.string.triggered), it) }
+        state.snoozedUntil?.let { DetailField(stringResource(R.string.snoozed_until), it) }
+        state.dismissedAt?.let { DetailField(stringResource(R.string.dismissed), it) }
     }
 }
 

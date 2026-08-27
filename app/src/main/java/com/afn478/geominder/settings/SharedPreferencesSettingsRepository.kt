@@ -2,6 +2,7 @@ package com.afn478.geominder.settings
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.afn478.geominder.localization.SupportedLanguage
 import com.afn478.geominder.parser.ReminderTextParser
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,6 +18,7 @@ class SharedPreferencesSettingsRepository(
         Context.MODE_PRIVATE,
     ),
 ) : SettingsRepository {
+    private val defaultLanguage = keywordTimeDefaultsProvider.language()
     private val defaultKeywordTimes = keywordTimeDefaultsProvider.get().toMap()
     private val _settings = MutableStateFlow(readSettings())
     override val settings: StateFlow<ReminderSettings> = _settings.asStateFlow()
@@ -69,19 +71,39 @@ class SharedPreferencesSettingsRepository(
         val snapshot = entries.toMap()
         preferences.edit()
             .putString(KEY_KEYWORD_TIMES, SettingsCodec.encodeKeywordTimes(snapshot))
+            .putString(KEY_KEYWORD_LANGUAGE, defaultLanguage.languageTag)
             .apply()
-        _settings.value = _settings.value.copy(keywordTimes = snapshot)
+        _settings.value = _settings.value.copy(
+            keywordTimes = snapshot,
+            keywordLanguage = defaultLanguage,
+        )
     }
 
     private fun readSettings(): ReminderSettings {
         val storedKeywords = preferences.getString(KEY_KEYWORD_TIMES, null)
+        val storedLanguage = preferences.getString(KEY_KEYWORD_LANGUAGE, null)
+            ?.let(SupportedLanguage::fromLanguageTag)
+            ?: SupportedLanguage.ENGLISH
+        val keywordTimes = storedKeywords
+            ?.let(SettingsCodec::decodeKeywordTimes)
+            ?.let { stored ->
+                if (storedLanguage == defaultLanguage) {
+                    stored
+                } else {
+                    migrateKeywordTimes(
+                        stored = stored,
+                        storedLanguage = storedLanguage,
+                        activeDefaults = defaultKeywordTimes,
+                    )
+                }
+            }
+            ?: defaultKeywordTimes
         return ReminderSettings(
             defaultGeofenceRadiusMeters = SettingsCodec.decodeRadius(
                 preferences.getString(KEY_DEFAULT_RADIUS, null),
             ),
-            keywordTimes = storedKeywords
-                ?.let(SettingsCodec::decodeKeywordTimes)
-                ?: defaultKeywordTimes,
+            keywordTimes = keywordTimes,
+            keywordLanguage = defaultLanguage,
             themeMode = ThemeMode.fromStorage(preferences.getString(KEY_THEME_MODE, null)),
             accentTheme = AccentTheme.fromStorage(preferences.getString(KEY_ACCENT_THEME, null)),
             sortOrder = SettingsCodec.decodeSortOrder(
@@ -95,9 +117,22 @@ class SharedPreferencesSettingsRepository(
         const val PREFERENCES_NAME = "reminder_settings"
         const val KEY_DEFAULT_RADIUS = "default_geofence_radius_meters"
         const val KEY_KEYWORD_TIMES = "keyword_time_presets"
+        const val KEY_KEYWORD_LANGUAGE = "keyword_time_language"
         const val KEY_THEME_MODE = "theme_mode"
         const val KEY_ACCENT_THEME = "accent_theme"
         const val KEY_SORT_FIELD = "sort_field"
         const val KEY_SORT_DIRECTION = "sort_direction"
     }
+}
+
+private fun migrateKeywordTimes(
+    stored: Map<String, LocalTime>,
+    storedLanguage: SupportedLanguage,
+    activeDefaults: Map<String, LocalTime>,
+): Map<String, LocalTime> {
+    val storedDefaults = com.afn478.geominder.parser.TimeLanguagePacks.defaultsFor(storedLanguage)
+    val customEntries = stored.filter { (keyword, time) ->
+        storedDefaults[keyword] != time
+    }
+    return (activeDefaults + customEntries).toSortedMap()
 }

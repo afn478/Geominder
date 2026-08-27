@@ -3,6 +3,7 @@ package com.afn478.geominder.ui.settings
 import com.afn478.geominder.settings.PermissionUiItem
 import com.afn478.geominder.settings.ReminderSettings
 import com.afn478.geominder.settings.SettingsValidation
+import com.afn478.geominder.localization.UiText
 import java.time.LocalTime
 import java.util.Locale
 
@@ -21,15 +22,15 @@ data class SettingsUiState(
     val radiusText: String = SettingsValidation.formatRadius(
         settings.defaultGeofenceRadiusMeters,
     ),
-    val radiusError: String? = null,
+    val radiusError: UiText? = null,
     val keywordEditorVisible: Boolean = false,
     val editingKeyword: String? = null,
     val keywordText: String = "",
     val keywordTimeText: String = "",
-    val keywordError: String? = null,
-    val keywordTimeError: String? = null,
+    val keywordError: UiText? = null,
+    val keywordTimeError: UiText? = null,
     val permissionItems: List<PermissionUiItem> = emptyList(),
-    val persistenceError: String? = null,
+    val persistenceError: UiText? = null,
 ) {
     val keywordTimes: List<KeywordTimeUiItem>
         get() = settings.keywordTimes

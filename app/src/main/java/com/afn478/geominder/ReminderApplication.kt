@@ -1,9 +1,6 @@
 package com.afn478.geominder
 
 import android.app.Application
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import com.afn478.geominder.alarm.AlarmEventDispatcher
 import com.afn478.geominder.alarm.AlarmPermissionController
 import com.afn478.geominder.alarm.AndroidExactAlarmScheduler
@@ -31,12 +28,19 @@ import com.afn478.geominder.geofence.GeoLabelRefreshCoordinator
 import com.afn478.geominder.geofence.GeofenceRegistrar
 import com.afn478.geominder.integration.ApplicationFeatureRuntime
 import com.afn478.geominder.integration.ReminderSchedulingCoordinator
+import com.afn478.geominder.localization.AndroidSystemLanguageProvider
+import com.afn478.geominder.localization.SystemLanguageProvider
+import com.afn478.geominder.parser.ReminderTextParserFactory
 import com.afn478.geominder.settings.AndroidSettingsPermissionStatusProvider
+import com.afn478.geominder.settings.ParserKeywordTimeDefaultsProvider
 import com.afn478.geominder.settings.SettingsPermissionIntentProvider
 import com.afn478.geominder.settings.SettingsPermissionStatusProvider
 import com.afn478.geominder.settings.SettingsRepository
 import com.afn478.geominder.settings.SharedPreferencesSettingsRepository
 import com.google.android.gms.location.LocationServices
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 
 class ReminderApplication : Application() {
     val appContainer: AppContainer by lazy(LazyThreadSafetyMode.NONE) {
@@ -65,6 +69,8 @@ class ReminderApplication : Application() {
 
 interface AppContainer {
     val reminderRepository: ReminderRepository
+    val languageProvider: SystemLanguageProvider
+    val parserFactory: ReminderTextParserFactory
     val settingsRepository: SettingsRepository
     val alarmPermissionController: AlarmPermissionController
     val exactAlarmScheduler: ExactAlarmScheduler
@@ -84,8 +90,15 @@ private class DefaultAppContainer(application: Application) : AppContainer {
 
     override val reminderRepository: ReminderRepository =
         RoomReminderRepository(database.reminderDao())
+    override val languageProvider: SystemLanguageProvider =
+        AndroidSystemLanguageProvider(applicationContext)
+    override val parserFactory: ReminderTextParserFactory =
+        ReminderTextParserFactory(languageProvider)
     override val settingsRepository: SettingsRepository =
-        SharedPreferencesSettingsRepository(applicationContext)
+        SharedPreferencesSettingsRepository(
+            context = applicationContext,
+            keywordTimeDefaultsProvider = ParserKeywordTimeDefaultsProvider(parserFactory.create()),
+        )
     override val alarmPermissionController = AlarmPermissionController(applicationContext)
     override val exactAlarmScheduler: ExactAlarmScheduler =
         AndroidExactAlarmScheduler(applicationContext, permissionController = alarmPermissionController)

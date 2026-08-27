@@ -59,7 +59,7 @@ class AndroidAlertDelivery(
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             AlertContract.CHANNEL_ID,
-            AlertContract.CHANNEL_NAME,
+            applicationContext.getString(R.string.alert_channel_name),
             NotificationManager.IMPORTANCE_HIGH,
         ).apply {
             description = applicationContext.getString(R.string.alert_channel_description)
@@ -140,10 +140,10 @@ object AlertIntentFactory {
         Intent(context, FullScreenAlertActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra(AlertContract.EXTRA_REMINDER_ID, DEBUG_REMINDER_ID)
-            putExtra(AlertContract.EXTRA_TITLE, "Pick up the groceries")
+            putExtra(AlertContract.EXTRA_TITLE, context.getString(R.string.example_pick_up_groceries))
             putExtra(AlertContract.EXTRA_TEXT, "")
-            putExtra(AlertContract.EXTRA_TIME_TEXT, "5:30 PM")
-            putExtra(AlertContract.EXTRA_LOCATION_TEXT, "Corner Market, Downtown")
+            putExtra(AlertContract.EXTRA_TIME_TEXT, context.getString(R.string.debug_alert_time))
+            putExtra(AlertContract.EXTRA_LOCATION_TEXT, context.getString(R.string.debug_alert_location))
             putExtra(AlertContract.EXTRA_DEBUG_ALERT, true)
         }
 

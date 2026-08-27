@@ -5,6 +5,7 @@ import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderTag
 import com.afn478.geominder.geofence.GeoInputError
 import com.afn478.geominder.geofence.GeoInputField
+import com.afn478.geominder.localization.UiText
 import com.afn478.geominder.parser.ParseResult
 
 data class AddReminderUiState(
@@ -19,7 +20,7 @@ data class AddReminderUiState(
     val timeTriggerCleared: Boolean = false,
     val dateEditText: String = "",
     val timeEditText: String = "",
-    val dateTimeEditError: String? = null,
+    val dateTimeEditError: UiText? = null,
     val geoEditorVisible: Boolean = false,
     val latitudeText: String = "",
     val longitudeText: String = "",
@@ -29,11 +30,11 @@ data class AddReminderUiState(
     val activeFromEnabled: Boolean = false,
     val activeFromDateText: String = "",
     val activeFromTimeText: String = "",
-    val activeFromError: String? = null,
+    val activeFromError: UiText? = null,
     val isLocating: Boolean = false,
-    val locationError: String? = null,
+    val locationError: UiText? = null,
     val isSaving: Boolean = false,
-    val saveError: String? = null,
+    val saveError: UiText? = null,
     val savedReminder: Reminder? = null,
 ) {
     val hasDateTimeDetection: Boolean

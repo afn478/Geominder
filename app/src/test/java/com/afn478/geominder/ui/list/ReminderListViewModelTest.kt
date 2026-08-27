@@ -1,5 +1,6 @@
 package com.afn478.geominder.ui.list
 
+import com.afn478.geominder.R
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
@@ -11,6 +12,8 @@ import com.afn478.geominder.settings.ReminderSortDirection
 import com.afn478.geominder.settings.ReminderSortField
 import com.afn478.geominder.settings.ReminderSortOrder
 import com.afn478.geominder.settings.SettingsRepository
+import com.afn478.geominder.localization.plainValue
+import com.afn478.geominder.localization.resourceId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -46,7 +49,10 @@ class ReminderListViewModelTest {
 
         assertFalse(viewModel.uiState.value.isLoading)
         assertEquals(reminder.id, viewModel.uiState.value.items.single().id)
-        assertEquals("Active", viewModel.uiState.value.items.single().lifecycle.label)
+        assertEquals(
+            R.string.status_active,
+            viewModel.uiState.value.items.single().lifecycle.label.resourceId(),
+        )
     }
 
     @Test
@@ -144,7 +150,7 @@ class ReminderListViewModelTest {
         viewModel.deleteReminder(ID)
 
         assertEquals(1, repository.current().size)
-        assertEquals("Scheduler unavailable", viewModel.uiState.value.message)
+        assertEquals("Scheduler unavailable", viewModel.uiState.value.message?.plainValue())
         assertTrue(viewModel.uiState.value.busyReminderIds.isEmpty())
     }
 
@@ -166,7 +172,7 @@ class ReminderListViewModelTest {
             listOf("command:Cancel", "setEnabled:false", "command:Register"),
             events,
         )
-        assertEquals("Persistence unavailable", viewModel.uiState.value.message)
+        assertEquals("Persistence unavailable", viewModel.uiState.value.message?.plainValue())
     }
 
     @Test
@@ -183,7 +189,7 @@ class ReminderListViewModelTest {
 
         assertEquals(listOf("command:Cancel", "moveToTrash", "command:Register"), events)
         assertEquals(1, repository.current().size)
-        assertEquals("Persistence unavailable", viewModel.uiState.value.message)
+        assertEquals("Persistence unavailable", viewModel.uiState.value.message?.plainValue())
     }
 
     @Test
@@ -254,7 +260,10 @@ class ReminderListViewModelTest {
 
         assertFalse(repository.current().single().enabled)
         assertTrue(commands.commands.isEmpty())
-        assertEquals("Edit this reminder to re-arm it", viewModel.uiState.value.message)
+        assertEquals(
+            R.string.edit_to_rearm_reminder,
+            viewModel.uiState.value.message?.resourceId(),
+        )
     }
 
     @Test
@@ -287,7 +296,7 @@ class ReminderListViewModelTest {
             events,
         )
         assertEquals(ReminderStatus.PENDING, repository.current().single().status)
-        assertEquals("Persistence unavailable", viewModel.uiState.value.message)
+        assertEquals("Persistence unavailable", viewModel.uiState.value.message?.plainValue())
     }
 
     @Test
@@ -323,7 +332,7 @@ class ReminderListViewModelTest {
         assertEquals(ReminderStatus.COMPLETED, repository.current().single().status)
         assertFalse(repository.current().single().enabled)
         assertTrue(viewModel.uiState.value.items.single().isCompleted)
-        assertEquals("Persistence unavailable", viewModel.uiState.value.message)
+        assertEquals("Persistence unavailable", viewModel.uiState.value.message?.plainValue())
     }
 
     private fun viewModel(

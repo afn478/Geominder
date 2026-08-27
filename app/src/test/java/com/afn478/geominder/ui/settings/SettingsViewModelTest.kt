@@ -1,11 +1,13 @@
 package com.afn478.geominder.ui.settings
 
+import com.afn478.geominder.R
 import com.afn478.geominder.alarm.ExactAlarmPermissionState
 import com.afn478.geominder.alarm.FullScreenIntentPermissionState
 import com.afn478.geominder.settings.ReminderSettings
 import com.afn478.geominder.settings.RuntimePermissionState
 import com.afn478.geominder.settings.SettingsPermissionSnapshot
 import com.afn478.geominder.settings.SettingsRepository
+import com.afn478.geominder.localization.resourceId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -119,8 +121,8 @@ class SettingsViewModelTest {
         localViewModel.refreshPermissionStatus()
 
         val fineItem = localViewModel.uiState.value.permissionItems
-            .first { it.title == "Precise location" }
-        assertEquals("Allowed", fineItem.status)
+            .first { it.title.resourceId() == R.string.precise_location }
+        assertEquals(R.string.permission_allowed, fineItem.status.resourceId())
     }
 
     private fun permissionSnapshot(fineGranted: Boolean) = SettingsPermissionSnapshot(

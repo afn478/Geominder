@@ -1,5 +1,6 @@
 package com.afn478.geominder.parser
 
+import com.afn478.geominder.localization.SupportedLanguage
 import java.text.DateFormatSymbols
 import java.time.DateTimeException
 import java.time.DayOfWeek
@@ -17,18 +18,23 @@ data class ParserOptions(
 
 /** A custom, offline parser. It intentionally has no Android or network dependencies. */
 class ReminderTextParser private constructor(
-    keywordDictionary: KeywordTimeDictionary,
+    private val languagePack: TimeLanguagePack,
+    private val keywordDictionary: KeywordTimeDictionary,
     private val options: ParserOptions = ParserOptions(),
 ) {
     constructor(
         keywordOverrides: Map<String, LocalTime> = emptyMap(),
         options: ParserOptions = ParserOptions(),
+        language: SupportedLanguage = SupportedLanguage.fromLocale(Locale.getDefault()),
     ) : this(
-        keywordDictionary = KeywordTimeDictionary(keywordOverrides),
+        languagePack = TimeLanguagePacks.forLanguage(language),
+        keywordDictionary = KeywordTimeDictionary(keywordOverrides, language),
         options = options,
     )
 
+    val language: SupportedLanguage = languagePack.language
     val keywordTimes: Map<String, LocalTime> = keywordDictionary.entries
+    val defaultKeywordTimes: Map<String, LocalTime> = keywordDictionary.defaultEntries
 
     fun parse(sourceText: String, context: ParseContext): ParseResult {
         if (sourceText.isBlank()) return ParseResult(sourceText, context, emptyList())
@@ -121,9 +127,11 @@ class ReminderTextParser private constructor(
     }
 
     private fun isIntroducedByFrom(source: String, temporalSpan: SourceSpan): Boolean =
-        FROM_PREFIX.containsMatchIn(
-            source.substring(0, temporalSpan.start),
-        )
+        languagePack.fromPrefixes.any { prefix ->
+            prefix.containsMatchIn(source.substring(0, temporalSpan.start))
+        } || languagePack.fromSuffixes.any { suffix ->
+            suffix.containsMatchIn(source.substring(temporalSpan.endExclusive))
+        }
 
     private fun parseGps(source: String, issues: MutableList<ParseIssue>): GpsDetection? {
         val candidates = mutableListOf<GpsCandidate>()
@@ -191,7 +199,11 @@ class ReminderTextParser private constructor(
         val latitude = signedCoordinate(latitudeText, latitudeHemisphere, "S")
         val longitude = signedCoordinate(longitudeText, longitudeHemisphere, "W")
         if (latitude == null || longitude == null || latitude !in -90.0..90.0 || longitude !in -180.0..180.0) {
-            issues += ParseIssue("Coordinates are outside the valid latitude/longitude range", span)
+            issues += ParseIssue(
+                message = "Coordinates are outside the valid latitude/longitude range",
+                span = span,
+                code = ParseIssueCode.INVALID_COORDINATES,
+            )
             return null
         }
         return GpsCandidate(span, priority, confidence, latitude, longitude)
@@ -247,37 +259,50 @@ class ReminderTextParser private constructor(
             }
         }
 
-        localizedMonthCandidates(source, localToday, context.locale).forEach(candidates::add)
+        localizedMonthCandidates(source, localToday, sourceLocale(context)).forEach(candidates::add)
 
-        RELATIVE_DATE.findAll(source).forEach { match ->
-            val normalized = match.value.lowercase(Locale.ROOT)
-            val days = when (normalized) {
-                "today" -> 0L
-                "tomorrow" -> 1L
-                else -> 2L
-            }
+        languagePack.relativeDateRules.forEach { rule ->
+            rule.regex.findAll(source).forEach { match ->
             candidates += DateCandidate(
                 span = match.range.toSpan(),
-                priority = if (days == 2L) 92 else 90,
+                priority = rule.priority,
                 confidence = 0.98,
-                date = localToday.plusDays(days),
+                date = localToday.plusDays(rule.daysFromToday),
             )
+            }
         }
 
-        IN_DAYS.findAll(source).forEach { match ->
-            val amount = match.groupValues[1].toLongOrNull() ?: return@forEach
-            val multiplier = if (match.groupValues[2].startsWith("week", true)) 7L else 1L
-            candidates += DateCandidate(
-                match.range.toSpan(),
-                priority = 95,
-                confidence = 0.98,
-                date = localToday.plusDays(amount * multiplier),
-            )
+        languagePack.relativeDayRules.forEach { rule ->
+            rule.regex.findAll(source).forEach { match ->
+                val amount = match.groupValue(rule.amountGroup)?.toLongOrNull() ?: return@forEach
+                val unit = match.groupValue(rule.unitGroup)
+                    ?.lowercase(languagePack.locale)
+                    ?: return@forEach
+                val multiplier = rule.unitMultipliers[unit] ?: return@forEach
+                candidates += DateCandidate(
+                    match.range.toSpan(),
+                    priority = 95,
+                    confidence = 0.98,
+                    date = localToday.plusDays(amount * multiplier),
+                )
+            }
         }
 
-        candidates += weekdayCandidates(source, localToday, context.locale)
+        candidates += weekdayCandidates(source, localToday, languagePack, sourceLocale(context))
         return candidates
     }
+
+    private fun sourceLocale(context: ParseContext): Locale =
+        if (languagePack.language == SupportedLanguage.ENGLISH ||
+            context.locale.language.equals(languagePack.language.languageTag, ignoreCase = true)
+        ) {
+            // Keep the parser's original context-driven behavior for the default English parser.
+            // An explicitly selected non-English pack still falls back to its own locale when the
+            // parse context comes from a different language.
+            context.locale
+        } else {
+            languagePack.locale
+        }
 
     private fun localizedMonthCandidates(
         source: String,
@@ -319,18 +344,32 @@ class ReminderTextParser private constructor(
     private fun weekdayCandidates(
         source: String,
         today: LocalDate,
+        languagePack: TimeLanguagePack,
         locale: Locale,
     ): List<DateCandidate> {
         val weekdays = weekdayNames(locale)
         if (weekdays.isEmpty()) return emptyList()
         val alternatives = weekdays.keys.sortedByDescending(String::length).joinToString("|") { Regex.escape(it) }
-        val regex = Regex("(?iu)(?<![\\p{L}\\p{N}])(?:(next)\\s+)?($alternatives)\\.?(?![\\p{L}\\p{N}])")
+        val nextWords = languagePack.nextWords
+            .sortedByDescending(String::length)
+            .joinToString("|") { Regex.escape(it) }
+        val body = if (nextWords.isEmpty()) {
+            "(?<day>$alternatives)"
+        } else {
+            "(?:(?<next>$nextWords)\\s*)?(?<day>$alternatives)"
+        }
+        val regex = if (languagePack.language.isScriptBased) {
+            Regex("(?iu)$body\\.?")
+        } else {
+            Regex("(?iu)(?<![\\p{L}\\p{N}])$body\\.?(?![\\p{L}\\p{N}])")
+        }
         return regex.findAll(source).mapNotNull { match ->
-            val name = match.groupValues[2].trim().trimEnd('.').lowercase(locale)
+            val name = match.groupValue("day")?.trim()?.trimEnd('.')?.lowercase(locale)
+                ?: return@mapNotNull null
             val dayOfWeek = weekdays[name] ?: return@mapNotNull null
             DateCandidate(
                 span = match.range.toSpan(),
-                priority = if (match.groups[1] != null) 82 else 80,
+                priority = if (match.groupValue("next") != null) 82 else 80,
                 confidence = 0.94,
                 date = today.with(TemporalAdjusters.next(dayOfWeek)),
             )
@@ -344,65 +383,86 @@ class ReminderTextParser private constructor(
     ): List<TimeCandidate> {
         val candidates = mutableListOf<TimeCandidate>()
 
-        TIME_12_HOUR.findAll(source).forEach { match ->
-            val hourText = match.groupValues[1].toInt()
-            val minute = match.groups[2]?.value?.toIntOrNull() ?: 0
-            val period = match.groupValues[3].lowercase(Locale.ROOT)
-            val hour = when {
-                hourText !in 1..12 || minute !in 0..59 -> null
-                period == "am" -> hourText % 12
-                else -> hourText % 12 + 12
-            }
-            if (hour == null) {
-                issues += ParseIssue("Time is outside the valid range", match.range.toSpan())
-            } else {
-                candidates += TimeCandidate(match.range.toSpan(), 105, 1.0, LocalTime.of(hour, minute))
-            }
-        }
-
-        TIME_24_HOUR.findAll(source).forEach { match ->
-            val span = match.range.toSpan()
-            if (occupiedGpsSpan != null && span.overlaps(occupiedGpsSpan)) return@forEach
-            val hour = match.groupValues[1].toInt()
-            val minute = match.groupValues[2].toInt()
-            if (hour !in 0..23 || minute !in 0..59) {
-                issues += ParseIssue("Time is outside the valid range", span)
-            } else {
-                candidates += TimeCandidate(span, 100, 1.0, LocalTime.of(hour, minute))
-            }
-        }
-
-        AT_HOUR.findAll(source).forEach { match ->
-            val span = match.range.toSpan()
-            if (occupiedGpsSpan != null && span.overlaps(occupiedGpsSpan)) return@forEach
-            candidates += TimeCandidate(
-                span = span,
-                priority = 85,
-                confidence = 0.85,
-                time = LocalTime.of(match.groupValues[1].toInt(), 0),
-            )
-        }
-
-        keywordTimes.forEach { (keyword, value) ->
-            val words = keyword.split(' ').joinToString("\\s+") { Regex.escape(it) }
-            Regex("(?iu)(?<![\\p{L}\\p{N}])$words(?![\\p{L}\\p{N}])")
-                .findAll(source)
-                .forEach { match ->
-                candidates += TimeCandidate(match.range.toSpan(), 70, 0.9, value, isPreset = true)
+        languagePack.clockPatterns.forEach { pattern ->
+            pattern.regex.findAll(source).forEach { match ->
+                val span = match.range.toSpan()
+                if (occupiedGpsSpan != null && span.overlaps(occupiedGpsSpan)) return@forEach
+                parseClockMatch(pattern, match, span, issues)?.let { time ->
+                    candidates += TimeCandidate(
+                        span = span,
+                        priority = pattern.priority,
+                        confidence = if (pattern.priority >= 100) 1.0 else 0.85,
+                        time = time,
+                    )
                 }
+            }
+        }
+
+        keywordDictionary.findMatches(source).forEach { match ->
+            candidates += TimeCandidate(match.span, 70, 0.9, match.time, isPreset = true)
         }
         return candidates
     }
 
-    private fun durationCandidates(source: String, now: Instant): List<InstantCandidate> =
-        IN_DURATION.findAll(source).mapNotNull { match ->
-            val amount = match.groupValues[1].toLongOrNull() ?: return@mapNotNull null
-            val duration = when {
-                match.groupValues[2].startsWith("hour", true) -> Duration.ofHours(amount)
-                else -> Duration.ofMinutes(amount)
+    private fun parseClockMatch(
+        pattern: ClockPattern,
+        match: MatchResult,
+        span: SourceSpan,
+        issues: MutableList<ParseIssue>,
+    ): LocalTime? {
+        val hourText = match.groupValue(pattern.hourGroup)?.toIntOrNull() ?: return null
+        val minuteText = match.groupValue(pattern.minuteGroup)?.toIntOrNull()
+        val modifierText = match.groupValue(pattern.modifierGroup)
+            ?.lowercase(languagePack.locale)
+        val modifier = modifierText
+            ?.let { pattern.modifierAliases[it] }
+            ?: pattern.defaultModifier
+        val minute = when {
+            pattern.halfGroup?.let(match::groupValue) != null -> 30
+            minuteText != null -> minuteText
+            else -> 0
+        }
+        val hour = when (modifier) {
+            HourModifier.TWENTY_FOUR_HOUR -> hourText
+            HourModifier.AM -> hourText % 12
+            HourModifier.PM -> hourText % 12 + 12
+            HourModifier.NIGHT -> when {
+                hourText == 12 -> 0
+                hourText in 1..5 -> hourText
+                else -> hourText % 12 + 12
             }
-            InstantCandidate(match.range.toSpan(), 96, 0.99, now.plus(duration))
-        }.toList()
+        }
+        val valid = when (modifier) {
+            HourModifier.TWENTY_FOUR_HOUR -> hourText in 0..23
+            else -> hourText in 1..12
+        } && minute in 0..59
+        if (!valid) {
+            issues += ParseIssue(
+                message = "Time is outside the valid range",
+                span = span,
+                code = ParseIssueCode.INVALID_TIME,
+            )
+            return null
+        }
+        return LocalTime.of(hour, minute)
+    }
+
+    private fun durationCandidates(source: String, now: Instant): List<InstantCandidate> =
+        languagePack.relativeDurationRules.flatMap { rule ->
+            rule.regex.findAll(source).mapNotNull { match ->
+                val amount = match.groupValue(rule.amountGroup)?.toLongOrNull()
+                    ?: return@mapNotNull null
+                val unit = match.groupValue(rule.unitGroup)
+                    ?.lowercase(languagePack.locale)
+                    ?: return@mapNotNull null
+                val duration = when (rule.unitTypes[unit]) {
+                    DurationUnit.HOURS -> Duration.ofHours(amount)
+                    DurationUnit.MINUTES -> Duration.ofMinutes(amount)
+                    null -> return@mapNotNull null
+                }
+                InstantCandidate(match.range.toSpan(), 96, 0.99, now.plus(duration))
+            }.toList()
+        }
 
     private fun addDateOrIssue(
         output: MutableList<DateCandidate>,
@@ -415,7 +475,11 @@ class ReminderTextParser private constructor(
         try {
             output += DateCandidate(match.range.toSpan(), priority, confidence, date())
         } catch (_: DateTimeException) {
-            issues += ParseIssue("Date is not valid", match.range.toSpan())
+            issues += ParseIssue(
+                message = "Date is not valid",
+                span = match.range.toSpan(),
+                code = ParseIssueCode.INVALID_DATE,
+            )
         }
     }
 
@@ -471,24 +535,16 @@ class ReminderTextParser private constructor(
         fun fromCompleteKeywordTable(
             keywordTimes: Map<String, LocalTime>,
             options: ParserOptions = ParserOptions(),
+            language: SupportedLanguage = SupportedLanguage.fromLocale(Locale.getDefault()),
         ): ReminderTextParser = ReminderTextParser(
-            keywordDictionary = KeywordTimeDictionary.fromCompleteTable(keywordTimes),
+            languagePack = TimeLanguagePacks.forLanguage(language),
+            keywordDictionary = KeywordTimeDictionary.fromCompleteTable(keywordTimes, language),
             options = options,
         )
 
         private val ISO_DATE = Regex("(?<!\\d)(\\d{4})-(\\d{1,2})-(\\d{1,2})(?!\\d)")
         private val NUMERIC_DATE = Regex("(?<!\\d)(\\d{1,2})[./](\\d{1,2})[./](\\d{2}|\\d{4})(?!\\d)")
         private val YEARLESS_DAY_MONTH = Regex("(?<![\\d.])([0-3]?\\d)\\.(0?[1-9]|1[0-2])(?![\\d.])")
-        private val RELATIVE_DATE = Regex("(?i)\\b(?:day\\s+after\\s+tomorrow|today|tomorrow)\\b")
-        private val IN_DAYS = Regex("(?i)\\bin\\s+(\\d+)\\s+(day|days|week|weeks)\\b")
-        private val IN_DURATION = Regex("(?i)\\bin\\s+(\\d+)\\s+(hour|hours|minute|minutes|mins?)\\b")
-        private val FROM_PREFIX = Regex("(?iu)(?<![\\p{L}\\p{N}])from\\s+$")
-        private val TIME_12_HOUR = Regex(
-            "(?i)(?<![\\p{L}\\p{N}])(?:at\\s+)?" +
-                "(\\d{1,2})(?::(\\d{1,2}))?\\s*(am|pm)(?![\\p{L}\\p{N}])",
-        )
-        private val TIME_24_HOUR = Regex("(?<!\\d)(\\d{1,2}):(\\d{1,2})(?!\\d)")
-        private val AT_HOUR = Regex("(?i)\\bat\\s+(2[0-3]|1\\d|0?\\d)(?![\\d.:])\\b(?!\\s*(?:am|pm)\\b)")
         private val LABELED_COORDINATES = Regex(
             "(?i)\\b(?:lat|latitude)\\s*[:=]?\\s*" +
                 "([+-]?\\d{1,3}(?:\\.\\d+)?)\\s*([NS])?\\s*[,; ]+\\s*" +
@@ -510,6 +566,10 @@ class ReminderTextParser private constructor(
 private fun Int.normalizeYear(): Int = if (this in 0..99) 2000 + this else this
 
 private fun IntRange.toSpan(): SourceSpan = SourceSpan(first, last + 1)
+
+private fun MatchResult.groupValue(name: String): String? = runCatching {
+    groups[name]?.value
+}.getOrNull()
 
 private fun SourceSpan.overlaps(other: SourceSpan): Boolean =
     start < other.endExclusive && other.start < endExclusive

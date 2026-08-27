@@ -4,7 +4,6 @@ import com.afn478.geominder.domain.model.ReminderId
 
 object AlertContract {
     const val CHANNEL_ID = "reminder_alerts"
-    const val CHANNEL_NAME = "Reminder alerts"
 
     const val ACTION_SNOOZE = "com.afn478.geominder.alert.action.SNOOZE"
     const val ACTION_DISMISS = "com.afn478.geominder.alert.action.DISMISS"

@@ -26,6 +26,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.res.stringResource
+import com.afn478.geominder.R
 import com.afn478.geominder.domain.model.ReminderTag
 
 internal val ReminderTag.color: Color
@@ -37,14 +39,16 @@ internal val ReminderTag.color: Color
         ReminderTag.PURPLE -> Color(0xFFBA68C8)
     }
 
-private val ReminderTag.accessibilityLabel: String
-    get() = when (this) {
-        ReminderTag.RED -> "Red"
-        ReminderTag.ORANGE -> "Orange"
-        ReminderTag.GREEN -> "Green"
-        ReminderTag.BLUE -> "Blue"
-        ReminderTag.PURPLE -> "Purple"
-    }
+@Composable
+private fun ReminderTag.localizedLabel(): String = stringResource(
+    when (this) {
+        ReminderTag.RED -> R.string.tag_red
+        ReminderTag.ORANGE -> R.string.tag_orange
+        ReminderTag.GREEN -> R.string.tag_green
+        ReminderTag.BLUE -> R.string.tag_blue
+        ReminderTag.PURPLE -> R.string.tag_purple
+    },
+)
 
 @Composable
 internal fun ReminderTagChips(
@@ -66,6 +70,10 @@ internal fun ReminderTagChips(
     ) {
         ReminderTag.entries.forEach { tag ->
             val selected = tag == selectedTag
+            val tagDescription = stringResource(
+                if (selected) R.string.tag_selected else R.string.tag,
+                tag.localizedLabel(),
+            )
             AssistChip(
                 onClick = { onTagClick(tag) },
                 enabled = enabled,
@@ -88,10 +96,7 @@ internal fun ReminderTagChips(
                 modifier = Modifier
                     .height(chipHeight)
                     .semantics {
-                        contentDescription = buildString {
-                            append(tag.accessibilityLabel).append(" tag")
-                            if (selected) append(", selected")
-                        }
+                        contentDescription = tagDescription
                     },
             )
         }
@@ -106,6 +111,9 @@ internal fun ReminderTrashChip(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    val description = stringResource(
+        if (selected) R.string.recycling_bin_selected else R.string.recycling_bin,
+    )
     AssistChip(
         onClick = onClick,
         enabled = enabled,
@@ -134,11 +142,7 @@ internal fun ReminderTrashChip(
         modifier = modifier
             .height(32.dp)
             .semantics {
-                contentDescription = if (selected) {
-                    "Recycling bin, selected"
-                } else {
-                    "Recycling bin"
-                }
+                contentDescription = description
             },
     )
 }

@@ -1,5 +1,6 @@
 package com.afn478.geominder.ui.add
 
+import com.afn478.geominder.R
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
@@ -13,6 +14,8 @@ import com.afn478.geominder.geofence.CurrentLocationProvider
 import com.afn478.geominder.geofence.GeoLabelResolver
 import com.afn478.geominder.geofence.LocationFix
 import com.afn478.geominder.geofence.LocationResult
+import com.afn478.geominder.localization.UiText
+import com.afn478.geominder.localization.resourceId
 import com.afn478.geominder.parser.ReminderTextParser
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -141,8 +144,8 @@ class AddReminderViewModelTest {
         assertEquals("40.7128", viewModel.uiState.value.latitudeText)
         assertEquals("-74.0060", viewModel.uiState.value.longitudeText)
         assertEquals(
-            "Clipboard does not contain valid coordinates",
-            viewModel.uiState.value.locationError,
+            R.string.invalid_clipboard_coordinates,
+            viewModel.uiState.value.locationError?.resourceId(),
         )
     }
 
@@ -226,7 +229,10 @@ class AddReminderViewModelTest {
         viewModel.onLatitudeChange("95")
         viewModel.onLongitudeChange("8")
         viewModel.save()
-        assertEquals("Check the location details", viewModel.uiState.value.saveError)
+        assertEquals(
+            R.string.check_location_details,
+            viewModel.uiState.value.saveError?.resourceId(),
+        )
         assertFalse(viewModel.uiState.value.geoInputErrors.isEmpty())
         assertTrue(repository.saved.isEmpty())
     }
@@ -458,7 +464,10 @@ class AddReminderViewModelTest {
         viewModel.save()
 
         assertTrue(repository.saved.isEmpty())
-        assertEquals("Add at least one time or location trigger", viewModel.uiState.value.saveError)
+        assertEquals(
+            R.string.add_time_or_location_trigger,
+            viewModel.uiState.value.saveError?.resourceId(),
+        )
     }
 
     @Test
@@ -553,7 +562,7 @@ class AddReminderViewModelTest {
 
         viewModel.save()
 
-        assertEquals("persistence failed", viewModel.uiState.value.saveError)
+        assertEquals("persistence failed", (viewModel.uiState.value.saveError as UiText.Plain).value)
         assertEquals(listOf("cancel", "save", "register"), actions.events)
     }
 
@@ -566,7 +575,10 @@ class AddReminderViewModelTest {
         viewModel.onSourceTextChange("Buy milk tomorrow at 8")
         viewModel.save()
 
-        assertEquals("That reminder could not be found", viewModel.uiState.value.saveError)
+        assertEquals(
+            R.string.reminder_could_not_be_found,
+            viewModel.uiState.value.saveError?.resourceId(),
+        )
         assertTrue(repository.saved.isEmpty())
     }
 

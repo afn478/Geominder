@@ -3,12 +3,16 @@ package com.afn478.geominder.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.afn478.geominder.settings.SettingsPermissionPolicy
+import com.afn478.geominder.R
+import com.afn478.geominder.localization.UiText
+import com.afn478.geominder.localization.resource
 import com.afn478.geominder.settings.AccentTheme
+import com.afn478.geominder.settings.SettingsPermissionPolicy
 import com.afn478.geominder.settings.ThemeMode
 import com.afn478.geominder.settings.SettingsPermissionStatusProvider
 import com.afn478.geominder.settings.SettingsRepository
 import com.afn478.geominder.settings.SettingsValidation
+import com.afn478.geominder.settings.ValidationError
 import com.afn478.geominder.settings.ValidationResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -71,7 +75,7 @@ class SettingsViewModel(
     fun saveRadius() {
         when (val validation = SettingsValidation.radius(_uiState.value.radiusText)) {
             is ValidationResult.Invalid -> {
-                _uiState.update { it.copy(radiusError = validation.message) }
+                _uiState.update { it.copy(radiusError = validation.error.toUiText()) }
             }
             is ValidationResult.Valid -> persist {
                 repository.setDefaultRadiusMeters(validation.value)
@@ -128,8 +132,8 @@ class SettingsViewModel(
         if (keyword is ValidationResult.Invalid || time is ValidationResult.Invalid) {
             _uiState.update {
                 it.copy(
-                    keywordError = (keyword as? ValidationResult.Invalid)?.message,
-                    keywordTimeError = (time as? ValidationResult.Invalid)?.message,
+                    keywordError = (keyword as? ValidationResult.Invalid)?.error?.toUiText(),
+                    keywordTimeError = (time as? ValidationResult.Invalid)?.error?.toUiText(),
                 )
             }
             return
@@ -193,8 +197,8 @@ class SettingsViewModel(
                 .onFailure { error ->
                     _uiState.update {
                         it.copy(
-                            persistenceError = error.message
-                                ?: "The setting could not be saved",
+                            persistenceError = error.message?.let(UiText::Plain)
+                                ?: UiText.resource(R.string.setting_save_failed),
                         )
                     }
                 }
@@ -203,6 +207,18 @@ class SettingsViewModel(
 
     private fun workScope(): CoroutineScope = injectedScope ?: viewModelScope
 }
+
+private fun ValidationError.toUiText(): UiText = UiText.resource(
+    when (this) {
+        ValidationError.RADIUS_NUMBER -> R.string.validation_radius_number
+        ValidationError.RADIUS_FINITE -> R.string.validation_radius_finite
+        ValidationError.RADIUS_RANGE -> R.string.validation_radius_range
+        ValidationError.KEYWORD_EMPTY -> R.string.validation_keyword_empty
+        ValidationError.KEYWORD_TOO_LONG -> R.string.validation_keyword_too_long
+        ValidationError.KEYWORD_CHARACTER -> R.string.validation_keyword_character
+        ValidationError.TIME_FORMAT -> R.string.validation_time_format
+    },
+)
 
 class SettingsViewModelFactory(
     private val repository: SettingsRepository,

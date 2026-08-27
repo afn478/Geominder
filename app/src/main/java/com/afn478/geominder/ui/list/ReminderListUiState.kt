@@ -1,9 +1,12 @@
 package com.afn478.geominder.ui.list
 
+import com.afn478.geominder.R
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
 import com.afn478.geominder.domain.model.ReminderTag
+import com.afn478.geominder.localization.UiText
+import com.afn478.geominder.localization.resource
 import com.afn478.geominder.settings.ReminderSortDirection
 import com.afn478.geominder.settings.ReminderSortField
 import com.afn478.geominder.settings.ReminderSortOrder
@@ -18,7 +21,7 @@ data class ReminderListUiState(
     val isLoading: Boolean = true,
     val items: List<ReminderListItem> = emptyList(),
     val busyReminderIds: Set<ReminderId> = emptySet(),
-    val message: String? = null,
+    val message: UiText? = null,
     val sortOrder: ReminderSortOrder = ReminderSortOrder.DEFAULT,
     val selectedTag: ReminderTag? = null,
     val showTrash: Boolean = false,
@@ -44,15 +47,15 @@ data class ReminderListItem(
     val isCompleted: Boolean,
 )
 
-enum class ReminderTriggerKind(val label: String) {
-    TIME("Time reminder"),
-    LOCATION("Location reminder"),
-    TIME_AND_LOCATION("Time and location reminder"),
+enum class ReminderTriggerKind(val label: UiText) {
+    TIME(UiText.resource(R.string.time_reminder)),
+    LOCATION(UiText.resource(R.string.location_reminder)),
+    TIME_AND_LOCATION(UiText.resource(R.string.time_and_location_reminder)),
 }
 
 data class ReminderLifecyclePresentation(
-    val label: String,
-    val supportingText: String,
+    val label: UiText,
+    val supportingText: UiText,
     val isTerminal: Boolean,
 )
 
@@ -197,22 +200,22 @@ object ReminderListPresenter {
     ): ReminderLifecyclePresentation {
         if (isDeleted) {
             return ReminderLifecyclePresentation(
-                label = "Deleted",
-                supportingText = "In the recycling bin",
+                label = UiText.resource(R.string.status_deleted),
+                supportingText = UiText.resource(R.string.in_recycling_bin),
                 isTerminal = true,
             )
         }
         if (!enabled) {
             val reason = when (status) {
-                ReminderStatus.DISMISSED -> "Dismissed and no longer scheduled"
-                ReminderStatus.COMPLETED -> "Completed and no longer scheduled"
-                else -> "Paused; alarms and locations are not registered"
+                ReminderStatus.DISMISSED -> UiText.resource(R.string.dismissed_no_longer_scheduled)
+                ReminderStatus.COMPLETED -> UiText.resource(R.string.completed_no_longer_scheduled)
+                else -> UiText.resource(R.string.paused_triggers_not_registered)
             }
             return ReminderLifecyclePresentation(
                 label = when (status) {
-                    ReminderStatus.DISMISSED -> "Dismissed"
-                    ReminderStatus.COMPLETED -> "Completed"
-                    else -> "Paused"
+                    ReminderStatus.DISMISSED -> UiText.resource(R.string.status_dismissed)
+                    ReminderStatus.COMPLETED -> UiText.resource(R.string.status_completed)
+                    else -> UiText.resource(R.string.status_paused)
                 },
                 supportingText = reason,
                 isTerminal = status.isTerminal,
@@ -221,28 +224,28 @@ object ReminderListPresenter {
 
         return when (status) {
             ReminderStatus.PENDING -> ReminderLifecyclePresentation(
-                label = "Active",
-                supportingText = "Waiting for its trigger",
+                label = UiText.resource(R.string.status_active),
+                supportingText = UiText.resource(R.string.waiting_for_trigger),
                 isTerminal = false,
             )
 
             ReminderStatus.SNOOZED -> ReminderLifecyclePresentation(
-                label = "Snoozed",
+                label = UiText.resource(R.string.status_snoozed),
                 supportingText = snoozedUntil
-                    ?.let { "Resumes ${formatter.format(it)}" }
-                    ?: "Waiting for its snooze time",
+                    ?.let { UiText.resource(R.string.resumes_at, formatter.format(it)) }
+                    ?: UiText.resource(R.string.waiting_for_snooze_time),
                 isTerminal = false,
             )
 
             ReminderStatus.DISMISSED -> ReminderLifecyclePresentation(
-                label = "Dismissed",
-                supportingText = "No longer scheduled",
+                label = UiText.resource(R.string.status_dismissed),
+                supportingText = UiText.resource(R.string.no_longer_scheduled),
                 isTerminal = true,
             )
 
             ReminderStatus.COMPLETED -> ReminderLifecyclePresentation(
-                label = "Completed",
-                supportingText = "No longer scheduled",
+                label = UiText.resource(R.string.status_completed),
+                supportingText = UiText.resource(R.string.no_longer_scheduled),
                 isTerminal = true,
             )
         }

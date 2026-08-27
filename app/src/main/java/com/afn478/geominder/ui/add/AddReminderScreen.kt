@@ -73,6 +73,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
@@ -85,12 +86,19 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.afn478.geominder.R
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderTag
 import com.afn478.geominder.geofence.GeoInputError
 import com.afn478.geominder.geofence.GeoInputField
+import com.afn478.geominder.localization.UiText
+import com.afn478.geominder.localization.resource
+import com.afn478.geominder.parser.ParseIssue
+import com.afn478.geominder.parser.ParseIssueCode
 import com.afn478.geominder.parser.SourceSpan
 import com.afn478.geominder.ui.tag.ReminderTagChips
+import com.afn478.geominder.ui.text.resolve
+import com.afn478.geominder.ui.text.resolveNearbyLabel
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.ZoneOffset
@@ -297,7 +305,10 @@ fun AddReminderScreen(
                                 .padding(start = 16.dp, top = 16.dp, end = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            Text("Reminder details", style = MaterialTheme.typography.headlineSmall)
+                            Text(
+                                stringResource(R.string.reminder_details),
+                                style = MaterialTheme.typography.headlineSmall,
+                            )
                             TriggerControls(
                                 state = state,
                                 onDateTimeChipClick = onDateTimeChipClick,
@@ -318,7 +329,7 @@ fun AddReminderScreen(
                             TagSelector(state = state, onTagClick = onTagClick)
 
                             state.parseResult?.issues?.forEach { issue ->
-                                SupportingError(issue.message)
+                                SupportingError(issue.asUiText())
                             }
                         }
                     }
@@ -349,7 +360,7 @@ fun AddReminderScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !state.isSaving,
                     autoFocusSource = autoFocusSource,
-                    placeholder = { Text("Remind me tomorrow at 8…") },
+                    placeholder = { Text(stringResource(R.string.reminder_input_placeholder)) },
                     trailingIcon = {
                         IconButton(
                             onClick = onSave,
@@ -361,7 +372,10 @@ fun AddReminderScreen(
                                     strokeWidth = 2.dp,
                                 )
                             } else {
-                                Icon(Icons.Default.Add, contentDescription = "Save reminder")
+                                Icon(
+                                    Icons.Default.Add,
+                                    contentDescription = stringResource(R.string.save_reminder),
+                                )
                             }
                         }
                     },
@@ -412,9 +426,9 @@ private fun EditReminderContent(
                 value = state.sourceText,
                 onValueChange = onSourceTextChange,
                 enabled = !state.isSaving,
-                label = { Text("Reminder text") },
-                placeholder = { Text("What do you want to remember?") },
-                supportingText = { Text("Use natural language for the reminder and its triggers.") },
+                label = { Text(stringResource(R.string.reminder_text)) },
+                placeholder = { Text(stringResource(R.string.reminder_text_placeholder)) },
+                supportingText = { Text(stringResource(R.string.natural_language_supporting)) },
                 minLines = 2,
                 maxLines = 4,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -422,7 +436,10 @@ private fun EditReminderContent(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            Text("Triggers", style = MaterialTheme.typography.headlineSmall)
+            Text(
+                stringResource(R.string.triggers),
+                style = MaterialTheme.typography.headlineSmall,
+            )
             TriggerControls(
                 state = state,
                 onDateTimeChipClick = onDateTimeChipClick,
@@ -443,7 +460,7 @@ private fun EditReminderContent(
             TagSelector(state = state, onTagClick = onTagClick)
 
             state.parseResult?.issues?.forEach { issue ->
-                SupportingError(issue.message)
+                SupportingError(issue.asUiText())
             }
             state.saveError?.let { SupportingError(it) }
         }
@@ -502,11 +519,11 @@ private fun TriggerControls(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         TriggerToggle(
-            title = "Schedule a time",
+            title = stringResource(R.string.schedule_time),
             summary = if (state.hasDateTimeDetection) {
-                "Notify at a specific date and time"
+                stringResource(R.string.specific_date_time)
             } else {
-                "No time notification set"
+                stringResource(R.string.no_time_notification)
             },
             checked = state.hasDateTimeDetection,
             enabled = !state.isSaving,
@@ -526,11 +543,11 @@ private fun TriggerControls(
         HorizontalDivider()
 
         TriggerToggle(
-            title = "Location trigger",
+            title = stringResource(R.string.location_trigger),
             summary = if (state.geoEditorVisible) {
-                state.geoLabel ?: "Notify when you enter a location"
+                state.geoLabel ?: stringResource(R.string.enter_location)
             } else {
-                "No location notification set"
+                stringResource(R.string.no_location_notification)
             },
             checked = state.geoEditorVisible,
             enabled = !state.isSaving,
@@ -611,7 +628,7 @@ private fun BottomSheetComposerContent(
                 .padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
             enabled = !state.isSaving,
             autoFocusSource = autoFocusSource,
-            placeholder = { Text("Remind me tomorrow at 8…") },
+            placeholder = { Text(stringResource(R.string.reminder_input_placeholder)) },
             trailingIcon = {
                 SaveReminderIconButton(state = state, onSave = onSave)
             },
@@ -626,7 +643,10 @@ private fun BottomSheetComposerContent(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text("Reminder details", style = MaterialTheme.typography.headlineSmall)
+                Text(
+                    stringResource(R.string.reminder_details),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
                 TriggerControls(
                     state = state,
                     onDateTimeChipClick = onDateTimeChipClick,
@@ -646,7 +666,7 @@ private fun BottomSheetComposerContent(
                 )
                 TagSelector(state = state, onTagClick = onTagClick)
                 state.parseResult?.issues?.forEach { issue ->
-                    SupportingError(issue.message)
+                    SupportingError(issue.asUiText())
                 }
             }
         }
@@ -660,7 +680,7 @@ private fun TagSelector(
     onTagClick: (ReminderTag) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Color tag", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.color_tag), style = MaterialTheme.typography.titleMedium)
         ReminderTagChips(
             selectedTag = state.tag,
             onTagClick = onTagClick,
@@ -684,7 +704,10 @@ private fun SaveReminderIconButton(
                 strokeWidth = 2.dp,
             )
         } else {
-            Icon(Icons.Default.Add, contentDescription = "Save reminder")
+            Icon(
+                Icons.Default.Add,
+                contentDescription = stringResource(R.string.save_reminder),
+            )
         }
     }
 }
@@ -707,7 +730,9 @@ private fun DetailsHandle(
     ) {
         Icon(
             imageVector = if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
-            contentDescription = if (expanded) "Hide reminder details" else "Show reminder details",
+            contentDescription = stringResource(
+                if (expanded) R.string.hide_reminder_details else R.string.show_reminder_details,
+            ),
             modifier = Modifier.size(20.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -819,7 +844,7 @@ private fun DetectionChips(
     onGeoChipClick: () -> Unit,
 ) {
     val timeDetection = state.parseResult?.dateTime
-    val coordinateSummary = state.geoLabel
+    val coordinateSummary = state.geoLabel?.let { it.resolveNearbyLabel() }
         ?: state.parseResult?.gps?.displayLabel
         ?: listOf(state.latitudeText, state.longitudeText)
             .takeIf { values -> values.all(String::isNotBlank) }
@@ -878,20 +903,20 @@ private fun DateTimeEditor(
     }
 
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Time trigger", style = MaterialTheme.typography.titleMedium)
+        Text(stringResource(R.string.time_trigger), style = MaterialTheme.typography.titleMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PickerField(
                 value = state.dateEditText,
-                label = "Date",
-                actionDescription = "Select date",
+                label = stringResource(R.string.date),
+                actionDescription = stringResource(R.string.select_date),
                 onClick = { datePickerVisible = true },
                 modifier = Modifier.weight(1.5f),
                 isError = state.dateTimeEditError != null,
             )
             PickerField(
                 value = state.timeEditText,
-                label = "Time",
-                actionDescription = "Select time",
+                label = stringResource(R.string.time),
+                actionDescription = stringResource(R.string.select_time),
                 onClick = { timePickerVisible = true },
                 modifier = Modifier.weight(1f),
                 isError = state.dateTimeEditError != null,
@@ -899,7 +924,11 @@ private fun DateTimeEditor(
         }
         state.dateTimeEditError?.let { SupportingError(it) }
         TextButton(onClick = onCommit) {
-            Text(if (state.hasDateTimeDetection) "Update time" else "Next hour")
+            Text(
+                stringResource(
+                    if (state.hasDateTimeDetection) R.string.update_time else R.string.next_hour,
+                ),
+            )
         }
     }
 
@@ -918,12 +947,12 @@ private fun DateTimeEditor(
                         datePickerVisible = false
                     },
                 ) {
-                    Text("OK")
+                    Text(stringResource(R.string.ok))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { datePickerVisible = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             },
         ) {
@@ -948,12 +977,12 @@ private fun DateTimeEditor(
                         timePickerVisible = false
                     },
                 ) {
-                    Text("OK")
+                    Text(stringResource(R.string.ok))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { timePickerVisible = false }) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             },
             text = { TimePicker(state = timePickerState) },
@@ -1045,13 +1074,14 @@ private fun GeoEditor(
     onActiveFromTimeChange: (String) -> Unit,
 ) {
     val clipboardManager = LocalClipboardManager.current
+    val locatingDescription = stringResource(R.string.locating_current_position)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "Location details",
+                stringResource(R.string.location_details),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.weight(1f),
             )
@@ -1060,7 +1090,7 @@ private fun GeoEditor(
             ) {
                 Icon(
                     Icons.Default.ContentPaste,
-                    contentDescription = "Paste location from clipboard",
+                    contentDescription = stringResource(R.string.paste_location),
                 )
             }
         }
@@ -1071,14 +1101,14 @@ private fun GeoEditor(
             GeoNumberField(
                 value = state.latitudeText,
                 onValueChange = onLatitudeChange,
-                label = "Latitude",
+                label = stringResource(R.string.latitude),
                 error = state.geoInputErrors[GeoInputField.LATITUDE],
                 modifier = Modifier.weight(1f),
             )
             GeoNumberField(
                 value = state.longitudeText,
                 onValueChange = onLongitudeChange,
-                label = "Longitude",
+                label = stringResource(R.string.longitude),
                 error = state.geoInputErrors[GeoInputField.LONGITUDE],
                 modifier = Modifier.weight(1f),
             )
@@ -1091,13 +1121,15 @@ private fun GeoEditor(
                     CircularProgressIndicator(
                         modifier = Modifier
                             .size(20.dp)
-                            .semantics { contentDescription = "Locating current position" },
+                            .semantics {
+                                contentDescription = locatingDescription
+                            },
                         strokeWidth = 2.dp,
                     )
                 } else {
                     Icon(
                         Icons.Default.MyLocation,
-                        contentDescription = "Locate current position",
+                        contentDescription = stringResource(R.string.locate_current_position),
                     )
                 }
             }
@@ -1105,13 +1137,13 @@ private fun GeoEditor(
         GeoNumberField(
             value = state.radiusText,
             onValueChange = onRadiusChange,
-            label = "Radius (metres)",
+            label = stringResource(R.string.radius_metres),
             error = state.geoInputErrors[GeoInputField.RADIUS],
             modifier = Modifier.fillMaxWidth(),
         )
 
         state.geoLabel?.let {
-            Text(text = it, style = MaterialTheme.typography.bodyMedium)
+            Text(text = it.resolveNearbyLabel(), style = MaterialTheme.typography.bodyMedium)
         }
         state.locationError?.let { SupportingError(it) }
 
@@ -1123,14 +1155,14 @@ private fun GeoEditor(
                 checked = state.activeFromEnabled,
                 onCheckedChange = onActiveFromEnabledChange,
             )
-            Text("Only activate the location trigger from a specific time")
+            Text(stringResource(R.string.only_activate_location_from))
         }
         if (state.activeFromEnabled) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = state.activeFromDateText,
                     onValueChange = onActiveFromDateChange,
-                    label = { Text("Active date") },
+                    label = { Text(stringResource(R.string.active_date)) },
                     singleLine = true,
                     isError = state.activeFromError != null,
                     modifier = Modifier.weight(1.5f),
@@ -1138,7 +1170,7 @@ private fun GeoEditor(
                 OutlinedTextField(
                     value = state.activeFromTimeText,
                     onValueChange = onActiveFromTimeChange,
-                    label = { Text("Active time") },
+                    label = { Text(stringResource(R.string.active_time)) },
                     singleLine = true,
                     isError = state.activeFromError != null,
                     modifier = Modifier.weight(1f),
@@ -1146,7 +1178,7 @@ private fun GeoEditor(
             }
             state.activeFromError?.let { SupportingError(it) }
             Text(
-                text = "The time trigger above still fires independently.",
+                text = stringResource(R.string.time_trigger_independent),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1171,23 +1203,32 @@ private fun GeoNumberField(
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         isError = error != null,
-        supportingText = error?.let { { Text(it.userMessage()) } },
+        supportingText = error?.let { { Text(it.userMessage().resolve()) } },
     )
 }
 
 @Composable
-private fun SupportingError(message: String, modifier: Modifier = Modifier) {
+private fun SupportingError(message: UiText, modifier: Modifier = Modifier) {
     Text(
-        text = message,
+        text = message.resolve(),
         modifier = modifier,
         color = MaterialTheme.colorScheme.error,
         style = MaterialTheme.typography.bodySmall,
     )
 }
 
-private fun GeoInputError.userMessage(): String = when (this) {
-    GeoInputError.REQUIRED -> "Required"
-    GeoInputError.NOT_A_NUMBER -> "Enter a number"
-    GeoInputError.OUT_OF_RANGE -> "Out of range"
-    GeoInputError.NOT_POSITIVE -> "Must be positive"
+private fun GeoInputError.userMessage(): UiText = UiText.resource(
+    when (this) {
+        GeoInputError.REQUIRED -> R.string.required
+        GeoInputError.NOT_A_NUMBER -> R.string.enter_a_number
+        GeoInputError.OUT_OF_RANGE -> R.string.out_of_range
+        GeoInputError.NOT_POSITIVE -> R.string.must_be_positive
+    },
+)
+
+private fun ParseIssue.asUiText(): UiText = when (code) {
+    ParseIssueCode.INVALID_COORDINATES -> UiText.resource(R.string.invalid_coordinates)
+    ParseIssueCode.INVALID_TIME -> UiText.resource(R.string.invalid_time)
+    ParseIssueCode.INVALID_DATE -> UiText.resource(R.string.invalid_date)
+    ParseIssueCode.UNKNOWN -> UiText.Plain(message)
 }

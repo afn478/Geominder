@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.zIndex
@@ -62,7 +63,8 @@ import androidx.navigation.compose.rememberNavController
 import com.afn478.geominder.alert.AlertIntentFactory
 import com.afn478.geominder.backup.CalendarDocumentContract
 import com.afn478.geominder.domain.model.ReminderId
-import com.afn478.geominder.parser.ReminderTextParser
+import com.afn478.geominder.localization.UiText
+import com.afn478.geominder.localization.resource
 import com.afn478.geominder.settings.SettingsPermissionAction
 import com.afn478.geominder.ui.add.AddReminderRoute
 import com.afn478.geominder.ui.add.AddReminderViewModel
@@ -89,7 +91,7 @@ fun ReminderApp(
     val navController = rememberNavController()
     val context = LocalContext.current
     val settings by container.settingsRepository.settings.collectAsStateWithLifecycle()
-    var backupStatus by remember { mutableStateOf<String?>(null) }
+    var backupStatus by remember { mutableStateOf<UiText?>(null) }
     var backupInProgress by remember { mutableStateOf(false) }
     var nextAddComposerSession by remember { mutableIntStateOf(0) }
     var addComposerSession by remember { mutableStateOf<Int?>(null) }
@@ -103,8 +105,8 @@ fun ReminderApp(
                 backupInProgress = true
                 backupStatus = runCatching { container.safReminderBackup.exportTo(uri) }
                     .fold(
-                        onSuccess = { "Exported ${it.exported} reminder(s)." },
-                        onFailure = { it.message ?: "The backup could not be exported." },
+                        onSuccess = { UiText.resource(R.string.backup_exported, it.exported) },
+                        onFailure = { UiText.resource(R.string.backup_export_failed) },
                     )
                 backupInProgress = false
             }
@@ -120,14 +122,21 @@ fun ReminderApp(
                     .fold(
                         onSuccess = { import ->
                             if (import.succeeded) {
-                                "Imported ${import.inserted} new and ${import.updated} updated reminder(s); " +
-                                    "${import.scheduled} scheduled, ${import.schedulingFailed} scheduling " +
-                                    "failure(s), ${import.skipped} skipped, ${import.issues.size} issue(s)."
+                                UiText.resource(
+                                    R.string.backup_imported,
+                                    import.inserted,
+                                    import.updated,
+                                    import.scheduled,
+                                    import.schedulingFailed,
+                                    import.skipped,
+                                    import.issues.size,
+                                )
                             } else {
-                                import.fatalError ?: "The backup could not be imported."
+                                import.fatalError?.let(UiText::Plain)
+                                    ?: UiText.resource(R.string.backup_import_failed)
                             }
                         },
-                        onFailure = { it.message ?: "The backup could not be imported." },
+                        onFailure = { UiText.resource(R.string.backup_import_failed) },
                     )
                 backupInProgress = false
             }
@@ -241,6 +250,7 @@ private fun AddReminderDialog(
     onDismiss: () -> Unit,
 ) {
     var showDiscardConfirmation by remember { mutableStateOf(false) }
+    val dismissComposerDescription = stringResource(R.string.dismiss_reminder_composer)
     val density = LocalDensity.current
     val rootView = LocalView.current
     val safeTop = with(density) {
@@ -267,11 +277,12 @@ private fun AddReminderDialog(
         key = "add-composer-$settingsSnapshotKey-$session",
         factory = AddReminderViewModelFactory(
             repository = container.reminderRepository,
-            parser = ReminderTextParser.fromCompleteKeywordTable(keywordTimes),
+            parser = container.parserFactory.fromCompleteKeywordTable(keywordTimes),
             defaultGeoRadiusProvider = container.settingsRepository,
             locationProvider = container.currentLocationProvider,
             geoLabelResolver = container.geoLabelResolver,
             postSaveActions = container.schedulingCoordinator,
+            defaultReminderTitle = stringResource(R.string.reminder),
         ),
     )
     val state by addViewModel.uiState.collectAsStateWithLifecycle()
@@ -337,7 +348,7 @@ private fun AddReminderDialog(
                         onClick = requestDismiss,
                     )
                     .semantics {
-                        contentDescription = "Dismiss reminder composer"
+                        contentDescription = dismissComposerDescription
                     },
             )
 
@@ -375,14 +386,14 @@ private fun AddReminderDialog(
         if (showDiscardConfirmation) {
             AlertDialog(
                 onDismissRequest = { showDiscardConfirmation = false },
-                title = { Text("Discard reminder?") },
-                text = { Text("Your reminder text will not be saved.") },
+                title = { Text(stringResource(R.string.discard_reminder_title)) },
+                text = { Text(stringResource(R.string.discard_reminder_message)) },
                 confirmButton = {
-                    TextButton(onClick = onDismiss) { Text("Discard") }
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.discard)) }
                 },
                 dismissButton = {
                     TextButton(onClick = { showDiscardConfirmation = false }) {
-                        Text("Keep")
+                        Text(stringResource(R.string.keep))
                     }
                 },
             )
@@ -404,26 +415,32 @@ private fun AddReminderHost(
         key = "add-$settingsSnapshotKey",
         factory = AddReminderViewModelFactory(
             repository = container.reminderRepository,
-            parser = ReminderTextParser.fromCompleteKeywordTable(keywordTimes),
+            parser = container.parserFactory.fromCompleteKeywordTable(keywordTimes),
             defaultGeoRadiusProvider = container.settingsRepository,
             locationProvider = container.currentLocationProvider,
             geoLabelResolver = container.geoLabelResolver,
             postSaveActions = container.schedulingCoordinator,
+            defaultReminderTitle = stringResource(R.string.reminder),
             editingReminderId = editingReminderId,
         ),
     )
     val state by addViewModel.uiState.collectAsStateWithLifecycle()
+    val screenTitle = stringResource(
+        if (editingReminderId == null) R.string.add_reminder else R.string.edit_reminder,
+    )
+    val backDescription = stringResource(R.string.back)
+    val saveChangesDescription = stringResource(R.string.save_changes)
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(if (editingReminderId == null) "Add reminder" else "Edit reminder")
+                    Text(screenTitle)
                 },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = backDescription,
                         )
                     }
                 },
@@ -441,7 +458,7 @@ private fun AddReminderHost(
                             } else {
                                 Icon(
                                     imageVector = Icons.Default.Check,
-                                    contentDescription = "Save changes",
+                                    contentDescription = saveChangesDescription,
                                 )
                             }
                         }

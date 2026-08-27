@@ -3,6 +3,7 @@ package com.afn478.geominder.ui.add
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.afn478.geominder.R
 import com.afn478.geominder.domain.model.GeoTrigger
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
@@ -20,6 +21,8 @@ import com.afn478.geominder.geofence.LocationFailure
 import com.afn478.geominder.geofence.LocationResult
 import com.afn478.geominder.geofence.NumericGeoInputParser
 import com.afn478.geominder.geofence.NumericGeoInputResult
+import com.afn478.geominder.localization.UiText
+import com.afn478.geominder.localization.resource
 import com.afn478.geominder.parser.DateTimeDetection
 import com.afn478.geominder.parser.DetectionEdit
 import com.afn478.geominder.parser.GpsDetection
@@ -53,6 +56,7 @@ class AddReminderViewModel(
     private val locationProvider: CurrentLocationProvider,
     private val geoLabelResolver: GeoLabelResolver,
     private val postSaveActions: ReminderPostSaveActions,
+    private val defaultReminderTitle: String = DEFAULT_REMINDER_TEXT,
     private val clock: Clock = Clock.systemDefaultZone(),
     private val localeProvider: () -> Locale = Locale::getDefault,
     private val injectedScope: CoroutineScope? = null,
@@ -82,7 +86,13 @@ class AddReminderViewModel(
                 repository.get(id)?.let { reminder ->
                     originalReminder = reminder
                     prefill(reminder)
-                } ?: _uiState.update { it.copy(editingReminderId = id, expanded = true, saveError = "That reminder could not be found") }
+                } ?: _uiState.update {
+                    it.copy(
+                        editingReminderId = id,
+                        expanded = true,
+                        saveError = UiText.resource(R.string.reminder_could_not_be_found),
+                    )
+                }
             }
         }
     }
@@ -255,7 +265,7 @@ class AddReminderViewModel(
         val date = parseDate(state.dateEditText)
         val time = parseTime(state.timeEditText)
         if (date == null || time == null) {
-            _uiState.update { it.copy(dateTimeEditError = "Enter a valid date and time") }
+            _uiState.update { it.copy(dateTimeEditError = UiText.resource(R.string.invalid_date_time)) }
             return
         }
 
@@ -359,7 +369,7 @@ class AddReminderViewModel(
         val coordinates = ClipboardGeoInputParser.parse(clipboardText)
         if (coordinates == null) {
             _uiState.update {
-                it.copy(locationError = "Clipboard does not contain valid coordinates")
+                it.copy(locationError = UiText.resource(R.string.invalid_clipboard_coordinates))
             }
             return
         }
@@ -587,7 +597,9 @@ class AddReminderViewModel(
         var reminder = (built as ReminderBuildResult.Valid).reminder
         val old = originalReminder
         if (editingReminderId != null && old == null) {
-            _uiState.update { it.copy(saveError = "That reminder could not be found") }
+            _uiState.update {
+                it.copy(saveError = UiText.resource(R.string.reminder_could_not_be_found))
+            }
             return
         }
         if (old != null) {
@@ -634,7 +646,8 @@ class AddReminderViewModel(
                 _uiState.update {
                     it.copy(
                         isSaving = false,
-                        saveError = error.message ?: "The reminder could not be saved",
+                        saveError = error.message?.let(UiText::Plain)
+                            ?: UiText.resource(R.string.reminder_save_failed),
                     )
                 }
             }
@@ -662,9 +675,9 @@ class AddReminderViewModel(
             if (state.activeFromEnabled) {
                 parseActiveFrom(state.activeFromDateText, state.activeFromTimeText)
                     ?: return ReminderBuildResult.Invalid(
-                        message = "Check the active-from date and time",
+                        message = UiText.resource(R.string.check_active_from),
                         geoErrors = geoErrors,
-                        activeFromError = "Enter a valid active date and time",
+                        activeFromError = UiText.resource(R.string.invalid_active_from),
                     )
             } else {
                 null
@@ -684,17 +697,19 @@ class AddReminderViewModel(
 
         if (state.geoEditorVisible && geoInput == null) {
             return ReminderBuildResult.Invalid(
-                message = "Check the location details",
+                message = UiText.resource(R.string.check_location_details),
                 geoErrors = geoErrors,
             )
         }
         if (timeTrigger == null && geoTrigger == null) {
-            return ReminderBuildResult.Invalid("Add at least one time or location trigger")
+            return ReminderBuildResult.Invalid(
+                UiText.resource(R.string.add_time_or_location_trigger),
+            )
         }
 
         val now = clock.instant()
         val trimmedText = state.sourceText.trim()
-        val displayText = trimmedText.ifBlank { DEFAULT_REMINDER_TEXT }
+        val displayText = trimmedText.ifBlank { defaultReminderTitle }
         return ReminderBuildResult.Valid(
             Reminder(
                 sourceText = state.sourceText,
@@ -722,7 +737,7 @@ class AddReminderViewModel(
             val currentLatitude = state.latitudeText.trim().toDoubleOrNull()
             val currentLongitude = state.longitudeText.trim().toDoubleOrNull()
             if (currentLatitude == latitude && currentLongitude == longitude) {
-                val resolved = label.takeIf(String::isNotBlank)?.asNearLabel()
+                val resolved = label.takeIf(String::isNotBlank)
                     ?: fallbackGeoLabel(latitude, longitude)
                 _uiState.update { it.copy(geoLabel = resolved) }
             }
@@ -730,11 +745,7 @@ class AddReminderViewModel(
     }
 
     private fun fallbackGeoLabel(latitude: Double, longitude: Double): String =
-        "near ${latitude.toPlainString()}, ${longitude.toPlainString()}"
-
-    private fun String.asNearLabel(): String = trim().let { label ->
-        if (label.startsWith("near ", ignoreCase = true)) label else "near $label"
-    }
+        "${latitude.toPlainString()}, ${longitude.toPlainString()}"
 
     private fun parseActiveFrom(dateText: String, timeText: String): Instant? {
         val date = parseDate(dateText) ?: return null
@@ -797,22 +808,24 @@ class AddReminderViewModel(
         else -> toString()
     }
 
-    private fun LocationFailure.userMessage(): String = when (this) {
-        LocationFailure.PERMISSION_REQUIRED -> "Location permission is required"
-        LocationFailure.BACKGROUND_PERMISSION_REQUIRED -> "Background location permission is required"
-        LocationFailure.LOCATION_DISABLED -> "Turn on location services to locate this device"
-        LocationFailure.PLAY_SERVICES_UNAVAILABLE -> "Google Play services is unavailable"
-        LocationFailure.NO_LOCATION -> "No current location is available"
-        LocationFailure.REQUEST_FAILED -> "The location request failed"
-    }
+    private fun LocationFailure.userMessage(): UiText = UiText.resource(
+        when (this) {
+            LocationFailure.PERMISSION_REQUIRED -> R.string.location_permission_required
+            LocationFailure.BACKGROUND_PERMISSION_REQUIRED -> R.string.background_location_permission_required
+            LocationFailure.LOCATION_DISABLED -> R.string.location_services_disabled
+            LocationFailure.PLAY_SERVICES_UNAVAILABLE -> R.string.play_services_unavailable
+            LocationFailure.NO_LOCATION -> R.string.no_current_location
+            LocationFailure.REQUEST_FAILED -> R.string.location_request_failed
+        },
+    )
 
     private sealed interface ReminderBuildResult {
         data class Valid(val reminder: Reminder) : ReminderBuildResult
 
         data class Invalid(
-            val message: String,
+            val message: UiText,
             val geoErrors: Map<GeoInputField, GeoInputError> = emptyMap(),
-            val activeFromError: String? = null,
+            val activeFromError: UiText? = null,
         ) : ReminderBuildResult
     }
 
@@ -838,6 +851,7 @@ class AddReminderViewModelFactory(
     private val locationProvider: CurrentLocationProvider,
     private val geoLabelResolver: GeoLabelResolver,
     private val postSaveActions: ReminderPostSaveActions,
+    private val defaultReminderTitle: String = "Reminder",
     private val clock: Clock = Clock.systemDefaultZone(),
     private val editingReminderId: ReminderId? = null,
 ) : ViewModelProvider.Factory {
@@ -853,6 +867,7 @@ class AddReminderViewModelFactory(
             locationProvider = locationProvider,
             geoLabelResolver = geoLabelResolver,
             postSaveActions = postSaveActions,
+            defaultReminderTitle = defaultReminderTitle,
             clock = clock,
             editingReminderId = editingReminderId,
         ) as T

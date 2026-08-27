@@ -9,11 +9,12 @@ import java.util.Locale
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
+/** Supplies a raw place or coordinate label; UI layers add any localized proximity wording. */
 fun interface GeoLabelResolver {
     fun resolve(latitude: Double, longitude: Double, callback: (String) -> Unit)
 }
 
-/** Resolves an optional address while always returning a useful `near X` label. */
+/** Resolves an optional address while always returning a useful place or coordinate label. */
 class AndroidReverseGeocoder(
     context: Context,
     private val callbackExecutor: Executor = ContextCompat.getMainExecutor(context),
@@ -25,7 +26,7 @@ class AndroidReverseGeocoder(
     override fun resolve(latitude: Double, longitude: Double, callback: (String) -> Unit) {
         require(latitude in -90.0..90.0)
         require(longitude in -180.0..180.0)
-        val fallback = formatLabel(formatCoordinates(latitude, longitude))
+        val fallback = formatCoordinates(latitude, longitude)
         if (!Geocoder.isPresent()) {
             callbackExecutor.execute { callback(fallback) }
             return
@@ -81,11 +82,9 @@ class AndroidReverseGeocoder(
         .count()
 
     private fun deliver(name: String?, fallback: String, callback: (String) -> Unit) {
-        val label = name?.takeIf(String::isNotBlank)?.let(::formatLabel) ?: fallback
+        val label = name?.takeIf(String::isNotBlank) ?: fallback
         callbackExecutor.execute { callback(label) }
     }
-
-    private fun formatLabel(place: String): String = "near $place"
 
     private fun formatCoordinates(latitude: Double, longitude: Double): String =
         String.format(Locale.US, "%.5f, %.5f", latitude, longitude)

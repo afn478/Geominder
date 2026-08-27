@@ -1,5 +1,6 @@
 package com.afn478.geominder.ui.list
 
+import com.afn478.geominder.R
 import com.afn478.geominder.domain.model.GeoTrigger
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
@@ -9,6 +10,7 @@ import com.afn478.geominder.domain.model.TimeTrigger
 import com.afn478.geominder.settings.ReminderSortDirection
 import com.afn478.geominder.settings.ReminderSortField
 import com.afn478.geominder.settings.ReminderSortOrder
+import com.afn478.geominder.localization.resourceId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -150,7 +152,7 @@ class ReminderListPresenterTest {
         ).single()
 
         assertEquals(ReminderTriggerKind.TIME_AND_LOCATION, item.triggerKind)
-        assertEquals("Time and location reminder", item.triggerKind.label)
+        assertEquals(R.string.time_and_location_reminder, item.triggerKind.label.resourceId())
         assertEquals(
             "Aug 25, 2026, 8:30 AM",
             item.timeText
@@ -158,7 +160,7 @@ class ReminderListPresenterTest {
                 ?.replace('\u202F', ' '),
         )
         assertEquals("Penn Station", item.locationText)
-        assertEquals("Active", item.lifecycle.label)
+        assertEquals(R.string.status_active, item.lifecycle.label.resourceId())
         assertFalse(item.lifecycle.isTerminal)
         assertFalse(item.isCompleted)
     }
@@ -239,13 +241,13 @@ class ReminderListPresenterTest {
             locale = Locale.US,
         ).associateBy(ReminderListItem::id)
 
-        assertEquals("Paused", items.getValue(paused.id).lifecycle.label)
+        assertEquals(R.string.status_paused, items.getValue(paused.id).lifecycle.label.resourceId())
         assertFalse(items.getValue(paused.id).lifecycle.isTerminal)
         assertTrue(items.getValue(paused.id).canChangeEnabled)
-        assertEquals("Dismissed", items.getValue(dismissed.id).lifecycle.label)
+        assertEquals(R.string.status_dismissed, items.getValue(dismissed.id).lifecycle.label.resourceId())
         assertTrue(items.getValue(dismissed.id).lifecycle.isTerminal)
         assertFalse(items.getValue(dismissed.id).canChangeEnabled)
-        assertEquals("Completed", items.getValue(completed.id).lifecycle.label)
+        assertEquals(R.string.status_completed, items.getValue(completed.id).lifecycle.label.resourceId())
         assertTrue(items.getValue(completed.id).lifecycle.isTerminal)
         assertFalse(items.getValue(completed.id).canChangeEnabled)
         assertTrue(items.getValue(completed.id).isCompleted)
@@ -264,8 +266,8 @@ class ReminderListPresenterTest {
             locale = Locale.US,
         ).single()
 
-        assertEquals("Snoozed", item.lifecycle.label)
-        assertTrue(item.lifecycle.supportingText.startsWith("Resumes "))
+        assertEquals(R.string.status_snoozed, item.lifecycle.label.resourceId())
+        assertEquals(R.string.resumes_at, item.lifecycle.supportingText.resourceId())
     }
 
     private fun reminder(

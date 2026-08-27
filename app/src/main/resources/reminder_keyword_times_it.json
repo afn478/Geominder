@@ -1,0 +1,14 @@
+{
+  "mattina": "08:00",
+  "mattino": "08:00",
+  "colazione": "08:00",
+  "mezzogiorno": "12:00",
+  "pranzo": "12:00",
+  "pomeriggio": "15:00",
+  "sera": "18:00",
+  "cena": "19:00",
+  "stasera": "20:00",
+  "notte": "20:00",
+  "di notte": "20:00",
+  "mezzanotte": "00:00"
+}

@@ -90,12 +90,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.afn478.geominder.R
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderTag
+import com.afn478.geominder.localization.UiText
+import com.afn478.geominder.localization.resource
 import com.afn478.geominder.settings.ReminderSortDirection
 import com.afn478.geominder.settings.ReminderSortField
 import com.afn478.geominder.settings.ReminderSortOrder
 import com.afn478.geominder.ui.tag.ReminderTagChips
 import com.afn478.geominder.ui.tag.ReminderTrashChip
 import com.afn478.geominder.ui.tag.color
+import com.afn478.geominder.ui.text.resolve
 import kotlinx.coroutines.delay
 
 @Composable
@@ -150,11 +153,15 @@ fun ReminderListScreen(
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val windowHeight = maxHeight
         val snackbarHostState = remember { SnackbarHostState() }
+        val dismissLabel = stringResource(R.string.dismiss)
+        val deletedMessage = stringResource(R.string.reminder_deleted)
+        val undoLabel = stringResource(R.string.undo)
+        val messageText = state.message?.resolve()
         LaunchedEffect(state.message) {
-            state.message?.let { message ->
+            messageText?.let { message ->
                 snackbarHostState.showSnackbar(
                     message = message,
-                    actionLabel = "Dismiss",
+                    actionLabel = dismissLabel,
                     duration = SnackbarDuration.Short,
                 )
                 onDismissMessage()
@@ -163,8 +170,8 @@ fun ReminderListScreen(
         LaunchedEffect(state.undoDeleteReminderId) {
             val reminderId = state.undoDeleteReminderId ?: return@LaunchedEffect
             val result = snackbarHostState.showSnackbar(
-                message = "Reminder deleted",
-                actionLabel = "Undo",
+                message = deletedMessage,
+                actionLabel = undoLabel,
                 duration = SnackbarDuration.Short,
             )
             if (result == SnackbarResult.ActionPerformed) {
@@ -241,16 +248,18 @@ fun ReminderListScreen(
 
                 state.isEmpty -> EmptyReminderContent(
                     title = when {
-                        state.showTrash && state.selectedTag == null -> "Recycling bin is empty"
-                        state.selectedTag != null -> "No reminders found"
-                        else -> "Nothing to remember yet"
+                        state.showTrash && state.selectedTag == null ->
+                            UiText.resource(R.string.empty_recycling_bin)
+                        state.selectedTag != null ->
+                            UiText.resource(R.string.no_reminders_found)
+                        else -> UiText.resource(R.string.nothing_to_remember)
                     },
                     description = when {
                         state.showTrash && state.selectedTag == null ->
-                            "Deleted reminders will appear here."
-                        state.selectedTag != null -> "No reminders use this color tag yet."
-                        else -> "Create a reminder for a time, a place, or both. " +
-                            "It will appear here so you can open, edit, or mark it done."
+                            UiText.resource(R.string.deleted_reminders_will_appear)
+                        state.selectedTag != null ->
+                            UiText.resource(R.string.no_tagged_reminders)
+                        else -> UiText.resource(R.string.empty_reminders_description)
                     },
                     modifier = Modifier.padding(contentPadding),
                 )
@@ -279,7 +288,7 @@ private fun ReminderCompactTopAppBar(
     onSortOrderChange: (ReminderSortOrder) -> Unit,
 ) {
     TopAppBar(
-        title = { Text("Reminders") },
+        title = { Text(stringResource(R.string.reminders)) },
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.background,
             scrolledContainerColor = MaterialTheme.colorScheme.background,
@@ -356,7 +365,7 @@ private fun MorphingTopAppBarTitle(
             (EXPANDED_TITLE_SCALE - 1f) * expansionFraction
 
         Text(
-            text = "Reminders",
+            text = stringResource(R.string.reminders),
             style = MaterialTheme.typography.titleLarge,
             modifier = Modifier
                 .align(Alignment.CenterStart)
@@ -572,7 +581,9 @@ private fun NewReminderLauncher(
             )
         }
     }
-    val example = REMINDER_EXAMPLES[exampleIndex]
+    val example = stringResource(REMINDER_EXAMPLES[exampleIndex])
+    val exampleDescription = stringResource(R.string.new_reminder, example)
+    val createReminderLabel = stringResource(R.string.create_new_reminder)
 
     Surface(
         modifier = Modifier
@@ -580,13 +591,13 @@ private fun NewReminderLauncher(
             .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .semantics(mergeDescendants = true) {
-                contentDescription = "New reminder: $example"
+                contentDescription = exampleDescription
             }
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
                 role = Role.Button,
-                onClickLabel = "Create a new reminder",
+                onClickLabel = createReminderLabel,
                 onClick = onClick,
             ),
         shape = SearchBarDefaults.inputFieldShape,
@@ -617,21 +628,22 @@ private const val EXAMPLE_ROTATION_MILLIS = 6_000L
 private const val EXAMPLE_FADE_MILLIS = 180
 
 private val REMINDER_EXAMPLES = listOf(
-    "Call Mum tomorrow at 18:00",
-    "Pick up groceries in one hour",
-    "Water the plants Saturday morning",
-    "Take an umbrella when I leave home",
+    R.string.example_call_mum,
+    R.string.example_pick_up_groceries,
+    R.string.example_water_plants,
+    R.string.example_take_umbrella,
 )
 
 @Composable
 private fun LoadingContent(modifier: Modifier = Modifier) {
+    val loadingDescription = stringResource(R.string.loading_reminders)
     Box(
         modifier = modifier.fillMaxSize(),
         contentAlignment = Alignment.Center,
     ) {
         CircularProgressIndicator(
             modifier = Modifier.semantics {
-                contentDescription = "Loading reminders"
+                contentDescription = loadingDescription
             },
         )
     }
@@ -639,8 +651,8 @@ private fun LoadingContent(modifier: Modifier = Modifier) {
 
 @Composable
 private fun EmptyReminderContent(
-    title: String,
-    description: String,
+    title: UiText,
+    description: UiText,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -655,11 +667,11 @@ private fun EmptyReminderContent(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                text = title,
+                text = title.resolve(),
                 style = MaterialTheme.typography.headlineSmall,
             )
             Text(
-                text = description,
+                text = description.resolve(),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -732,6 +744,17 @@ private fun ReminderCard(
         MaterialTheme.colorScheme.onSurfaceVariant
     }
     val textDecoration = if (item.isCompleted) TextDecoration.LineThrough else TextDecoration.None
+    val openLabel = stringResource(R.string.open_reminder, item.title)
+    val completionLabel = stringResource(
+        if (item.isCompleted) R.string.mark_reminder_not_done else R.string.mark_reminder_done,
+        item.primaryText,
+    )
+    val editLabel = stringResource(R.string.edit_reminder_description, item.primaryText)
+    val restoreLabel = stringResource(R.string.restore_reminder_description, item.primaryText)
+    val deleteLabel = stringResource(
+        if (inTrash) R.string.delete_reminder_permanently else R.string.delete_reminder,
+        item.primaryText,
+    )
 
     ElevatedCard(
         modifier = Modifier
@@ -749,7 +772,7 @@ private fun ReminderCard(
             }
             .clickable(
                 enabled = !isBusy,
-                onClickLabel = "Open ${item.title}",
+                onClickLabel = openLabel,
                 onClick = onOpen,
             ),
         shape = cardShape,
@@ -771,11 +794,7 @@ private fun ReminderCard(
                         { checked -> onSetCompleted(checked) }
                     },
                     modifier = Modifier.semantics {
-                        contentDescription = if (item.isCompleted) {
-                            "Mark ${item.primaryText} not done"
-                        } else {
-                            "Mark ${item.primaryText} done"
-                        }
+                        contentDescription = completionLabel
                     },
                 )
                 Column(modifier = Modifier.weight(1f)) {
@@ -790,13 +809,13 @@ private fun ReminderCard(
                 }
                 if (!inTrash) {
                     IconButtonWithDescription(
-                        description = "Edit ${item.primaryText}",
+                        description = editLabel,
                         onClick = onEdit,
                         enabled = !isBusy,
                     ) { Icon(Icons.Default.Edit, contentDescription = null) }
                 } else {
                     IconButtonWithDescription(
-                        description = "Restore ${item.primaryText}",
+                        description = restoreLabel,
                         onClick = onRestore,
                         enabled = !isBusy,
                     ) {
@@ -804,11 +823,7 @@ private fun ReminderCard(
                     }
                 }
                 IconButtonWithDescription(
-                    description = if (inTrash) {
-                        "Delete permanently ${item.primaryText}"
-                    } else {
-                        "Delete ${item.primaryText}"
-                    },
+                    description = deleteLabel,
                     onClick = onDelete,
                     enabled = !isBusy,
                 ) { Icon(Icons.Default.Delete, contentDescription = null) }
@@ -820,14 +835,20 @@ private fun ReminderCard(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     item.timeText?.let { time ->
-                        Icon(Icons.Default.Schedule, contentDescription = "Scheduled time")
+                        Icon(
+                            Icons.Default.Schedule,
+                            contentDescription = stringResource(R.string.scheduled_time),
+                        )
                         Text(time, color = supportingTextColor, textDecoration = textDecoration)
                     }
                     if (item.timeText != null && item.locationText != null) {
                         Text("·", color = supportingTextColor)
                     }
                     item.locationText?.let { location ->
-                        Icon(Icons.Default.LocationOn, contentDescription = "Location")
+                        Icon(
+                            Icons.Default.LocationOn,
+                            contentDescription = stringResource(R.string.location),
+                        )
                         Text(
                             text = location,
                             color = supportingTextColor,

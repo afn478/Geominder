@@ -1,7 +1,9 @@
 package com.afn478.geominder.settings
 
+import com.afn478.geominder.R
 import com.afn478.geominder.alarm.ExactAlarmPermissionState
 import com.afn478.geominder.alarm.FullScreenIntentPermissionState
+import com.afn478.geominder.localization.resourceId
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -13,7 +15,7 @@ class SettingsPermissionPolicyTest {
     fun `exact alarm has no action below API 31`() {
         val item = items(30).first { it.id == SettingsPermissionId.EXACT_ALARM }
 
-        assertEquals("Not required", item.status)
+        assertEquals(R.string.permission_not_required, item.status.resourceId())
         assertNull(item.action)
     }
 

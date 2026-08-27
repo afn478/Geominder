@@ -112,7 +112,8 @@ class GeoLabelRefreshCoordinator(
 
     private companion object {
         val FALLBACK_LABEL = Regex(
-            "(?i)^near\\s+[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)\\s*,\\s*[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)$",
+            "(?i)^(?:near\\s+)?[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)\\s*,\\s*" +
+                "[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)$",
         )
     }
 }

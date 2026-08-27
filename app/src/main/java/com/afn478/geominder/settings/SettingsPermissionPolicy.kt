@@ -1,7 +1,10 @@
 package com.afn478.geominder.settings
 
+import com.afn478.geominder.R
 import com.afn478.geominder.alarm.ExactAlarmPermissionState
 import com.afn478.geominder.alarm.FullScreenIntentPermissionState
+import com.afn478.geominder.localization.UiText
+import com.afn478.geominder.localization.resource
 
 enum class RuntimePermissionState {
     NOT_REQUIRED,
@@ -37,11 +40,11 @@ enum class SettingsPermissionId {
 
 data class PermissionUiItem(
     val id: SettingsPermissionId,
-    val title: String,
-    val status: String,
-    val explanation: String,
+    val title: UiText,
+    val status: UiText,
+    val explanation: UiText,
     val action: SettingsPermissionAction? = null,
-    val actionLabel: String? = null,
+    val actionLabel: UiText? = null,
     val shouldProactivelyRequest: Boolean = false,
 )
 
@@ -58,32 +61,32 @@ object SettingsPermissionPolicy {
     private fun exactAlarmItem(snapshot: SettingsPermissionSnapshot): PermissionUiItem = when {
         snapshot.sdkInt < 31 -> PermissionUiItem(
             id = SettingsPermissionId.EXACT_ALARM,
-            title = "Exact alarms",
-            status = "Not required",
-            explanation = "This Android version allows exact reminder scheduling without special access.",
+            title = UiText.resource(R.string.exact_alarms),
+            status = UiText.resource(R.string.permission_not_required),
+            explanation = UiText.resource(R.string.exact_alarms_not_required_explanation),
         )
         snapshot.exactAlarm.canScheduleExactAlarms -> PermissionUiItem(
             id = SettingsPermissionId.EXACT_ALARM,
-            title = "Exact alarms",
-            status = "Allowed",
-            explanation = "Time reminders can be delivered at their scheduled time.",
+            title = UiText.resource(R.string.exact_alarms),
+            status = UiText.resource(R.string.permission_allowed),
+            explanation = UiText.resource(R.string.exact_alarms_allowed_explanation),
         )
         snapshot.sdkInt <= 32 -> PermissionUiItem(
             id = SettingsPermissionId.EXACT_ALARM,
-            title = "Exact alarms",
-            status = "Access unavailable",
-            explanation = "Android normally grants this access automatically. Review it in system settings.",
+            title = UiText.resource(R.string.exact_alarms),
+            status = UiText.resource(R.string.access_unavailable),
+            explanation = UiText.resource(R.string.exact_alarms_unavailable_explanation),
             action = SettingsPermissionAction.OPEN_EXACT_ALARM_SETTINGS,
-            actionLabel = "Review access",
+            actionLabel = UiText.resource(R.string.review_access),
             shouldProactivelyRequest = false,
         )
         else -> PermissionUiItem(
             id = SettingsPermissionId.EXACT_ALARM,
-            title = "Exact alarms",
-            status = "Permission needed",
-            explanation = "Allow exact alarms in system settings for on-time reminders.",
+            title = UiText.resource(R.string.exact_alarms),
+            status = UiText.resource(R.string.permission_needed),
+            explanation = UiText.resource(R.string.exact_alarms_needed_explanation),
             action = SettingsPermissionAction.OPEN_EXACT_ALARM_SETTINGS,
-            actionLabel = "Allow exact alarms",
+            actionLabel = UiText.resource(R.string.allow_exact_alarms),
             shouldProactivelyRequest = true,
         )
     }
@@ -92,18 +95,18 @@ object SettingsPermissionPolicy {
         if (snapshot.fullScreenIntent.canUseFullScreenIntent) {
             PermissionUiItem(
                 id = SettingsPermissionId.FULL_SCREEN_INTENT,
-                title = "Full-screen alerts",
-                status = "Allowed",
-                explanation = "Locked-screen reminders may use the full-screen alert.",
+                title = UiText.resource(R.string.full_screen_alerts),
+                status = UiText.resource(R.string.permission_allowed),
+                explanation = UiText.resource(R.string.full_screen_alerts_allowed_explanation),
             )
         } else {
             PermissionUiItem(
                 id = SettingsPermissionId.FULL_SCREEN_INTENT,
-                title = "Full-screen alerts",
-                status = "Permission needed",
-                explanation = "Without this access, reminders use a standard notification.",
+                title = UiText.resource(R.string.full_screen_alerts),
+                status = UiText.resource(R.string.permission_needed),
+                explanation = UiText.resource(R.string.full_screen_alerts_needed_explanation),
                 action = SettingsPermissionAction.OPEN_FULL_SCREEN_INTENT_SETTINGS,
-                actionLabel = "Allow full-screen alerts",
+                actionLabel = UiText.resource(R.string.allow_full_screen_alerts),
                 shouldProactivelyRequest = true,
             )
         }
@@ -112,18 +115,18 @@ object SettingsPermissionPolicy {
         if (snapshot.fineLocationGranted) {
             PermissionUiItem(
                 id = SettingsPermissionId.FINE_LOCATION,
-                title = "Precise location",
-                status = "Allowed",
-                explanation = "Location coordinates can be detected accurately.",
+                title = UiText.resource(R.string.precise_location),
+                status = UiText.resource(R.string.permission_allowed),
+                explanation = UiText.resource(R.string.precise_location_allowed_explanation),
             )
         } else {
             PermissionUiItem(
                 id = SettingsPermissionId.FINE_LOCATION,
-                title = "Precise location",
-                status = "Permission needed",
-                explanation = "Precise location is needed to create reliable arrival reminders.",
+                title = UiText.resource(R.string.precise_location),
+                status = UiText.resource(R.string.permission_needed),
+                explanation = UiText.resource(R.string.precise_location_needed_explanation),
                 action = SettingsPermissionAction.REQUEST_FINE_LOCATION,
-                actionLabel = "Allow location",
+                actionLabel = UiText.resource(R.string.allow_location),
                 shouldProactivelyRequest = true,
             )
         }
@@ -131,32 +134,32 @@ object SettingsPermissionPolicy {
     private fun backgroundLocationItem(snapshot: SettingsPermissionSnapshot): PermissionUiItem = when {
         !snapshot.fineLocationGranted -> PermissionUiItem(
             id = SettingsPermissionId.BACKGROUND_LOCATION,
-            title = "Background location",
-            status = "Precise location needed first",
-            explanation = "Allow precise location before enabling arrival reminders in the background.",
+            title = UiText.resource(R.string.background_location),
+            status = UiText.resource(R.string.precise_location_needed_first),
+            explanation = UiText.resource(R.string.background_location_precise_first_explanation),
         )
         snapshot.backgroundLocationGranted -> PermissionUiItem(
             id = SettingsPermissionId.BACKGROUND_LOCATION,
-            title = "Background location",
-            status = "Allowed",
-            explanation = "Arrival reminders can be detected while the app is closed.",
+            title = UiText.resource(R.string.background_location),
+            status = UiText.resource(R.string.permission_allowed),
+            explanation = UiText.resource(R.string.background_location_allowed_explanation),
         )
         snapshot.sdkInt == 29 -> PermissionUiItem(
             id = SettingsPermissionId.BACKGROUND_LOCATION,
-            title = "Background location",
-            status = "Permission needed",
-            explanation = "Allow background location for arrival reminders while the app is closed.",
+            title = UiText.resource(R.string.background_location),
+            status = UiText.resource(R.string.permission_needed),
+            explanation = UiText.resource(R.string.background_location_needed_explanation),
             action = SettingsPermissionAction.REQUEST_BACKGROUND_LOCATION,
-            actionLabel = "Allow background location",
+            actionLabel = UiText.resource(R.string.allow_background_location),
             shouldProactivelyRequest = true,
         )
         else -> PermissionUiItem(
             id = SettingsPermissionId.BACKGROUND_LOCATION,
-            title = "Background location",
-            status = "Permission needed",
-            explanation = "Choose ‘Allow all the time’ on the app permission screen.",
+            title = UiText.resource(R.string.background_location),
+            status = UiText.resource(R.string.permission_needed),
+            explanation = UiText.resource(R.string.background_location_settings_explanation),
             action = SettingsPermissionAction.OPEN_APP_PERMISSION_SETTINGS,
-            actionLabel = "Open permission settings",
+            actionLabel = UiText.resource(R.string.open_permission_settings),
             shouldProactivelyRequest = false,
         )
     }
@@ -165,18 +168,18 @@ object SettingsPermissionPolicy {
         if (snapshot.notifications == RuntimePermissionState.GRANTED) {
             PermissionUiItem(
                 id = SettingsPermissionId.NOTIFICATIONS,
-                title = "Notifications",
-                status = "Allowed",
-                explanation = "Reminder notifications can be shown.",
+                title = UiText.resource(R.string.notifications),
+                status = UiText.resource(R.string.permission_allowed),
+                explanation = UiText.resource(R.string.notifications_allowed_explanation),
             )
         } else {
             PermissionUiItem(
                 id = SettingsPermissionId.NOTIFICATIONS,
-                title = "Notifications",
-                status = "Permission needed",
-                explanation = "Allow notifications so reminders can reach you.",
+                title = UiText.resource(R.string.notifications),
+                status = UiText.resource(R.string.permission_needed),
+                explanation = UiText.resource(R.string.notifications_needed_explanation),
                 action = SettingsPermissionAction.REQUEST_NOTIFICATIONS,
-                actionLabel = "Allow notifications",
+                actionLabel = UiText.resource(R.string.allow_notifications),
                 shouldProactivelyRequest = true,
             )
         }

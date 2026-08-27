@@ -3,6 +3,7 @@ package com.afn478.geominder.ui.list
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.afn478.geominder.R
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
@@ -10,6 +11,8 @@ import com.afn478.geominder.domain.model.ReminderTag
 import com.afn478.geominder.domain.repository.ReminderRepository
 import com.afn478.geominder.settings.ReminderSortOrder
 import com.afn478.geominder.settings.SettingsRepository
+import com.afn478.geominder.localization.UiText
+import com.afn478.geominder.localization.resource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -100,7 +103,8 @@ class ReminderListViewModel(
                     .onFailure { error ->
                         _uiState.update {
                             it.copy(
-                                message = error.message ?: "The sort order could not be saved",
+                                message = error.message?.let(UiText::Plain)
+                                    ?: UiText.resource(R.string.sort_order_save_failed),
                             )
                         }
                     }
@@ -149,7 +153,7 @@ class ReminderListViewModel(
         ) return
         if (enabled && reminder.status.isTerminal) {
             _uiState.update {
-                it.copy(message = "Edit this reminder to re-arm it")
+                it.copy(message = UiText.resource(R.string.edit_to_rearm_reminder))
             }
             return
         }
@@ -345,7 +349,8 @@ class ReminderListViewModel(
                 .onFailure { error ->
                     _uiState.update {
                         it.copy(
-                            message = error.message ?: "The reminder could not be updated",
+                                message = error.message?.let(UiText::Plain)
+                                    ?: UiText.resource(R.string.reminder_update_failed),
                         )
                     }
                 }

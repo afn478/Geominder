@@ -1,11 +1,14 @@
 package com.afn478.geominder.ui.detail
 
+import com.afn478.geominder.R
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderStatus
+import com.afn478.geominder.localization.UiText
+import com.afn478.geominder.localization.resource
+import java.text.NumberFormat
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-import java.text.NumberFormat
 import java.util.Locale
 
 /** Read-only, Android-free presentation state for a single reminder. */
@@ -16,7 +19,7 @@ data class ReminderDetailUiState(
     val sourceText: String? = null,
     val title: String? = null,
     val text: String? = null,
-    val lifecycleLabel: String? = null,
+    val lifecycleLabel: UiText? = null,
     val timeText: String? = null,
     val geoCoordinates: String? = null,
     val geoLabel: String? = null,
@@ -44,14 +47,29 @@ data class ReminderDetailUiState(
                 .withZone(zoneId)
             val geo = reminder.geoTrigger
             val status = if (reminder.isDeleted) {
-                "Deleted"
+                R.string.status_deleted
             } else {
                 when (reminder.status) {
-                    ReminderStatus.PENDING -> if (reminder.enabled) "Active" else "Paused"
-                    ReminderStatus.SNOOZED -> "Snoozed"
-                    ReminderStatus.DISMISSED -> "Dismissed"
-                    ReminderStatus.COMPLETED -> "Completed"
+                    ReminderStatus.PENDING -> if (reminder.enabled) {
+                        R.string.status_active
+                    } else {
+                        R.string.status_paused
+                    }
+                    ReminderStatus.SNOOZED -> R.string.status_snoozed
+                    ReminderStatus.DISMISSED -> R.string.status_dismissed
+                    ReminderStatus.COMPLETED -> R.string.status_completed
                 }
+            }
+            val lifecycleLabel = if (reminder.isDeleted || reminder.enabled) {
+                UiText.resource(status)
+            } else {
+                UiText.resource(
+                    when (reminder.status) {
+                        ReminderStatus.DISMISSED -> R.string.dismissed_disabled
+                        ReminderStatus.COMPLETED -> R.string.completed_disabled
+                        else -> R.string.paused_disabled
+                    },
+                )
             }
             return ReminderDetailUiState(
                 isLoading = false,
@@ -59,11 +77,7 @@ data class ReminderDetailUiState(
                 sourceText = reminder.sourceText,
                 title = reminder.title,
                 text = reminder.text,
-                lifecycleLabel = if (reminder.isDeleted || reminder.enabled) {
-                    status
-                } else {
-                    "$status · disabled"
-                },
+                lifecycleLabel = lifecycleLabel,
                 timeText = reminder.timeTrigger?.let { formatter.format(it.exactAt) },
                 geoCoordinates = geo?.let { "%.5f, %.5f".format(Locale.ROOT, it.latitude, it.longitude) },
                 geoLabel = geo?.label,

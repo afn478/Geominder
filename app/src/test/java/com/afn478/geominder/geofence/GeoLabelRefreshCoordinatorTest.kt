@@ -36,11 +36,11 @@ class GeoLabelRefreshCoordinatorTest {
     }
 
     @Test
-    fun `fallback resolver result is not persisted`() = runBlocking {
+    fun `raw coordinate resolver result is not persisted`() = runBlocking {
         val repository = FakeRepository(listOf(reminder(null)))
         GeoLabelRefreshCoordinator(
             repository,
-            GeoLabelResolver { _, _, callback -> callback("near 40.71280, -74.00600") },
+            GeoLabelResolver { _, _, callback -> callback("40.71280, -74.00600") },
             FakeNetworkMonitor(),
             CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
         ).also { it.start() }

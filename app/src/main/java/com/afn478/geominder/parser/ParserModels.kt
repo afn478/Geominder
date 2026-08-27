@@ -102,9 +102,17 @@ data class GpsDetection(
     }
 }
 
+enum class ParseIssueCode {
+    INVALID_COORDINATES,
+    INVALID_TIME,
+    INVALID_DATE,
+    UNKNOWN,
+}
+
 data class ParseIssue(
     val message: String,
     val span: SourceSpan? = null,
+    val code: ParseIssueCode = ParseIssueCode.UNKNOWN,
 )
 
 sealed interface DetectionEdit {

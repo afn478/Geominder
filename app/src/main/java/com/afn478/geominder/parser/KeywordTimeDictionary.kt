@@ -1,44 +1,57 @@
 package com.afn478.geominder.parser
 
+import com.afn478.geominder.localization.SupportedLanguage
 import java.time.LocalTime
 import java.util.Locale
 
 /**
- * Preset natural-language times.
+ * The editable preset table used by one source-language parser.
  *
- * The public constructor keeps the original override behavior: supplied values are merged into
- * [DEFAULTS]. Use [fromCompleteTable] when a map represents the entire persisted table, including
- * removals of shipped defaults.
+ * The public override constructor keeps the original API: overrides are merged into that
+ * language's shipped defaults. A complete table is used for persisted settings so removing a
+ * shipped preset remains meaningful.
  */
 class KeywordTimeDictionary private constructor(
+    val language: SupportedLanguage,
     table: NormalizedKeywordTable,
 ) {
     val entries: Map<String, LocalTime> = table.entries
+    val defaultEntries: Map<String, LocalTime> = TimeLanguagePacks.defaultsFor(language)
+    private val matcher = KeywordTimeMatcher(entries)
 
-    constructor(overrides: Map<String, LocalTime> = emptyMap()) : this(
+    constructor(
+        overrides: Map<String, LocalTime> = emptyMap(),
+        language: SupportedLanguage = SupportedLanguage.fromLocale(Locale.getDefault()),
+    ) : this(
+        language = language,
         table = NormalizedKeywordTable(
             buildMap {
-                putAll(DEFAULTS)
+                putAll(TimeLanguagePacks.defaultsFor(language))
                 putAll(normalizeAndValidate(overrides))
             },
         ),
     )
+
+    internal fun findMatches(source: String): Sequence<KeywordTimeMatch> = matcher.findAll(source)
 
     private data class NormalizedKeywordTable(
         val entries: Map<String, LocalTime>,
     )
 
     companion object {
+        /** English remains the compatibility default for callers that do not supply a language. */
         val DEFAULTS: Map<String, LocalTime> = loadDefaults()
 
         /** Builds a dictionary containing exactly [entries], after key normalization. */
-        fun fromCompleteTable(entries: Map<String, LocalTime>): KeywordTimeDictionary =
-            KeywordTimeDictionary(NormalizedKeywordTable(normalizeAndValidate(entries)))
+        fun fromCompleteTable(
+            entries: Map<String, LocalTime>,
+            language: SupportedLanguage = SupportedLanguage.fromLocale(Locale.getDefault()),
+        ): KeywordTimeDictionary = KeywordTimeDictionary(
+            language = language,
+            table = NormalizedKeywordTable(normalizeAndValidate(entries)),
+        )
 
-        internal fun normalize(value: String): String = value
-            .trim()
-            .lowercase(Locale.ROOT)
-            .replace(Regex("\\s+"), " ")
+        internal fun normalize(value: String): String = normalizeKeywordPhrase(value)
 
         private fun normalizeAndValidate(entries: Map<String, LocalTime>): Map<String, LocalTime> {
             val normalizedEntries = entries.map { (keyword, time) ->
@@ -79,5 +92,60 @@ class KeywordTimeDictionary private constructor(
             require(values.isNotEmpty()) { "reminder_keyword_times.json contains no keyword times" }
             return normalizeAndValidate(values)
         }
+    }
+}
+
+internal data class KeywordTimeMatch(
+    val span: SourceSpan,
+    val time: LocalTime,
+)
+
+internal fun normalizeKeywordPhrase(value: String): String = value
+    .trim()
+    .lowercase(Locale.ROOT)
+    .replace(Regex("\\s+"), " ")
+
+/** One compiled expression replaces the old per-keyword regex compilation in every parse call. */
+private class KeywordTimeMatcher(
+    entries: Map<String, LocalTime>,
+) {
+    private val values = entries
+    private val regex = entries.keys
+        .sortedWith(compareByDescending<String> { it.length }.thenBy { it })
+        .map(::keywordPattern)
+        .takeIf { it.isNotEmpty() }
+        ?.joinToString("|")
+        ?.let { Regex(it, setOf(RegexOption.IGNORE_CASE)) }
+
+    fun findAll(source: String): Sequence<KeywordTimeMatch> = regex
+        ?.findAll(source)
+        ?.mapNotNull { match ->
+            values[normalizeKeywordPhrase(match.value)]?.let { time ->
+                KeywordTimeMatch(
+                    span = SourceSpan(match.range.first, match.range.last + 1),
+                    time = time,
+                )
+            }
+        }
+        ?: emptySequence()
+
+    private fun keywordPattern(keyword: String): String {
+        val phrase = keyword.split(' ').joinToString("\\s+") { Regex.escape(it) }
+        return if (keyword.requiresScriptBoundary()) {
+            "(?<![\\p{L}\\p{N}])$phrase(?![\\p{L}\\p{N}])"
+        } else {
+            phrase
+        }
+    }
+}
+
+private fun String.requiresScriptBoundary(): Boolean = none { character ->
+    when (Character.UnicodeScript.of(character.code)) {
+        Character.UnicodeScript.HAN,
+        Character.UnicodeScript.HANGUL,
+        Character.UnicodeScript.HIRAGANA,
+        Character.UnicodeScript.KATAKANA,
+        -> true
+        else -> false
     }
 }
