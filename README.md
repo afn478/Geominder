@@ -18,6 +18,10 @@ Japanese, Chinese, and Korean. Each pack keeps its clock order, day-part modifie
 words, and default keyword table together in `TimeLanguagePacks.kt` and
 `app/src/main/resources/reminder_keyword_times_*.json`.
 
+The default English resources use American English. Android's `values-en-rGB` overlay supplies
+British spellings, terms, and examples for devices using the `en-GB` locale; `en-US` uses the
+default resources.
+
 To add a language, add its `SupportedLanguage` entry, pack rules, keyword JSON, and a matching
 Android `values-<language>` resource overlay. Keep user-facing state as `UiText.Resource` so
 Compose resolves it with the system locale at the UI boundary.

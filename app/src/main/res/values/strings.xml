@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
     <string name="app_name">geominder</string>
     <string name="alert_channel_name">Reminder alerts</string>
     <string name="alert_channel_description">Time and location reminder alerts</string>
@@ -25,7 +25,7 @@
     <string name="dismiss">Dismiss</string>
     <string name="undo">Undo</string>
     <string name="reminder_deleted">Reminder deleted</string>
-    <string name="empty_recycling_bin">Recycling bin is empty</string>
+    <string name="empty_recycling_bin">The trash is empty</string>
     <string name="no_reminders_found">No reminders found</string>
     <string name="nothing_to_remember">Nothing to remember yet</string>
     <string name="deleted_reminders_will_appear">Deleted reminders will appear here.</string>
@@ -54,7 +54,7 @@
     <string name="select_reminder">Select %1$s</string>
     <string name="deselect_reminder">Deselect %1$s</string>
     <string name="reminders_deleted">%1$d reminders deleted</string>
-    <string name="example_call_mum">Call Mum tomorrow at 18:00</string>
+    <string name="example_call_mum">Call Mom tomorrow at 6:00 PM</string>
     <string name="example_pick_up_groceries">Pick up groceries in one hour</string>
     <string name="example_water_plants">Water the plants Saturday morning</string>
     <string name="example_take_umbrella">Take an umbrella when I leave home</string>
@@ -67,7 +67,7 @@
     <string name="status_snoozed">Snoozed</string>
     <string name="status_dismissed">Dismissed</string>
     <string name="status_completed">Completed</string>
-    <string name="in_recycling_bin">In the recycling bin</string>
+    <string name="in_recycling_bin">In the trash</string>
     <string name="dismissed_no_longer_scheduled">Dismissed and no longer scheduled</string>
     <string name="completed_no_longer_scheduled">Completed and no longer scheduled</string>
     <string name="paused_triggers_not_registered">Paused; alarms and locations are not registered</string>
@@ -118,7 +118,7 @@
     <string name="show_full_screen_reminder">Show full-screen reminder</string>
     <string name="location_defaults_description">Used for new arrival reminders. You can still change the radius on each reminder.</string>
     <string name="default_geofence_radius">Default geofence radius</string>
-    <string name="metres">metres</string>
+    <string name="metres">meters</string>
     <string name="save_radius">Save radius</string>
     <string name="preset_times_description">Keywords such as “morning” are recognized while you type a reminder.</string>
     <string name="remove_time_expressions_from_text">Remove time expressions from reminder text</string>
@@ -167,9 +167,9 @@
     <string name="notifications_allowed_explanation">Reminder notifications can be shown.</string>
     <string name="notifications_needed_explanation">Allow notifications so reminders can reach you.</string>
     <string name="setting_save_failed">The setting could not be saved</string>
-    <string name="validation_radius_number">Enter a radius in metres</string>
+    <string name="validation_radius_number">Enter a radius in meters</string>
     <string name="validation_radius_finite">Enter a finite radius</string>
-    <string name="validation_radius_range">Use a radius from 1 to 100,000 metres</string>
+    <string name="validation_radius_range">Use a radius from 1 to 100,000 meters</string>
     <string name="validation_keyword_empty">Enter a keyword</string>
     <string name="validation_keyword_too_long">Keep the keyword to 40 characters or fewer</string>
     <string name="validation_keyword_character">The keyword contains an unsupported character</string>
@@ -203,7 +203,7 @@
     <string name="longitude">Longitude</string>
     <string name="locating_current_position">Locating current position</string>
     <string name="locate_current_position">Locate current position</string>
-    <string name="radius_metres">Radius (metres)</string>
+    <string name="radius_metres">Radius (meters)</string>
     <string name="only_activate_location_from">Only activate the location trigger from a specific time</string>
     <string name="active_date">Active date</string>
     <string name="active_time">Active time</string>
@@ -249,8 +249,8 @@
     <string name="tag_purple">Purple</string>
     <string name="tag">%1$s tag</string>
     <string name="tag_selected">%1$s tag, selected</string>
-    <string name="recycling_bin">Recycling bin</string>
-    <string name="recycling_bin_selected">Recycling bin, selected</string>
+    <string name="recycling_bin">Trash</string>
+    <string name="recycling_bin_selected">Trash, selected</string>
     <string name="add_reminder">Add reminder</string>
     <string name="edit_reminder">Edit reminder</string>
     <string name="save_changes">Save changes</string>

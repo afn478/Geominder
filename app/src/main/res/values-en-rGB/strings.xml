@@ -1,0 +1,21 @@
+<resources>
+    <!-- The default values are American English; this file contains British overrides only. -->
+    <string name="empty_recycling_bin">The bin is empty</string>
+    <string name="no_tagged_reminders">No reminders use this colour tag yet.</string>
+    <string name="example_call_mum">Call Mum tomorrow at 18:00</string>
+    <string name="in_recycling_bin">In the bin</string>
+    <string name="theme_and_accent_color">Theme and accent colour</string>
+    <string name="test_lock_screen_alert">Test the lock-screen alert behaviour</string>
+    <string name="accent_color">Accent colour: %1$s</string>
+    <string name="accent_color_selected">Accent colour: %1$s, selected</string>
+    <string name="debug_alert_description">Launch a test full-screen reminder to check wake, timeout, and lock-screen behaviour.</string>
+    <string name="debug_alert_time">17:30</string>
+    <string name="debug_alert_location">Corner Market, City centre</string>
+    <string name="metres">metres</string>
+    <string name="validation_radius_number">Enter a radius in metres</string>
+    <string name="validation_radius_range">Use a radius from 1 to 100,000 metres</string>
+    <string name="color_tag">Colour tag</string>
+    <string name="radius_metres">Radius (metres)</string>
+    <string name="recycling_bin">Bin</string>
+    <string name="recycling_bin_selected">Bin, selected</string>
+</resources>
