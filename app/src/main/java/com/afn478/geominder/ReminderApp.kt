@@ -6,8 +6,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
@@ -39,6 +41,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
@@ -358,17 +361,26 @@ private fun AddReminderDialog(
             BottomSheetScaffold(
                 scaffoldState = scaffoldState,
                 sheetContent = {
-                    AddReminderRoute(
-                        viewModel = addViewModel,
-                        onReminderSaved = { onDismiss() },
-                        modifier = Modifier.heightIn(max = maximumSheetHeight),
-                        autoFocusSource = true,
-                        bottomSheetMode = true,
-                        sheetContentScrollEnabled =
-                            sheetState.currentValue == SheetValue.Expanded &&
-                                sheetState.targetValue == SheetValue.Expanded,
-                        onExpandBottomSheet = expandSheet,
-                    )
+                    Column {
+                        // Keep the visual handle without Material 3's tooltip wrapper.
+                        Box(
+                            modifier = Modifier.fillMaxWidth(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            BottomSheetDefaults.DragHandle()
+                        }
+                        AddReminderRoute(
+                            viewModel = addViewModel,
+                            onReminderSaved = { onDismiss() },
+                            modifier = Modifier.heightIn(max = maximumSheetHeight),
+                            autoFocusSource = true,
+                            bottomSheetMode = true,
+                            sheetContentScrollEnabled =
+                                sheetState.currentValue == SheetValue.Expanded &&
+                                    sheetState.targetValue == SheetValue.Expanded,
+                            onExpandBottomSheet = expandSheet,
+                        )
+                    }
                 },
                 modifier = Modifier
                     .fillMaxSize()
@@ -376,7 +388,7 @@ private fun AddReminderDialog(
                     .imePadding(),
                 sheetPeekHeight = 192.dp + collapsedSheetExtraHeight,
                 sheetContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                sheetDragHandle = { BottomSheetDefaults.DragHandle() },
+                sheetDragHandle = null,
                 sheetSwipeEnabled = true,
                 containerColor = Color.Transparent,
             ) {
