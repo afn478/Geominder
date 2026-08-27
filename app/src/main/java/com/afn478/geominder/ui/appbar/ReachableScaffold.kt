@@ -43,8 +43,8 @@ import androidx.compose.ui.unit.dp
  *
  * The compact layout remains Material's native [TopAppBar]. On eligible windows, the same
  * title is rendered once and transformed between the native compact position and a centered,
- * larger position. Actions use their own measured motion so they can settle below the expanded
- * title without changing the title's compact geometry.
+ * larger position. Navigation and action controls use their own measured motion so they can
+ * settle below the expanded title without changing the title's compact geometry.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -126,7 +126,7 @@ private fun ReachableTopAppBar(
     Box {
         LargeTopAppBar(
             title = { Spacer(Modifier) },
-            navigationIcon = navigationIcon ?: {},
+            navigationIcon = {},
             colors = reachableAppBarColors(),
             actions = {},
             expandedHeight = expandedHeight,
@@ -134,6 +134,7 @@ private fun ReachableTopAppBar(
         )
         ReachableTopAppBarOverlay(
             title = title,
+            navigationIcon = navigationIcon,
             actions = actions,
             collapsedFraction = appBarState.collapsedFraction,
             compactTitleStartPadding = compactTitleStartPadding,
@@ -145,6 +146,7 @@ private fun ReachableTopAppBar(
 @Composable
 private fun ReachableTopAppBarOverlay(
     title: String,
+    navigationIcon: (@Composable () -> Unit)?,
     actions: @Composable RowScope.() -> Unit,
     collapsedFraction: Float,
     compactTitleStartPadding: Dp,
@@ -153,10 +155,11 @@ private fun ReachableTopAppBarOverlay(
     BoxWithConstraints(modifier = modifier) {
         val density = LocalDensity.current
         var titleSize by remember(title) { mutableStateOf(IntSize.Zero) }
+        var navigationIconHeightPx by remember { mutableIntStateOf(0) }
         var actionHeightPx by remember { mutableIntStateOf(0) }
         val expansionFraction = (1f - collapsedFraction).coerceIn(0f, 1f)
-        // Keep title and actions independent: the title morphs through its own transform, while
-        // actions stay anchored to the moving app-bar/content boundary.
+        // Keep the title and controls independent: the title morphs through its own transform,
+        // while navigation and actions stay anchored to the moving app-bar/content boundary.
         val titleProgress = expansionFraction
         val containerWidthPx = with(density) { maxWidth.toPx() }
         val containerHeightPx = with(density) { maxHeight.toPx() }
@@ -193,9 +196,25 @@ private fun ReachableTopAppBarOverlay(
 
         val actionHeight = actionHeightPx.toFloat()
         val actionBottomPaddingPx = with(density) { ACTION_BOTTOM_PADDING.toPx() }
-        val actionTranslationY = (
-            containerHeightPx - actionHeight / 2f - actionBottomPaddingPx
+        fun bottomAlignedTranslationY(itemHeight: Float): Float = (
+            containerHeightPx - itemHeight / 2f - actionBottomPaddingPx
             ) - containerHeightPx / 2f
+        val navigationIconTranslationY = bottomAlignedTranslationY(
+            navigationIconHeightPx.toFloat(),
+        )
+        val actionTranslationY = bottomAlignedTranslationY(actionHeight)
+
+        navigationIcon?.let { icon ->
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = TOP_APP_BAR_HORIZONTAL_PADDING)
+                    .onSizeChanged { navigationIconHeightPx = it.height }
+                    .graphicsLayer { translationY = navigationIconTranslationY },
+            ) {
+                icon()
+            }
+        }
 
         Text(
             text = title,
