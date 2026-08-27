@@ -1,5 +1,6 @@
 package com.afn478.geominder.ui.settings
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
@@ -212,88 +213,93 @@ fun SettingsScreen(
     }
 
     val pageScrollState = rememberScrollState()
-    val title = stringResource(selectedSubsection?.titleRes ?: R.string.settings)
     LaunchedEffect(selectedSubsection) {
         pageScrollState.scrollTo(0)
     }
 
-    ReachableScaffold(
-        title = title,
+    Crossfade(
+        targetState = selectedSubsection,
         modifier = modifier,
-        compactTitleStartPadding = 56.dp,
-        navigationIcon = {
-            IconButton(
-                onClick = {
-                    if (selectedSubsection == null) onBack() else selectedSubsection = null
-                },
-            ) {
-                Icon(
-                    Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.back),
+        label = "Settings subsection",
+    ) { subsection ->
+        ReachableScaffold(
+            title = stringResource(subsection?.titleRes ?: R.string.settings),
+            compactTitleStartPadding = 56.dp,
+            navigationIcon = {
+                IconButton(
+                    onClick = {
+                        if (subsection == null) onBack() else selectedSubsection = null
+                    },
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.back),
+                    )
+                }
+            },
+        ) { contentPadding ->
+            val pageModifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(pageScrollState)
+                .padding(contentPadding)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .navigationBarsPadding()
+
+            when (subsection) {
+                null -> SettingsSubsectionList(
+                    modifier = pageModifier,
+                    persistenceError = state.persistenceError,
+                    onSelect = { selectedSubsection = it },
                 )
-            }
-        },
-    ) { contentPadding ->
-        val pageModifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(pageScrollState)
-            .padding(contentPadding)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-            .navigationBarsPadding()
 
-        when (selectedSubsection) {
-            null -> SettingsSubsectionList(
-                modifier = pageModifier,
-                persistenceError = state.persistenceError,
-                onSelect = { selectedSubsection = it },
-            )
+                SettingsSubsection.APPEARANCE -> SettingsSubpage(pageModifier) {
+                    AppearanceSection(state, onThemeModeChange, onAccentThemeChange)
+                }
 
-            SettingsSubsection.APPEARANCE -> SettingsSubpage(pageModifier) {
-                AppearanceSection(state, onThemeModeChange, onAccentThemeChange)
-            }
+                SettingsSubsection.LOCATION -> SettingsSubpage(pageModifier) {
+                    RadiusSection(
+                        state = state,
+                        onRadiusChange = onRadiusChange,
+                        onSaveRadius = onSaveRadius,
+                    )
+                }
 
-            SettingsSubsection.LOCATION -> SettingsSubpage(pageModifier) {
-                RadiusSection(
-                    state = state,
-                    onRadiusChange = onRadiusChange,
-                    onSaveRadius = onSaveRadius,
-                )
-            }
+                SettingsSubsection.PRESET_TIMES -> SettingsSubpage(pageModifier) {
+                    KeywordSection(
+                        state = state,
+                        onAddKeyword = onAddKeyword,
+                        onEditKeyword = onEditKeyword,
+                        onKeywordChange = onKeywordChange,
+                        onKeywordTimeChange = onKeywordTimeChange,
+                        onRemoveTimeExpressionsFromTextChange =
+                            onRemoveTimeExpressionsFromTextChange,
+                        onSaveKeyword = onSaveKeyword,
+                        onCancelKeywordEdit = onCancelKeywordEdit,
+                        onRemoveKeyword = onRemoveKeyword,
+                        onResetKeywords = onResetKeywords,
+                    )
+                }
 
-            SettingsSubsection.PRESET_TIMES -> SettingsSubpage(pageModifier) {
-                KeywordSection(
-                    state = state,
-                    onAddKeyword = onAddKeyword,
-                    onEditKeyword = onEditKeyword,
-                    onKeywordChange = onKeywordChange,
-                    onKeywordTimeChange = onKeywordTimeChange,
-                    onRemoveTimeExpressionsFromTextChange = onRemoveTimeExpressionsFromTextChange,
-                    onSaveKeyword = onSaveKeyword,
-                    onCancelKeywordEdit = onCancelKeywordEdit,
-                    onRemoveKeyword = onRemoveKeyword,
-                    onResetKeywords = onResetKeywords,
-                )
-            }
+                SettingsSubsection.PERMISSIONS -> SettingsSubpage(pageModifier) {
+                    PermissionSection(
+                        items = state.permissionItems,
+                        onPermissionAction = onPermissionAction,
+                    )
+                }
 
-            SettingsSubsection.PERMISSIONS -> SettingsSubpage(pageModifier) {
-                PermissionSection(
-                    items = state.permissionItems,
-                    onPermissionAction = onPermissionAction,
-                )
-            }
+                SettingsSubsection.BACKUP -> SettingsSubpage(pageModifier) {
+                    BackupSection(
+                        onExportBackup = onExportBackup,
+                        onImportBackup = onImportBackup,
+                        status = backupStatus,
+                        inProgress = backupInProgress,
+                    )
+                }
 
-            SettingsSubsection.BACKUP -> SettingsSubpage(pageModifier) {
-                BackupSection(
-                    onExportBackup = onExportBackup,
-                    onImportBackup = onImportBackup,
-                    status = backupStatus,
-                    inProgress = backupInProgress,
-                )
-            }
-
-            SettingsSubsection.DEBUG -> if (BuildConfig.DEBUG) {
-                SettingsSubpage(pageModifier) {
-                    DebugAlertSection(onShowDebugFullScreenReminder)
+                SettingsSubsection.DEBUG -> if (BuildConfig.DEBUG) {
+                    SettingsSubpage(pageModifier) {
+                        DebugAlertSection(onShowDebugFullScreenReminder)
+                    }
                 }
             }
         }
