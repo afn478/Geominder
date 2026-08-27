@@ -1,10 +1,12 @@
 package com.afn478.geominder.ui.list
 
+import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
@@ -33,6 +36,9 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.FlipToBack
+import androidx.compose.material.icons.outlined.SelectAll
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -102,7 +108,10 @@ fun ReminderListRoute(
 
     ReminderListScreen(
         state = state,
-        onAddReminder = onAddReminder,
+        onAddReminder = {
+            viewModel.exitSelectionMode()
+            onAddReminder()
+        },
         onOpenSettings = onOpenSettings,
         onSortOrderChange = viewModel::setSortOrder,
         onTagFilterClick = viewModel::toggleTagFilter,
@@ -115,6 +124,12 @@ fun ReminderListRoute(
         onUndoDelete = viewModel::undoDelete,
         onUndoDeleteNoticeConsumed = viewModel::consumeUndoDeleteNotice,
         onDismissMessage = viewModel::clearMessage,
+        onStartSelection = viewModel::startSelection,
+        onToggleSelection = viewModel::toggleSelection,
+        onSelectAllReminders = viewModel::selectAllReminders,
+        onInvertSelection = viewModel::invertSelection,
+        onDeleteSelectedReminders = viewModel::deleteSelectedReminders,
+        onExitSelectionMode = viewModel::exitSelectionMode,
         modifier = modifier,
     )
 }
@@ -136,12 +151,19 @@ fun ReminderListScreen(
     onUndoDelete: (ReminderId) -> Unit,
     onUndoDeleteNoticeConsumed: (ReminderId) -> Unit,
     onDismissMessage: () -> Unit,
+    onStartSelection: (ReminderId) -> Unit = {},
+    onToggleSelection: (ReminderId) -> Unit = {},
+    onSelectAllReminders: () -> Unit = {},
+    onInvertSelection: () -> Unit = {},
+    onDeleteSelectedReminders: () -> Unit = {},
+    onExitSelectionMode: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val dismissLabel = stringResource(R.string.dismiss)
     val deletedMessage = stringResource(R.string.reminder_deleted)
     val undoLabel = stringResource(R.string.undo)
+    val exitSelectionLabel = stringResource(R.string.exit_selection_mode)
     val messageText = state.message?.resolve()
     LaunchedEffect(state.message) {
         messageText?.let { message ->
@@ -166,15 +188,45 @@ fun ReminderListScreen(
         onUndoDeleteNoticeConsumed(reminderId)
     }
 
+    BackHandler(
+        enabled = state.isSelectionMode,
+        onBack = onExitSelectionMode,
+    )
+
     ReachableScaffold(
         title = stringResource(R.string.reminders),
         modifier = modifier,
+        navigationIcon = if (state.isSelectionMode) {
+            {
+                IconButton(
+                    onClick = onExitSelectionMode,
+                    modifier = Modifier.semantics {
+                        contentDescription = exitSelectionLabel
+                    },
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = null)
+                }
+            }
+        } else {
+            null
+        },
+        compactTitleStartPadding = if (state.isSelectionMode) 72.dp else 24.dp,
         actions = {
-            ReminderOverflowMenu(
-                onOpenSettings = onOpenSettings,
-                sortOrder = state.sortOrder,
-                onSortOrderChange = onSortOrderChange,
-            )
+            if (state.isSelectionMode) {
+                ReminderSelectionActions(
+                    inTrash = state.showTrash,
+                    hasSelection = state.selectedReminderIds.isNotEmpty(),
+                    onDeleteSelected = onDeleteSelectedReminders,
+                    onSelectAll = onSelectAllReminders,
+                    onInvertSelection = onInvertSelection,
+                )
+            } else {
+                ReminderOverflowMenu(
+                    onOpenSettings = onOpenSettings,
+                    sortOrder = state.sortOrder,
+                    onSortOrderChange = onSortOrderChange,
+                )
+            }
         },
         bottomBar = {
             Column {
@@ -232,10 +284,52 @@ fun ReminderListScreen(
                 onSetCompleted = onSetCompleted,
                 onDeleteReminder = onDeleteReminder,
                 onRestoreReminder = onRestoreReminder,
+                selectionMode = state.isSelectionMode,
+                selectedReminderIds = state.selectedReminderIds,
+                onStartSelection = onStartSelection,
+                onToggleSelection = onToggleSelection,
                 inTrash = state.showTrash,
                 modifier = Modifier.padding(contentPadding),
             )
         }
+    }
+}
+
+@Composable
+private fun ReminderSelectionActions(
+    inTrash: Boolean,
+    hasSelection: Boolean,
+    onDeleteSelected: () -> Unit,
+    onSelectAll: () -> Unit,
+    onInvertSelection: () -> Unit,
+) {
+    val deleteLabel = stringResource(
+        if (inTrash) {
+            R.string.delete_selected_reminders_permanently
+        } else {
+            R.string.delete_selected_reminders
+        },
+    )
+    IconButtonWithDescription(
+        description = deleteLabel,
+        onClick = onDeleteSelected,
+        enabled = hasSelection,
+    ) {
+        Icon(Icons.Default.Delete, contentDescription = null)
+    }
+    IconButtonWithDescription(
+        description = stringResource(R.string.select_all_reminders),
+        onClick = onSelectAll,
+        enabled = true,
+    ) {
+        Icon(Icons.Outlined.SelectAll, contentDescription = null)
+    }
+    IconButtonWithDescription(
+        description = stringResource(R.string.invert_reminder_selection),
+        onClick = onInvertSelection,
+        enabled = true,
+    ) {
+        Icon(Icons.Outlined.FlipToBack, contentDescription = null)
     }
 }
 
@@ -524,6 +618,10 @@ private fun ReminderItems(
     onSetCompleted: (ReminderId, Boolean) -> Unit,
     onDeleteReminder: (ReminderId) -> Unit,
     onRestoreReminder: (ReminderId) -> Unit,
+    selectionMode: Boolean,
+    selectedReminderIds: Set<ReminderId>,
+    onStartSelection: (ReminderId) -> Unit,
+    onToggleSelection: (ReminderId) -> Unit,
     inTrash: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -549,6 +647,10 @@ private fun ReminderItems(
                 onSetCompleted = { completed -> onSetCompleted(item.id, completed) },
                 onDelete = { onDeleteReminder(item.id) },
                 onRestore = { onRestoreReminder(item.id) },
+                selectionMode = selectionMode,
+                isSelected = item.id in selectedReminderIds,
+                onStartSelection = { onStartSelection(item.id) },
+                onToggleSelection = { onToggleSelection(item.id) },
                 inTrash = inTrash,
             )
         }
@@ -565,6 +667,10 @@ private fun ReminderCard(
     onSetCompleted: (Boolean) -> Unit,
     onDelete: () -> Unit,
     onRestore: () -> Unit,
+    selectionMode: Boolean,
+    isSelected: Boolean,
+    onStartSelection: () -> Unit,
+    onToggleSelection: () -> Unit,
     inTrash: Boolean,
 ) {
     val motionSpec: FiniteAnimationSpec<IntSize> = MaterialTheme.motionScheme.defaultSpatialSpec()
@@ -591,6 +697,10 @@ private fun ReminderCard(
         if (inTrash) R.string.delete_reminder_permanently else R.string.delete_reminder,
         item.primaryText,
     )
+    val selectionLabel = stringResource(
+        if (isSelected) R.string.deselect_reminder else R.string.select_reminder,
+        item.primaryText,
+    )
 
     ElevatedCard(
         modifier = Modifier
@@ -606,12 +716,25 @@ private fun ReminderCard(
                     )
                 }
             }
-            .clickable(
+            .combinedClickable(
                 enabled = !isBusy,
-                onClickLabel = openLabel,
-                onClick = onOpen,
+                onClickLabel = if (selectionMode) selectionLabel else openLabel,
+                onLongClickLabel = selectionLabel,
+                onLongClick = {
+                    if (selectionMode) onToggleSelection() else onStartSelection()
+                },
+                onClick = {
+                    if (selectionMode) onToggleSelection() else onOpen()
+                },
             ),
         shape = cardShape,
+        colors = if (isSelected) {
+            CardDefaults.elevatedCardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            )
+        } else {
+            CardDefaults.elevatedCardColors()
+        },
     ) {
         Column(
             modifier = Modifier.padding(12.dp),
@@ -622,17 +745,27 @@ private fun ReminderCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Checkbox(
-                    checked = item.isCompleted,
-                    onCheckedChange = if (isBusy || inTrash) {
-                        null
-                    } else {
-                        { checked -> onSetCompleted(checked) }
-                    },
-                    modifier = Modifier.semantics {
-                        contentDescription = completionLabel
-                    },
-                )
+                if (selectionMode) {
+                    Checkbox(
+                        checked = isSelected,
+                        onCheckedChange = if (isBusy) null else { _ -> onToggleSelection() },
+                        modifier = Modifier.semantics {
+                            contentDescription = selectionLabel
+                        },
+                    )
+                } else {
+                    Checkbox(
+                        checked = item.isCompleted,
+                        onCheckedChange = if (isBusy || inTrash) {
+                            null
+                        } else {
+                            { checked -> onSetCompleted(checked) }
+                        },
+                        modifier = Modifier.semantics {
+                            contentDescription = completionLabel
+                        },
+                    )
+                }
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = item.primaryText,
@@ -643,26 +776,28 @@ private fun ReminderCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                if (!inTrash) {
-                    IconButtonWithDescription(
-                        description = editLabel,
-                        onClick = onEdit,
-                        enabled = !isBusy,
-                    ) { Icon(Icons.Default.Edit, contentDescription = null) }
-                } else {
-                    IconButtonWithDescription(
-                        description = restoreLabel,
-                        onClick = onRestore,
-                        enabled = !isBusy,
-                    ) {
-                        Icon(Icons.Default.RestoreFromTrash, contentDescription = null)
+                if (!selectionMode) {
+                    if (!inTrash) {
+                        IconButtonWithDescription(
+                            description = editLabel,
+                            onClick = onEdit,
+                            enabled = !isBusy,
+                        ) { Icon(Icons.Default.Edit, contentDescription = null) }
+                    } else {
+                        IconButtonWithDescription(
+                            description = restoreLabel,
+                            onClick = onRestore,
+                            enabled = !isBusy,
+                        ) {
+                            Icon(Icons.Default.RestoreFromTrash, contentDescription = null)
+                        }
                     }
+                    IconButtonWithDescription(
+                        description = deleteLabel,
+                        onClick = onDelete,
+                        enabled = !isBusy,
+                    ) { Icon(Icons.Default.Delete, contentDescription = null) }
                 }
-                IconButtonWithDescription(
-                    description = deleteLabel,
-                    onClick = onDelete,
-                    enabled = !isBusy,
-                ) { Icon(Icons.Default.Delete, contentDescription = null) }
             }
 
             if (item.timeText != null || item.locationText != null) {

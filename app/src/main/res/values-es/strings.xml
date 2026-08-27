@@ -43,6 +43,14 @@
     <string name="restore_reminder_description">Restaurar %1$s</string>
     <string name="delete_reminder">Eliminar %1$s</string>
     <string name="delete_reminder_permanently">Eliminar %1$s permanentemente</string>
+    <string name="exit_selection_mode">Salir del modo de selección</string>
+    <string name="select_all_reminders">Seleccionar todos los recordatorios</string>
+    <string name="invert_reminder_selection">Invertir selección</string>
+    <string name="delete_selected_reminders">Eliminar recordatorios seleccionados</string>
+    <string name="delete_selected_reminders_permanently">Eliminar permanentemente los recordatorios seleccionados</string>
+    <string name="select_reminder">Seleccionar %1$s</string>
+    <string name="deselect_reminder">Deseleccionar %1$s</string>
+    <string name="reminders_deleted">%1$d recordatorios eliminados</string>
     <string name="example_call_mum">Llamar a mamá mañana a las 18:00</string>
     <string name="example_pick_up_groceries">Recoger la compra en una hora</string>
     <string name="example_water_plants">Regar las plantas el sábado por la mañana</string>

@@ -43,6 +43,14 @@
     <string name="restore_reminder_description">Восстановить: %1$s</string>
     <string name="delete_reminder">Удалить: %1$s</string>
     <string name="delete_reminder_permanently">Удалить навсегда: %1$s</string>
+    <string name="exit_selection_mode">Выйти из режима выбора</string>
+    <string name="select_all_reminders">Выбрать все напоминания</string>
+    <string name="invert_reminder_selection">Инвертировать выбор</string>
+    <string name="delete_selected_reminders">Удалить выбранные напоминания</string>
+    <string name="delete_selected_reminders_permanently">Удалить выбранные напоминания навсегда</string>
+    <string name="select_reminder">Выбрать: %1$s</string>
+    <string name="deselect_reminder">Снять выбор: %1$s</string>
+    <string name="reminders_deleted">Удалено напоминаний: %1$d</string>
     <string name="example_call_mum">Позвонить маме завтра в 18:00</string>
     <string name="example_pick_up_groceries">Забрать покупки через час</string>
     <string name="example_water_plants">Полить растения в субботу утром</string>

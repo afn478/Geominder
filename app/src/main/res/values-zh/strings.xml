@@ -43,6 +43,14 @@
     <string name="restore_reminder_description">恢复 %1$s</string>
     <string name="delete_reminder">删除 %1$s</string>
     <string name="delete_reminder_permanently">永久删除 %1$s</string>
+    <string name="exit_selection_mode">退出选择模式</string>
+    <string name="select_all_reminders">选择所有提醒</string>
+    <string name="invert_reminder_selection">反选</string>
+    <string name="delete_selected_reminders">删除所选提醒</string>
+    <string name="delete_selected_reminders_permanently">永久删除所选提醒</string>
+    <string name="select_reminder">选择 %1$s</string>
+    <string name="deselect_reminder">取消选择 %1$s</string>
+    <string name="reminders_deleted">已删除 %1$d 条提醒</string>
     <string name="example_call_mum">明天下午6点给妈妈打电话</string>
     <string name="example_pick_up_groceries">一小时后取回买好的东西</string>
     <string name="example_water_plants">星期六早上给植物浇水</string>

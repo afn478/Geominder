@@ -43,6 +43,14 @@
     <string name="restore_reminder_description">Restore %1$s</string>
     <string name="delete_reminder">Delete %1$s</string>
     <string name="delete_reminder_permanently">Delete permanently %1$s</string>
+    <string name="exit_selection_mode">Exit selection mode</string>
+    <string name="select_all_reminders">Select all reminders</string>
+    <string name="invert_reminder_selection">Invert reminder selection</string>
+    <string name="delete_selected_reminders">Delete selected reminders</string>
+    <string name="delete_selected_reminders_permanently">Permanently delete selected reminders</string>
+    <string name="select_reminder">Select %1$s</string>
+    <string name="deselect_reminder">Deselect %1$s</string>
+    <string name="reminders_deleted">%1$d reminders deleted</string>
     <string name="example_call_mum">Call Mum tomorrow at 18:00</string>
     <string name="example_pick_up_groceries">Pick up groceries in one hour</string>
     <string name="example_water_plants">Water the plants Saturday morning</string>

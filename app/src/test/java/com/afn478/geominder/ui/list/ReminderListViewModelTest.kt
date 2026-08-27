@@ -95,6 +95,79 @@ class ReminderListViewModelTest {
     }
 
     @Test
+    fun `selection supports long press seed select all and inverse selection`() {
+        val first = reminder(id = ReminderId("first"))
+        val second = reminder(id = ReminderId("second"), title = "Second")
+        val viewModel = viewModel(FakeRepository(listOf(first, second)))
+
+        viewModel.startSelection(first.id)
+
+        assertTrue(viewModel.uiState.value.isSelectionMode)
+        assertEquals(setOf(first.id), viewModel.uiState.value.selectedReminderIds)
+
+        viewModel.selectAllReminders()
+        assertEquals(
+            setOf(first.id, second.id),
+            viewModel.uiState.value.selectedReminderIds,
+        )
+
+        viewModel.invertSelection()
+        assertTrue(viewModel.uiState.value.selectedReminderIds.isEmpty())
+
+        viewModel.toggleSelection(second.id)
+        assertEquals(setOf(second.id), viewModel.uiState.value.selectedReminderIds)
+        viewModel.exitSelectionMode()
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+        assertTrue(viewModel.uiState.value.selectedReminderIds.isEmpty())
+    }
+
+    @Test
+    fun `deleting selected reminders moves all to trash and cancels each schedule`() {
+        val events = mutableListOf<String>()
+        val first = reminder(id = ReminderId("first"))
+        val second = reminder(id = ReminderId("second"), title = "Second")
+        val repository = FakeRepository(listOf(first, second), events)
+        val viewModel = viewModel(repository, RecordingCommandHandler(events))
+
+        viewModel.startSelection(first.id)
+        viewModel.toggleSelection(second.id)
+        viewModel.deleteSelectedReminders()
+
+        assertEquals(
+            listOf("command:Cancel", "moveToTrash", "command:Cancel", "moveToTrash"),
+            events,
+        )
+        assertTrue(repository.current().all(Reminder::isDeleted))
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+        assertTrue(viewModel.uiState.value.selectedReminderIds.isEmpty())
+        assertTrue(viewModel.uiState.value.items.isEmpty())
+        assertEquals(R.string.reminders_deleted, viewModel.uiState.value.message?.resourceId())
+    }
+
+    @Test
+    fun `deleting selected reminders from trash permanently removes all`() {
+        val events = mutableListOf<String>()
+        val first = reminder(id = ReminderId("first")).copy(deletedAt = NOW)
+        val second = reminder(id = ReminderId("second"), title = "Second")
+            .copy(deletedAt = NOW)
+        val repository = FakeRepository(listOf(first, second), events)
+        val viewModel = viewModel(repository, RecordingCommandHandler(events))
+
+        viewModel.toggleTrash()
+        viewModel.startSelection(first.id)
+        viewModel.toggleSelection(second.id)
+        viewModel.deleteSelectedReminders()
+
+        assertEquals(
+            listOf("command:Cancel", "delete", "command:Cancel", "delete"),
+            events,
+        )
+        assertTrue(repository.current().isEmpty())
+        assertFalse(viewModel.uiState.value.isSelectionMode)
+        assertTrue(viewModel.uiState.value.items.isEmpty())
+    }
+
+    @Test
     fun `disabling cancels registration and persists the change`() {
         val events = mutableListOf<String>()
         val repository = FakeRepository(listOf(reminder()), events)

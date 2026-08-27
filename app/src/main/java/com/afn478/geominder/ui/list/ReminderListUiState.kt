@@ -26,6 +26,8 @@ data class ReminderListUiState(
     val selectedTag: ReminderTag? = null,
     val showTrash: Boolean = false,
     val undoDeleteReminderId: ReminderId? = null,
+    val isSelectionMode: Boolean = false,
+    val selectedReminderIds: Set<ReminderId> = emptySet(),
 ) {
     val isEmpty: Boolean
         get() = !isLoading && items.isEmpty()

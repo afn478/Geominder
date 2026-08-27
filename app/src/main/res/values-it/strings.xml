@@ -43,6 +43,14 @@
     <string name="restore_reminder_description">Ripristina %1$s</string>
     <string name="delete_reminder">Elimina %1$s</string>
     <string name="delete_reminder_permanently">Elimina definitivamente %1$s</string>
+    <string name="exit_selection_mode">Esci dalla modalità di selezione</string>
+    <string name="select_all_reminders">Seleziona tutti i promemoria</string>
+    <string name="invert_reminder_selection">Inverti selezione</string>
+    <string name="delete_selected_reminders">Elimina i promemoria selezionati</string>
+    <string name="delete_selected_reminders_permanently">Elimina definitivamente i promemoria selezionati</string>
+    <string name="select_reminder">Seleziona %1$s</string>
+    <string name="deselect_reminder">Deseleziona %1$s</string>
+    <string name="reminders_deleted">%1$d promemoria eliminati</string>
     <string name="example_call_mum">Chiama la mamma domani alle 18:00</string>
     <string name="example_pick_up_groceries">Ritira la spesa tra un’ora</string>
     <string name="example_water_plants">Annaffia le piante sabato mattina</string>

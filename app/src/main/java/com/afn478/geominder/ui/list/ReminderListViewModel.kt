@@ -68,14 +68,18 @@ class ReminderListViewModel(
                 reminders = observedReminders
                 remindersById = observedReminders.associateBy(Reminder::id)
                 _uiState.update { current ->
+                    val presentedItems = present(
+                        reminders = observedReminders,
+                        sortOrder = current.sortOrder,
+                        selectedTag = current.selectedTag,
+                        showDeleted = current.showTrash,
+                    )
                     current.copy(
                         isLoading = false,
-                        items = present(
-                            reminders = observedReminders,
-                            sortOrder = current.sortOrder,
-                            selectedTag = current.selectedTag,
-                            showDeleted = current.showTrash,
-                        ),
+                        items = presentedItems,
+                        isSelectionMode = current.isSelectionMode && presentedItems.isNotEmpty(),
+                        selectedReminderIds = current.selectedReminderIds
+                            .intersect(presentedItems.map(ReminderListItem::id).toSet()),
                     )
                 }
             }
@@ -117,6 +121,8 @@ class ReminderListViewModel(
             val selectedTag = if (state.selectedTag == tag) null else tag
             state.copy(
                 selectedTag = selectedTag,
+                isSelectionMode = false,
+                selectedReminderIds = emptySet(),
                 items = present(
                     reminders = reminders,
                     sortOrder = state.sortOrder,
@@ -133,6 +139,8 @@ class ReminderListViewModel(
             val showTrash = !state.showTrash
             state.copy(
                 showTrash = showTrash,
+                isSelectionMode = false,
+                selectedReminderIds = emptySet(),
                 items = present(
                     reminders = reminders,
                     sortOrder = state.sortOrder,
@@ -140,6 +148,76 @@ class ReminderListViewModel(
                     showDeleted = showTrash,
                 ),
                 message = null,
+            )
+        }
+    }
+
+    fun startSelection(id: ReminderId) {
+        val state = _uiState.value
+        if (id !in state.items.map(ReminderListItem::id) || id in state.busyReminderIds) return
+
+        _uiState.update {
+            it.copy(
+                isSelectionMode = true,
+                selectedReminderIds = it.selectedReminderIds + id,
+                message = null,
+            )
+        }
+    }
+
+    fun toggleSelection(id: ReminderId) {
+        val state = _uiState.value
+        if (
+            !state.isSelectionMode ||
+            id !in state.items.map(ReminderListItem::id) ||
+            id in state.busyReminderIds
+        ) return
+
+        _uiState.update {
+            val selectedReminderIds = if (id in it.selectedReminderIds) {
+                it.selectedReminderIds - id
+            } else {
+                it.selectedReminderIds + id
+            }
+            it.copy(selectedReminderIds = selectedReminderIds)
+        }
+    }
+
+    fun selectAllReminders() {
+        val state = _uiState.value
+        if (!state.isSelectionMode) return
+
+        _uiState.update {
+            it.copy(
+                selectedReminderIds = it.items
+                    .asSequence()
+                    .map(ReminderListItem::id)
+                    .filterNot(it.busyReminderIds::contains)
+                    .toSet(),
+            )
+        }
+    }
+
+    fun invertSelection() {
+        val state = _uiState.value
+        if (!state.isSelectionMode) return
+
+        _uiState.update {
+            val visibleIds = it.items.map(ReminderListItem::id).toSet()
+            it.copy(
+                selectedReminderIds = visibleIds
+                    .filterNot(it.selectedReminderIds::contains)
+                    .filterNot(it.busyReminderIds::contains)
+                    .toSet(),
+            )
+        }
+    }
+
+    fun exitSelectionMode() {
+        _uiState.update {
+            it.copy(
+                isSelectionMode = false,
+                selectedReminderIds = emptySet(),
             )
         }
     }
@@ -237,28 +315,88 @@ class ReminderListViewModel(
         }
     }
 
+    fun deleteSelectedReminders() {
+        val state = _uiState.value
+        if (!state.isSelectionMode) return
+
+        val selectedReminders = state.items
+            .asSequence()
+            .map(ReminderListItem::id)
+            .filter(state.selectedReminderIds::contains)
+            .filterNot(state.busyReminderIds::contains)
+            .mapNotNull { id -> remindersById[id]?.let { reminder -> id to reminder } }
+            .toList()
+        if (selectedReminders.isEmpty()) return
+
+        val showTrash = state.showTrash
+        val selectedIds = selectedReminders.map { (id, _) -> id }.toSet()
+        _uiState.update {
+            it.copy(
+                isSelectionMode = false,
+                selectedReminderIds = emptySet(),
+                busyReminderIds = it.busyReminderIds + selectedIds,
+                undoDeleteReminderId = null,
+                message = null,
+            )
+        }
+
+        workScope().launch {
+            var deletedCount = 0
+            val deletedIds = mutableListOf<ReminderId>()
+            var firstError: Throwable? = null
+            selectedReminders.forEach { (id, reminder) ->
+                runCatching {
+                    deleteReminder(reminder, permanently = showTrash)
+                }.onSuccess {
+                    deletedCount += 1
+                    deletedIds += id
+                }.onFailure { error ->
+                    firstError = firstError ?: error
+                }
+            }
+            _uiState.update { current ->
+                val undoDeleteReminderId = if (
+                    !showTrash &&
+                    selectedReminders.size == 1 &&
+                    deletedIds.size == 1
+                ) {
+                    deletedIds.single()
+                } else {
+                    null
+                }
+                current.copy(
+                    busyReminderIds = current.busyReminderIds - selectedIds,
+                    undoDeleteReminderId = undoDeleteReminderId,
+                    message = firstError?.message?.let(UiText::Plain)
+                        ?: if (deletedCount > 0) {
+                            if (undoDeleteReminderId != null) {
+                                null
+                            } else if (deletedCount == 1) {
+                                UiText.resource(R.string.reminder_deleted)
+                            } else {
+                                UiText.resource(
+                                    R.string.reminders_deleted,
+                                    deletedCount,
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                )
+            }
+        }
+    }
+
     private fun moveToTrash(id: ReminderId, reminder: Reminder) {
         launchMutation(id) {
-            // Cancellation comes first: a failed scheduler integration must not leave an
-            // untracked alarm or geofence after a reminder is moved to trash.
-            scheduleCommandHandler.handle(ReminderScheduleCommand.Cancel(reminder))
-            try {
-                repository.moveToTrash(id, clock.instant())
-            } catch (error: Throwable) {
-                if (reminder.isPending) {
-                    compensate(error, ReminderScheduleCommand.Register(reminder))
-                }
-                throw error
-            }
+            deleteReminder(reminder, permanently = false)
             _uiState.update { it.copy(undoDeleteReminderId = id) }
         }
     }
 
     private fun permanentlyDelete(id: ReminderId, reminder: Reminder) {
         launchMutation(id) {
-            // The reminder has already been unscheduled when it entered trash.
-            scheduleCommandHandler.handle(ReminderScheduleCommand.Cancel(reminder))
-            repository.delete(id)
+            deleteReminder(reminder, permanently = true)
             _uiState.update { state ->
                 if (state.undoDeleteReminderId == id) {
                     state.copy(undoDeleteReminderId = null)
@@ -266,6 +404,25 @@ class ReminderListViewModel(
                     state
                 }
             }
+        }
+    }
+
+    private suspend fun deleteReminder(reminder: Reminder, permanently: Boolean) {
+        // Cancellation comes first: a failed scheduler integration must not leave an
+        // untracked alarm or geofence after a reminder is deleted or moved to trash.
+        scheduleCommandHandler.handle(ReminderScheduleCommand.Cancel(reminder))
+        if (permanently) {
+            repository.delete(reminder.id)
+            return
+        }
+
+        try {
+            repository.moveToTrash(reminder.id, clock.instant())
+        } catch (error: Throwable) {
+            if (reminder.isPending) {
+                compensate(error, ReminderScheduleCommand.Register(reminder))
+            }
+            throw error
         }
     }
 

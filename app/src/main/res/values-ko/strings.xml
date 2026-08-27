@@ -43,6 +43,14 @@
     <string name="restore_reminder_description">%1$s 복원</string>
     <string name="delete_reminder">%1$s 삭제</string>
     <string name="delete_reminder_permanently">%1$s 영구 삭제</string>
+    <string name="exit_selection_mode">선택 모드 종료</string>
+    <string name="select_all_reminders">모든 리마인더 선택</string>
+    <string name="invert_reminder_selection">선택 반전</string>
+    <string name="delete_selected_reminders">선택한 리마인더 삭제</string>
+    <string name="delete_selected_reminders_permanently">선택한 리마인더 영구 삭제</string>
+    <string name="select_reminder">%1$s 선택</string>
+    <string name="deselect_reminder">%1$s 선택 해제</string>
+    <string name="reminders_deleted">리마인더 %1$d개 삭제됨</string>
     <string name="example_call_mum">내일 오후 6시에 엄마에게 전화</string>
     <string name="example_pick_up_groceries">한 시간 후에 장보기</string>
     <string name="example_water_plants">토요일 아침에 식물에 물 주기</string>
