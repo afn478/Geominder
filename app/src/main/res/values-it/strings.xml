@@ -267,13 +267,13 @@
     <string name="invalid_time">L’ora supera l’intervallo valido</string>
     <string name="invalid_date">La data non è valida</string>
     <string name="preset_locations">Posizioni predefinite</string>
-    <string name="recognized_keyword_locations">Posizioni delle parole chiave riconosciute</string>
-    <string name="preset_locations_description">Le parole chiave come «a casa» vengono riconosciute mentre scrivi un promemoria e usano le coordinate e il raggio salvati.</string>
-    <string name="add_preset_location">Aggiungi posizione predefinita</string>
-    <string name="edit_preset_location">Modifica posizione predefinita</string>
-    <string name="save_preset_location">Salva posizione predefinita</string>
+    <string name="recognized_keyword_locations">Posizioni associate alle parole chiave</string>
+    <string name="preset_locations_description">Quando scrivi un promemoria, vengono riconosciute parole chiave come «a casa» e si usano le coordinate e il raggio salvati.</string>
+    <string name="add_preset_location">Aggiungi una posizione predefinita</string>
+    <string name="edit_preset_location">Modifica la posizione predefinita</string>
+    <string name="save_preset_location">Salva la posizione predefinita</string>
     <string name="location_keyword_placeholder">a casa</string>
-    <string name="preset_location_summary">%1$s · raggio %2$s metri</string>
-    <string name="no_preset_locations">Nessuna posizione predefinita. Aggiungine una per riconoscere un luogo con nome.</string>
+    <string name="preset_location_summary">%1$s · raggio: %2$s metri</string>
+    <string name="no_preset_locations">Nessuna posizione predefinita. Aggiungine una per riconoscere un luogo dal suo nome.</string>
     <string name="reset_preset_locations">Reimposta le posizioni predefinite</string>
 </resources>

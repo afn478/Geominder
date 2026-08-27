@@ -267,13 +267,13 @@
     <string name="invalid_time">Die Zeit liegt außerhalb des gültigen Bereichs</string>
     <string name="invalid_date">Das Datum ist ungültig</string>
     <string name="preset_locations">Voreingestellte Orte</string>
-    <string name="recognized_keyword_locations">Erkannte Schlüsselwort-Orte</string>
-    <string name="preset_locations_description">Schlüsselwörter wie „zu Hause“ werden während der Eingabe erkannt und verwenden die gespeicherten Koordinaten und den Radius.</string>
-    <string name="add_preset_location">Orts-Preset hinzufügen</string>
-    <string name="edit_preset_location">Orts-Preset bearbeiten</string>
-    <string name="save_preset_location">Orts-Preset speichern</string>
+    <string name="recognized_keyword_locations">Über Schlüsselwörter erkannte Orte</string>
+    <string name="preset_locations_description">Während du eine Erinnerung eingibst, werden Schlüsselwörter wie „zu Hause“ erkannt. Dabei werden die gespeicherten Koordinaten und der Radius verwendet.</string>
+    <string name="add_preset_location">Voreingestellten Ort hinzufügen</string>
+    <string name="edit_preset_location">Voreingestellten Ort bearbeiten</string>
+    <string name="save_preset_location">Voreingestellten Ort speichern</string>
     <string name="location_keyword_placeholder">zu Hause</string>
-    <string name="preset_location_summary">%1$s · Radius %2$s Meter</string>
-    <string name="no_preset_locations">Keine Orts-Presets. Füge eines hinzu, um einen benannten Ort zu erkennen.</string>
-    <string name="reset_preset_locations">Orts-Presets zurücksetzen</string>
+    <string name="preset_location_summary">%1$s · Radius: %2$s Meter</string>
+    <string name="no_preset_locations">Keine voreingestellten Orte. Füge einen hinzu, um einen Ort anhand seines Namens zu erkennen.</string>
+    <string name="reset_preset_locations">Voreingestellte Orte zurücksetzen</string>
 </resources>

@@ -267,13 +267,13 @@
     <string name="invalid_time">시간이 유효한 범위를 벗어났습니다</string>
     <string name="invalid_date">날짜가 유효하지 않습니다</string>
     <string name="preset_locations">미리 설정한 위치</string>
-    <string name="recognized_keyword_locations">인식되는 위치 키워드</string>
-    <string name="preset_locations_description">‘집에서’와 같은 키워드는 리마인더를 입력할 때 인식되며 저장된 좌표와 반경을 사용합니다.</string>
-    <string name="add_preset_location">위치 프리셋 추가</string>
-    <string name="edit_preset_location">위치 프리셋 편집</string>
-    <string name="save_preset_location">위치 프리셋 저장</string>
-    <string name="location_keyword_placeholder">집</string>
+    <string name="recognized_keyword_locations">키워드로 인식할 위치</string>
+    <string name="preset_locations_description">리마인더를 입력하면 ‘집에서’와 같은 키워드를 인식하여 저장된 좌표와 반경을 사용합니다.</string>
+    <string name="add_preset_location">미리 설정한 위치 추가</string>
+    <string name="edit_preset_location">미리 설정한 위치 편집</string>
+    <string name="save_preset_location">미리 설정한 위치 저장</string>
+    <string name="location_keyword_placeholder">집에서</string>
     <string name="preset_location_summary">%1$s · 반경 %2$s미터</string>
-    <string name="no_preset_locations">위치 프리셋이 없습니다. 이름이 있는 장소를 인식하려면 추가하세요.</string>
-    <string name="reset_preset_locations">위치 프리셋 초기화</string>
+    <string name="no_preset_locations">미리 설정한 위치가 없습니다. 이름으로 장소를 인식하려면 하나 추가하세요.</string>
+    <string name="reset_preset_locations">미리 설정한 위치 초기화</string>
 </resources>

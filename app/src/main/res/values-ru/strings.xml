@@ -267,13 +267,13 @@
     <string name="invalid_time">Время выходит за допустимый диапазон</string>
     <string name="invalid_date">Дата недействительна</string>
     <string name="preset_locations">Предустановленные места</string>
-    <string name="recognized_keyword_locations">Распознаваемые места по ключевым словам</string>
-    <string name="preset_locations_description">Ключевые слова, например «дома», распознаются при вводе напоминания и используют сохранённые координаты и радиус.</string>
+    <string name="recognized_keyword_locations">Места, распознаваемые по ключевым словам</string>
+    <string name="preset_locations_description">При вводе напоминания распознаются ключевые слова, например «дома», и используются сохранённые координаты и радиус.</string>
     <string name="add_preset_location">Добавить предустановленное место</string>
     <string name="edit_preset_location">Изменить предустановленное место</string>
     <string name="save_preset_location">Сохранить предустановленное место</string>
     <string name="location_keyword_placeholder">дома</string>
-    <string name="preset_location_summary">%1$s · радиус %2$s м</string>
-    <string name="no_preset_locations">Предустановленных мест нет. Добавьте одно, чтобы распознавать место по названию.</string>
+    <string name="preset_location_summary">%1$s · радиус: %2$s м</string>
+    <string name="no_preset_locations">Предустановленных мест нет. Добавьте одно, чтобы распознавать место по его названию.</string>
     <string name="reset_preset_locations">Сбросить предустановленные места</string>
 </resources>

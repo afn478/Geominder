@@ -16,7 +16,7 @@
     <string name="validation_radius_range">Use a radius from 1 to 100,000 metres</string>
     <string name="color_tag">Colour tag</string>
     <string name="radius_metres">Radius (metres)</string>
-    <string name="preset_location_summary">%1$s · radius %2$s metres</string>
+    <string name="preset_location_summary">%1$s · radius: %2$s metres</string>
     <string name="recycling_bin">Bin</string>
     <string name="recycling_bin_selected">Bin, selected</string>
 </resources>

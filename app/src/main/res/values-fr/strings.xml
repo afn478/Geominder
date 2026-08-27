@@ -267,13 +267,13 @@
     <string name="invalid_time">L’heure dépasse les limites valides</string>
     <string name="invalid_date">La date n’est pas valide</string>
     <string name="preset_locations">Lieux prédéfinis</string>
-    <string name="recognized_keyword_locations">Lieux associés aux mots-clés reconnus</string>
-    <string name="preset_locations_description">Les mots-clés comme « à la maison » sont reconnus pendant la saisie d’un rappel et utilisent les coordonnées et le rayon enregistrés.</string>
+    <string name="recognized_keyword_locations">Lieux associés aux mots-clés</string>
+    <string name="preset_locations_description">Lors de la saisie d’un rappel, les mots-clés comme « à la maison » sont reconnus et les coordonnées et le rayon enregistrés sont utilisés.</string>
     <string name="add_preset_location">Ajouter un lieu prédéfini</string>
     <string name="edit_preset_location">Modifier le lieu prédéfini</string>
     <string name="save_preset_location">Enregistrer le lieu prédéfini</string>
     <string name="location_keyword_placeholder">à la maison</string>
     <string name="preset_location_summary">%1$s · rayon : %2$s mètres</string>
-    <string name="no_preset_locations">Aucun lieu prédéfini. Ajoutez-en un pour reconnaître un lieu nommé.</string>
+    <string name="no_preset_locations">Aucun lieu prédéfini. Ajoutez-en un pour reconnaître un lieu par son nom.</string>
     <string name="reset_preset_locations">Réinitialiser les lieux prédéfinis</string>
 </resources>
