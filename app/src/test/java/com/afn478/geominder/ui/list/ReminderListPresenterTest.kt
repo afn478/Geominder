@@ -166,6 +166,23 @@ class ReminderListPresenterTest {
     }
 
     @Test
+    fun `primary text uses display text instead of raw source text`() {
+        val reminder = reminder().copy(
+            sourceText = "in 5 minutes do...",
+            title = "do...",
+            text = "do...",
+        )
+
+        val item = ReminderListPresenter.present(
+            reminders = listOf(reminder),
+            zoneId = ZoneOffset.UTC,
+            locale = Locale.US,
+        ).single()
+
+        assertEquals("do...", item.primaryText)
+    }
+
+    @Test
     fun `selected tag filters reminders and is exposed on each item`() {
         val red = reminder(id = ReminderId("red")).copy(tag = ReminderTag.RED)
         val blue = reminder(id = ReminderId("blue")).copy(tag = ReminderTag.BLUE)

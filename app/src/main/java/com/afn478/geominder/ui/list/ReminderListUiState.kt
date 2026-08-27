@@ -180,7 +180,7 @@ object ReminderListPresenter {
         val lifecycle = lifecyclePresentation(formatter)
         return ReminderListItem(
             id = id,
-            primaryText = sourceText.lineSequence().firstOrNull()?.trim().orEmpty()
+            primaryText = text.lineSequence().firstOrNull()?.trim().orEmpty()
                 .ifBlank { title },
             timeText = timeTrigger?.let { formatter.format(it.exactAt) },
             locationText = place,
