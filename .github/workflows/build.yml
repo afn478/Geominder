@@ -2,32 +2,34 @@ name: Build Android release
 
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - "v*.*.*"
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
-    name: Build signed universal APK
-    runs-on: ubuntu-latest
-
+    name: Build signed Chimahon Lite APKs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - name: Check out Chimahon Lite
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: afn478/chimahon-lite
+          ref: 079479267f027295751edeccc5f20cb1d66e74f4
+          fetch-depth: 0
+          submodules: recursive
 
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
 
-      - name: Check signing secrets
+      - name: Restore and verify Geominder signing key
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -36,110 +38,59 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$ANDROID_KEYSTORE_BASE64" || {
-            echo "::error::ANDROID_KEYSTORE_BASE64 is not configured"
-            exit 1
-          }
-          test -n "$ANDROID_KEYSTORE_PASSWORD" || {
-            echo "::error::ANDROID_KEYSTORE_PASSWORD is not configured"
-            exit 1
-          }
-          test -n "$ANDROID_KEY_PASSWORD" || {
-            echo "::error::ANDROID_KEY_PASSWORD is not configured"
-            exit 1
-          }
-          test -n "$ANDROID_KEY_ALIAS" || {
-            echo "::error::ANDROID_KEY_ALIAS is not configured"
-            exit 1
-          }
-
-      - name: Restore signing keystore
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        shell: bash
-        run: |
-          set -euo pipefail
+          test -n "$ANDROID_KEYSTORE_BASE64"
+          test -n "$ANDROID_KEYSTORE_PASSWORD"
+          test -n "$ANDROID_KEY_PASSWORD"
+          test -n "$ANDROID_KEY_ALIAS"
           keystore_path="$RUNNER_TEMP/geominder-upload.jks"
           printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
           chmod 600 "$keystore_path"
-          test -s "$keystore_path"
+          keytool -exportcert -keystore "$keystore_path" -alias "$ANDROID_KEY_ALIAS" \
+            -storepass:env ANDROID_KEYSTORE_PASSWORD -file "$RUNNER_TEMP/signing-cert.der"
+          printf '%s  %s\n' \
+            'b15f00f16952cf59e7f7d2abde16f58d1e8a8776c598ddbf11cd473fd07e8838' \
+            "$RUNNER_TEMP/signing-cert.der" | sha256sum --check
           echo "ANDROID_KEYSTORE_PATH=$keystore_path" >> "$GITHUB_ENV"
 
-      - name: Build signed release APK
+      - name: Install Android build tools
+        run: sdkmanager 'build-tools;35.0.1' 'ndk;27.0.12077973' 'cmake;3.22.1'
+
+      - name: Build release APKs
+        run: ./gradlew --no-daemon --max-workers=4 :app:assembleRelease -PreleaseVersionName=1.3.2 -PreleaseVersionCode=10302
+
+      - name: Sign and verify APKs
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-        run: ./gradlew --no-daemon :app:assembleRelease
-
-      - name: Verify and stage universal APK
-        id: stage-release
         shell: bash
         run: |
           set -euo pipefail
-
-          apk_path="app/build/outputs/apk/release/app-release.apk"
-          test -f "$apk_path" || {
-            echo "::error::Signed release APK was not produced"
-            exit 1
-          }
-
-          apk_count="$(find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' | wc -l | tr -d ' ')"
-          test "$apk_count" = "1" || {
-            echo "::error::Expected exactly one universal APK, found $apk_count"
-            find app/build/outputs/apk/release -maxdepth 1 -type f -name '*.apk' -print
-            exit 1
-          }
-
-          apksigner_path="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
-          aapt2_path="$(find "$ANDROID_HOME/build-tools" -type f -name aapt2 | sort -V | tail -n 1)"
-          test -x "$apksigner_path"
-          test -x "$aapt2_path"
-
-          "$apksigner_path" verify --verbose "$apk_path"
-
-          version_name="$("$aapt2_path" dump badging "$apk_path" | sed -n "s/.*versionName='\([^']*\)'.*/\1/p" | head -n 1)"
-          test -n "$version_name" || {
-            echo "::error::Could not read the APK version"
-            exit 1
-          }
-
-          if [[ "${GITHUB_REF_TYPE:-}" == "tag" && "${GITHUB_REF_NAME:-}" != "v${version_name}" ]]; then
-            echo "::error::Tag ${GITHUB_REF_NAME} does not match APK version ${version_name}"
-            exit 1
-          fi
-
+          apksigner="$ANDROID_HOME/build-tools/35.0.1/apksigner"
+          aapt2="$ANDROID_HOME/build-tools/35.0.1/aapt2"
           mkdir -p dist
-          cp "$apk_path" "dist/geominder-${version_name}-universal.apk"
-          sha256sum "dist/geominder-${version_name}-universal.apk" > "dist/geominder-${version_name}-universal.apk.sha256"
-          echo "version_name=$version_name" >> "$GITHUB_OUTPUT"
+          for abi in universal arm64-v8a armeabi-v7a x86 x86_64; do
+            input="app/build/outputs/apk/release/app-$abi-release-unsigned.apk"
+            test -f "$input"
+            output="dist/chimahon-lite-$abi-v1.3.2.apk"
+            "$apksigner" sign --ks "$ANDROID_KEYSTORE_PATH" --ks-key-alias "$ANDROID_KEY_ALIAS" \
+              --ks-pass env:ANDROID_KEYSTORE_PASSWORD --key-pass env:ANDROID_KEY_PASSWORD \
+              --out "$output" "$input"
+            "$apksigner" verify --verbose --print-certs "$output" | tee "$RUNNER_TEMP/apk-verification.txt"
+            grep -F 'certificate SHA-256 digest: b15f00f16952cf59e7f7d2abde16f58d1e8a8776c598ddbf11cd473fd07e8838' "$RUNNER_TEMP/apk-verification.txt"
+            "$aapt2" dump badging "$output" > "$RUNNER_TEMP/apk-badging.txt"
+            grep -E "^package: name='app.chimahon.lite'.*versionCode='10302'.*versionName='1.3.2'" "$RUNNER_TEMP/apk-badging.txt"
+          done
+          (cd dist && sha256sum *.apk > SHA256SUMS)
 
-      - name: Upload signed universal APK
-        uses: actions/upload-artifact@v4
+      - name: Upload signed APKs
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
-          name: geominder-${{ steps.stage-release.outputs.version_name }}-universal-apk
+          name: chimahon-lite-v1.3.2-signed-apks
           path: dist/*
           if-no-files-found: error
           retention-days: 30
 
-      - name: Publish GitHub release
-        if: github.ref_type == 'tag'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION_NAME: ${{ steps.stage-release.outputs.version_name }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          tag="$GITHUB_REF_NAME"
-          title="Geominder $VERSION_NAME"
-
-          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$tag" dist/* --repo "$GITHUB_REPOSITORY" --clobber
-          else
-            gh release create "$tag" dist/* \
-              --repo "$GITHUB_REPOSITORY" \
-              --title "$title" \
-              --generate-notes \
-              --latest \
-              --verify-tag
-          fi
+      - name: Remove temporary signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/geominder-upload.jks"
