@@ -47,6 +47,41 @@ class GeoLabelRefreshCoordinatorTest {
         assertTrue(repository.saved.isEmpty())
     }
 
+    @Test
+    fun `reminder deleted while its address resolves is not resurrected`() = runBlocking {
+        val repository = FakeRepository(listOf(reminder(null)))
+        GeoLabelRefreshCoordinator(
+            repository,
+            GeoLabelResolver { _, _, callback ->
+                repository.deleteAll()
+                callback("42 Broadway, New York")
+            },
+            FakeNetworkMonitor(),
+            CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+        ).also { it.start() }
+
+        assertTrue(repository.saved.isEmpty())
+    }
+
+    @Test
+    fun `location edited while its address resolves keeps the newer location`() = runBlocking {
+        val original = reminder(null)
+        val repository = FakeRepository(listOf(original))
+        GeoLabelRefreshCoordinator(
+            repository,
+            GeoLabelResolver { _, _, callback ->
+                repository.replace(
+                    original.copy(geoTrigger = original.geoTrigger?.copy(latitude = 51.5, longitude = -0.12)),
+                )
+                callback("42 Broadway, New York")
+            },
+            FakeNetworkMonitor(),
+            CoroutineScope(SupervisorJob() + Dispatchers.Unconfined),
+        ).also { it.start() }
+
+        assertTrue(repository.saved.isEmpty())
+    }
+
     private fun reminder(label: String?): Reminder = Reminder(
         id = ReminderId("reminder-$label"), sourceText = "source", title = "title", text = "text",
         timeTrigger = TimeTrigger(exactAt = Instant.parse("2026-08-25T10:00:00Z")),
@@ -62,7 +97,12 @@ class GeoLabelRefreshCoordinatorTest {
     private class FakeRepository(initial: List<Reminder>) : ReminderRepository {
         private val values = initial.toMutableList()
         val saved = mutableListOf<Reminder>()
-        override fun observeAll(): Flow<List<Reminder>> = flowOf(values)
+        fun deleteAll() = values.clear()
+        fun replace(reminder: Reminder) {
+            values.removeAll { it.id == reminder.id }
+            values += reminder
+        }
+        override fun observeAll(): Flow<List<Reminder>> = flowOf(values.toList())
         override fun observe(id: ReminderId): Flow<Reminder?> = flowOf(values.find { it.id == id })
         override suspend fun get(id: ReminderId) = values.find { it.id == id }
         override suspend fun getPending() = values.filter(Reminder::isPending)

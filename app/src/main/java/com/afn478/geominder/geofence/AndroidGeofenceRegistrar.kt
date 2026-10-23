@@ -7,6 +7,8 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import com.afn478.geominder.domain.model.TriggerId
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.location.GeofenceStatusCodes
 import com.google.android.gms.location.GeofencingClient
 
 sealed interface GeofenceOperationResult {
@@ -70,7 +72,17 @@ class AndroidGeofenceRegistrar(
             task.addOnSuccessListener {
                 callback.onComplete(GeofenceOperationResult.Success)
             }.addOnFailureListener { error ->
-                callback.onComplete(GeofenceOperationResult.Failed(error))
+                // With location turned off, Play Services has already dropped every geofence and
+                // rejects removal as "not available". The goal of a cancellation is met either way.
+                val alreadyRemoved = (error as? ApiException)?.statusCode ==
+                    GeofenceStatusCodes.GEOFENCE_NOT_AVAILABLE
+                callback.onComplete(
+                    if (alreadyRemoved) {
+                        GeofenceOperationResult.Success
+                    } else {
+                        GeofenceOperationResult.Failed(error)
+                    },
+                )
             }
         }.onFailure { error ->
             callback.onComplete(GeofenceOperationResult.Failed(error))

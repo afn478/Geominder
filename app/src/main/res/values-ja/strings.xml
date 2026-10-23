@@ -31,8 +31,6 @@
     <string name="deleted_reminders_will_appear">削除したリマインダーがここに表示されます。</string>
     <string name="no_tagged_reminders">このカラータグを使用しているリマインダーはまだありません。</string>
     <string name="empty_reminders_description">時刻、場所、またはその両方にリマインダーを作成できます。ここから開いたり、編集したり、完了にしたりできます。</string>
-    <string name="new_reminder">新しいリマインダー: %1$s</string>
-    <string name="create_new_reminder">新しいリマインダーを作成</string>
     <string name="loading_reminders">リマインダーを読み込み中</string>
     <string name="scheduled_time">予定時刻</string>
     <string name="location">場所</string>
@@ -178,8 +176,6 @@
     <string name="validation_keyword_too_long">キーワードは 40 文字以内にしてください</string>
     <string name="validation_keyword_character">キーワードに対応していない文字が含まれています</string>
     <string name="validation_time_format">08:30 などの 24 時間形式を使用してください</string>
-    <string name="reminder_details">リマインダーの詳細</string>
-    <string name="reminder_input_placeholder">明日の午前8時に通知…</string>
     <string name="save_reminder">リマインダーを保存</string>
     <string name="reminder_text">リマインダーのテキスト</string>
     <string name="reminder_text_placeholder">何を覚えておきますか？</string>
@@ -192,8 +188,6 @@
     <string name="enter_location">場所に入ったときに通知</string>
     <string name="no_location_notification">場所の通知条件は設定されていません</string>
     <string name="color_tag">カラータグ</string>
-    <string name="hide_reminder_details">リマインダーの詳細を非表示</string>
-    <string name="show_reminder_details">リマインダーの詳細を表示</string>
     <string name="time_trigger">時刻の通知条件</string>
     <string name="date">日付</string>
     <string name="select_date">日付を選択</string>
@@ -255,14 +249,8 @@
     <string name="tag_selected">%1$sタグ、選択中</string>
     <string name="recycling_bin">ごみ箱</string>
     <string name="recycling_bin_selected">ごみ箱、選択中</string>
-    <string name="add_reminder">リマインダーを追加</string>
     <string name="edit_reminder">リマインダーを編集</string>
     <string name="save_changes">変更を保存</string>
-    <string name="dismiss_reminder_composer">リマインダー作成画面を閉じる</string>
-    <string name="discard_reminder_title">作成中のリマインダーを破棄しますか？</string>
-    <string name="discard_reminder_message">リマインダーのテキストは保存されません。</string>
-    <string name="discard">破棄</string>
-    <string name="keep">残す</string>
     <string name="backup_exported">%1$d 件のリマインダーをエクスポートしました。</string>
     <string name="backup_export_failed">バックアップをエクスポートできませんでした。</string>
     <string name="backup_imported">新規 %1$d 件、更新 %2$d 件のリマインダーをインポートしました。予定済み %3$d 件、スケジュール設定の失敗: %4$d 件、スキップ %5$d 件、問題 %6$d 件。</string>
@@ -292,4 +280,11 @@
     <string name="checklist_with_progress">チェックリスト（%1$d/%2$d）</string>
     <string name="show_all_checklist_items">さらに%1$d件を表示</string>
     <string name="show_fewer_checklist_items">表示を減らす</string>
+    <string name="trigger_update_failed">時刻または場所の通知条件を更新できませんでした。設定で権限を確認してください。</string>
+    <string name="reminder_saved_trigger_failed">リマインダーは保存されましたが、時刻または場所の通知条件を有効にできませんでした。設定で権限を確認してください。</string>
+    <string name="reminders_selected">%1$d件を選択中</string>
+    <string name="add_reminder">リマインダーを追加</string>
+    <string name="show_on_map">地図に表示</string>
+    <string name="history">履歴</string>
+    <string name="you_wrote">入力内容</string>
 </resources>

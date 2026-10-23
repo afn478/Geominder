@@ -31,8 +31,6 @@
     <string name="deleted_reminders_will_appear">Gelöschte Erinnerungen erscheinen hier.</string>
     <string name="no_tagged_reminders">Noch keine Erinnerungen verwenden dieses Farbetikett.</string>
     <string name="empty_reminders_description">Erstelle eine Erinnerung für eine Zeit, einen Ort oder beides. Sie erscheint hier, damit du sie öffnen, bearbeiten oder erledigen kannst.</string>
-    <string name="new_reminder">Neue Erinnerung: %1$s</string>
-    <string name="create_new_reminder">Neue Erinnerung erstellen</string>
     <string name="loading_reminders">Erinnerungen werden geladen</string>
     <string name="scheduled_time">Geplante Zeit</string>
     <string name="location">Ort</string>
@@ -178,8 +176,6 @@
     <string name="validation_keyword_too_long">Das Schlüsselwort darf höchstens 40 Zeichen lang sein</string>
     <string name="validation_keyword_character">Das Schlüsselwort enthält ein nicht unterstütztes Zeichen</string>
     <string name="validation_time_format">Verwende eine 24-Stunden-Zeit wie 08:30</string>
-    <string name="reminder_details">Erinnerungsdetails</string>
-    <string name="reminder_input_placeholder">Morgen um 8 Uhr erinnern …</string>
     <string name="save_reminder">Erinnerung speichern</string>
     <string name="reminder_text">Erinnerungstext</string>
     <string name="reminder_text_placeholder">Woran möchtest du erinnert werden?</string>
@@ -192,8 +188,6 @@
     <string name="enter_location">Beim Betreten eines Ortes benachrichtigen</string>
     <string name="no_location_notification">Keine Ortsbenachrichtigung festgelegt</string>
     <string name="color_tag">Farbetikett</string>
-    <string name="hide_reminder_details">Erinnerungsdetails ausblenden</string>
-    <string name="show_reminder_details">Erinnerungsdetails anzeigen</string>
     <string name="time_trigger">Zeitauslöser</string>
     <string name="date">Datum</string>
     <string name="select_date">Datum auswählen</string>
@@ -255,14 +249,8 @@
     <string name="tag_selected">%1$s-Etikett, ausgewählt</string>
     <string name="recycling_bin">Papierkorb</string>
     <string name="recycling_bin_selected">Papierkorb, ausgewählt</string>
-    <string name="add_reminder">Erinnerung hinzufügen</string>
     <string name="edit_reminder">Erinnerung bearbeiten</string>
     <string name="save_changes">Änderungen speichern</string>
-    <string name="dismiss_reminder_composer">Erinnerungserstellung schließen</string>
-    <string name="discard_reminder_title">Erinnerung verwerfen?</string>
-    <string name="discard_reminder_message">Der Erinnerungstext wird nicht gespeichert.</string>
-    <string name="discard">Verwerfen</string>
-    <string name="keep">Behalten</string>
     <string name="backup_exported">Exportiert: %1$d Erinnerungen.</string>
     <string name="backup_export_failed">Die Sicherung konnte nicht exportiert werden.</string>
     <string name="backup_imported">Neue Erinnerungen: %1$d; aktualisierte Erinnerungen: %2$d; geplant: %3$d; Planungsfehler: %4$d; übersprungen: %5$d; Probleme: %6$d.</string>
@@ -292,4 +280,11 @@
     <string name="checklist_with_progress">Checkliste (%1$d/%2$d)</string>
     <string name="show_all_checklist_items">%1$d weitere anzeigen</string>
     <string name="show_fewer_checklist_items">Weniger anzeigen</string>
+    <string name="trigger_update_failed">Der Zeit- oder Ortsauslöser konnte nicht aktualisiert werden. Prüfe die Berechtigungen in den Einstellungen.</string>
+    <string name="reminder_saved_trigger_failed">Die Erinnerung wurde gespeichert, aber ihr Zeit- oder Ortsauslöser konnte nicht aktiviert werden. Prüfe die Berechtigungen in den Einstellungen.</string>
+    <string name="reminders_selected">%1$d ausgewählt</string>
+    <string name="add_reminder">Erinnerung hinzufügen</string>
+    <string name="show_on_map">Auf Karte anzeigen</string>
+    <string name="history">Verlauf</string>
+    <string name="you_wrote">Deine Eingabe</string>
 </resources>

@@ -75,14 +75,19 @@ class ApplicationFeatureRuntime(
             }.toMap()
             triggerIds.forEach { triggerId ->
                 val (reminder, trigger) = byTriggerId[triggerId] ?: return@forEach
-                when (val result = geoEnterCoordinator.onEnter(reminder.id, trigger, occurredAt)) {
-                    is GeoEnterResult.Delivered -> deliver(reminder.id, fullScreenEligible = true)
-                    is GeoEnterResult.VerificationScheduled -> {
-                        if (result.result is GeoVerificationScheduleResult.Failed) {
-                            throw result.result.cause
+                // A pending snooze owns the next alert; the geofence must not pre-empt it.
+                if (reminder.hasUndeliveredSnooze) return@forEach
+                // Isolate triggers so one failing reminder cannot swallow the others in the batch.
+                runCatching {
+                    when (val result = geoEnterCoordinator.onEnter(reminder.id, trigger, occurredAt)) {
+                        is GeoEnterResult.Delivered -> deliver(reminder.id, fullScreenEligible = true)
+                        is GeoEnterResult.VerificationScheduled -> {
+                            if (result.result is GeoVerificationScheduleResult.Failed) {
+                                throw result.result.cause
+                            }
                         }
                     }
-                }
+                }.onFailure { Log.e(TAG, "Geofence enter failed for ${reminder.id.value}", it) }
             }
         }
     }
@@ -104,9 +109,7 @@ class ApplicationFeatureRuntime(
         val now = clock.instant()
         when (event.action) {
             AlertAction.SNOOZE -> {
-                reminder.geoTrigger?.let { trigger ->
-                    awaitGeofenceCancellation(trigger.id)
-                }
+                reminder.geoTrigger?.let { cancelGeofenceBestEffort(it.id) }
                 val until = now.plus(event.snoozeDuration)
                 repository.snooze(event.reminderId, until, now)
                 when (val result = exactAlarmScheduler.scheduleSnoozeCheck(event.reminderId, until)) {
@@ -116,12 +119,12 @@ class ApplicationFeatureRuntime(
             }
             AlertAction.DISMISS -> {
                 exactAlarmScheduler.cancel(reminder)
-                reminder.geoTrigger?.let { awaitGeofenceCancellation(it.id) }
+                reminder.geoTrigger?.let { cancelGeofenceBestEffort(it.id) }
                 repository.dismiss(event.reminderId, now)
             }
             AlertAction.DONE -> {
                 exactAlarmScheduler.cancel(reminder)
-                reminder.geoTrigger?.let { awaitGeofenceCancellation(it.id) }
+                reminder.geoTrigger?.let { cancelGeofenceBestEffort(it.id) }
                 repository.complete(event.reminderId, now)
             }
         }
@@ -158,6 +161,22 @@ class ApplicationFeatureRuntime(
             is GeoVerificationResult.Outside -> Unit
         }
     }
+
+    /**
+     * Alert actions come from a notification with no UI to report errors on, so the user's choice
+     * must always be persisted. A geofence that survives a failed removal is harmless: enter events
+     * are only delivered for reminders that are still pending.
+     */
+    private suspend fun cancelGeofenceBestEffort(triggerId: TriggerId) {
+        runCatching { awaitGeofenceCancellation(triggerId) }
+            .onFailure { Log.w(TAG, "Geofence ${triggerId.value} could not be removed", it) }
+    }
+
+    private val com.afn478.geominder.domain.model.Reminder.hasUndeliveredSnooze: Boolean
+        get() {
+            val until = snoozedUntil ?: return false
+            return lastTriggeredAt?.isBefore(until) != false
+        }
 
     private suspend fun awaitGeofenceCancellation(triggerId: TriggerId) {
         withTimeout(GEOFENCE_OPERATION_TIMEOUT_MILLIS) {

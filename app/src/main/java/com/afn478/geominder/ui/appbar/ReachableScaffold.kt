@@ -1,12 +1,17 @@
 package com.afn478.geominder.ui.appbar
 
+import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,8 +39,10 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 
@@ -46,7 +54,7 @@ import androidx.compose.ui.unit.dp
  * larger position. Navigation and action controls use their own measured motion so they can
  * settle below the expanded title without changing the title's compact geometry.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ReachableScaffold(
     title: String,
@@ -56,23 +64,49 @@ fun ReachableScaffold(
     compactTitleStartPadding: Dp = COMPACT_TITLE_START_PADDING,
     bottomBar: @Composable () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
+    /** The app bar re-expands when this changes; pass a stable key when only the title text varies. */
+    scrollResetKey: Any? = title,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
         val appBarState = rememberTopAppBarState()
+        // Size the header from the window, not from these constraints: the keyboard must never
+        // flip the bar between its reachable and compact forms or resize it mid-animation.
+        val windowSize = with(LocalDensity.current) {
+            LocalWindowInfo.current.containerSize.let { DpSize(it.width.toDp(), it.height.toDp()) }
+        }
+        val windowHeight = windowSize.height.takeIf { it > 0.dp } ?: maxHeight
+        val windowWidth = windowSize.width.takeIf { it > 0.dp } ?: maxWidth
         val useReachableAppBar = shouldUseReachableAppBar(
-            windowHeight = maxHeight,
-            windowWidth = maxWidth,
+            windowHeight = windowHeight,
+            windowWidth = windowWidth,
         )
+        // While typing, the big pulled-down title would leave almost no room between itself and
+        // the keyboard, so the header stays collapsed and ignores drags until the keyboard closes.
+        val imeVisible = WindowInsets.isImeVisible
+        val currentImeVisible by rememberUpdatedState(imeVisible)
         val scrollBehavior = if (useReachableAppBar) {
-            TopAppBarDefaults.exitUntilCollapsedScrollBehavior(appBarState)
+            TopAppBarDefaults.exitUntilCollapsedScrollBehavior(
+                state = appBarState,
+                canScroll = { !currentImeVisible },
+            )
         } else {
             null
         }
 
-        LaunchedEffect(title) {
+        LaunchedEffect(scrollResetKey) {
             appBarState.heightOffset = 0f
             appBarState.contentOffset = 0f
+        }
+        LaunchedEffect(imeVisible, useReachableAppBar) {
+            val collapsedOffset = appBarState.heightOffsetLimit
+            if (imeVisible && useReachableAppBar && appBarState.heightOffset > collapsedOffset) {
+                animate(
+                    initialValue = appBarState.heightOffset,
+                    targetValue = collapsedOffset,
+                    animationSpec = tween(durationMillis = IME_COLLAPSE_MILLIS),
+                ) { value, _ -> appBarState.heightOffset = value }
+            }
         }
 
         val scaffoldModifier = Modifier
@@ -90,7 +124,7 @@ fun ReachableScaffold(
                     navigationIcon = navigationIcon,
                     actions = actions,
                     compactTitleStartPadding = compactTitleStartPadding,
-                    expandedHeight = reachableAppBarExpandedHeight(maxHeight),
+                    expandedHeight = reachableAppBarExpandedHeight(windowHeight),
                     appBarState = appBarState,
                     scrollBehavior = scrollBehavior,
                 )
@@ -269,6 +303,7 @@ internal fun reachableAppBarExpandedHeight(windowHeight: Dp): Dp =
     )
 
 private const val REACHABLE_APP_BAR_HEIGHT_FRACTION = 0.40f
+private const val IME_COLLAPSE_MILLIS = 200
 private const val EXPANDED_TITLE_SCALE = 1.55f
 private val COMPACT_TITLE_START_PADDING = 24.dp
 private val EXPANDED_TITLE_VERTICAL_OFFSET = 20.dp

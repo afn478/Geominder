@@ -31,8 +31,6 @@
     <string name="deleted_reminders_will_appear">Deleted reminders will appear here.</string>
     <string name="no_tagged_reminders">No reminders use this color tag yet.</string>
     <string name="empty_reminders_description">Create a reminder for a time, a place, or both. It will appear here so you can open, edit, or mark it done.</string>
-    <string name="new_reminder">New reminder: %1$s</string>
-    <string name="create_new_reminder">Create a new reminder</string>
     <string name="loading_reminders">Loading reminders</string>
     <string name="scheduled_time">Scheduled time</string>
     <string name="location">Location</string>
@@ -188,8 +186,6 @@
     <string name="validation_keyword_too_long">Keep the keyword to 40 characters or fewer</string>
     <string name="validation_keyword_character">The keyword contains an unsupported character</string>
     <string name="validation_time_format">Use a 24-hour time such as 08:30</string>
-    <string name="reminder_details">Reminder details</string>
-    <string name="reminder_input_placeholder">Remind me tomorrow at 8…</string>
     <string name="save_reminder">Save reminder</string>
     <string name="reminder_text">Reminder text</string>
     <string name="reminder_text_placeholder">What do you want to remember?</string>
@@ -202,8 +198,6 @@
     <string name="enter_location">Notify when you enter a location</string>
     <string name="no_location_notification">No location notification set</string>
     <string name="color_tag">Color tag</string>
-    <string name="hide_reminder_details">Hide reminder details</string>
-    <string name="show_reminder_details">Show reminder details</string>
     <string name="time_trigger">Time trigger</string>
     <string name="date">Date</string>
     <string name="select_date">Select date</string>
@@ -265,14 +259,8 @@
     <string name="tag_selected">%1$s tag, selected</string>
     <string name="recycling_bin">Trash</string>
     <string name="recycling_bin_selected">Trash, selected</string>
-    <string name="add_reminder">Add reminder</string>
     <string name="edit_reminder">Edit reminder</string>
     <string name="save_changes">Save changes</string>
-    <string name="dismiss_reminder_composer">Dismiss reminder composer</string>
-    <string name="discard_reminder_title">Discard reminder?</string>
-    <string name="discard_reminder_message">Your reminder text will not be saved.</string>
-    <string name="discard">Discard</string>
-    <string name="keep">Keep</string>
     <string name="backup_exported">Exported %1$d reminder(s).</string>
     <string name="backup_export_failed">The backup could not be exported.</string>
     <string name="backup_imported">Imported %1$d new and %2$d updated reminder(s); %3$d scheduled, %4$d scheduling failure(s), %5$d skipped, %6$d issue(s).</string>
@@ -292,4 +280,11 @@
     <string name="checklist_with_progress">Checklist (%1$d/%2$d)</string>
     <string name="show_all_checklist_items">Show %1$d more</string>
     <string name="show_fewer_checklist_items">Show less</string>
+    <string name="trigger_update_failed">The time or location trigger could not be updated. Check permissions in Settings.</string>
+    <string name="reminder_saved_trigger_failed">The reminder was saved, but its time or location trigger could not be activated. Check permissions in Settings.</string>
+    <string name="reminders_selected">%1$d selected</string>
+    <string name="add_reminder">Add reminder</string>
+    <string name="show_on_map">Show on map</string>
+    <string name="history">History</string>
+    <string name="you_wrote">You wrote</string>
 </resources>

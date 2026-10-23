@@ -25,6 +25,7 @@ import com.afn478.geominder.settings.SettingsRepository
 import com.afn478.geominder.settings.SettingsValidation
 import com.afn478.geominder.settings.ValidationError
 import com.afn478.geominder.settings.ValidationResult
+import com.afn478.geominder.ui.text.toUserMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -458,8 +459,7 @@ class SettingsViewModel(
                 .onFailure { error ->
                     _uiState.update {
                         it.copy(
-                            persistenceError = error.message?.let(UiText::Plain)
-                                ?: UiText.resource(R.string.setting_save_failed),
+                            persistenceError = error.toUserMessage(R.string.setting_save_failed),
                         )
                     }
                 }

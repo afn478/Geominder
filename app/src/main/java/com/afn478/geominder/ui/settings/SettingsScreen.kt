@@ -7,6 +7,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -53,7 +54,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -266,16 +266,14 @@ fun SettingsScreen(
         selectedSubsection = null
     }
 
-    val pageScrollState = rememberScrollState()
-    LaunchedEffect(selectedSubsection) {
-        pageScrollState.scrollTo(0)
-    }
-
     Crossfade(
         targetState = selectedSubsection,
         modifier = modifier,
         label = "Settings subsection",
     ) { subsection ->
+        // Each page owns its scroll state: the outgoing and incoming page are both laid out during
+        // the crossfade, and every page should open at the top.
+        val pageScrollState = rememberScrollState()
         ReachableScaffold(
             title = stringResource(subsection?.titleRes ?: R.string.settings),
             compactTitleStartPadding = 56.dp,
@@ -306,18 +304,18 @@ fun SettingsScreen(
                     onSelect = { selectedSubsection = it },
                 )
 
-                SettingsSubsection.LANGUAGE -> SettingsSubpage(pageModifier) {
+                SettingsSubsection.LANGUAGE -> SettingsSubpage(pageModifier, state.persistenceError) {
                     LanguageSection(
                         state = state,
                         onKeywordLanguageChange = onKeywordLanguageChange,
                     )
                 }
 
-                SettingsSubsection.APPEARANCE -> SettingsSubpage(pageModifier) {
+                SettingsSubsection.APPEARANCE -> SettingsSubpage(pageModifier, state.persistenceError) {
                     AppearanceSection(state, onThemeModeChange, onAccentThemeChange)
                 }
 
-                SettingsSubsection.LOCATION -> SettingsSubpage(pageModifier) {
+                SettingsSubsection.LOCATION -> SettingsSubpage(pageModifier, state.persistenceError) {
                     RadiusSection(
                         state = state,
                         onRadiusChange = onRadiusChange,
@@ -325,7 +323,7 @@ fun SettingsScreen(
                     )
                 }
 
-                SettingsSubsection.PRESET_LOCATIONS -> SettingsSubpage(pageModifier) {
+                SettingsSubsection.PRESET_LOCATIONS -> SettingsSubpage(pageModifier, state.persistenceError) {
                     LocationPresetSection(
                         state = state,
                         onAddLocation = onAddLocation,
@@ -343,7 +341,7 @@ fun SettingsScreen(
                     )
                 }
 
-                SettingsSubsection.PRESET_TIMES -> SettingsSubpage(pageModifier) {
+                SettingsSubsection.PRESET_TIMES -> SettingsSubpage(pageModifier, state.persistenceError) {
                     KeywordSection(
                         state = state,
                         onAddKeyword = onAddKeyword,
@@ -359,14 +357,14 @@ fun SettingsScreen(
                     )
                 }
 
-                SettingsSubsection.PERMISSIONS -> SettingsSubpage(pageModifier) {
+                SettingsSubsection.PERMISSIONS -> SettingsSubpage(pageModifier, state.persistenceError) {
                     PermissionSection(
                         items = state.permissionItems,
                         onPermissionAction = onPermissionAction,
                     )
                 }
 
-                SettingsSubsection.BACKUP -> SettingsSubpage(pageModifier) {
+                SettingsSubsection.BACKUP -> SettingsSubpage(pageModifier, state.persistenceError) {
                     BackupSection(
                         onExportBackup = onExportBackup,
                         onImportBackup = onImportBackup,
@@ -376,7 +374,7 @@ fun SettingsScreen(
                 }
 
                 SettingsSubsection.DEBUG -> if (BuildConfig.DEBUG) {
-                    SettingsSubpage(pageModifier) {
+                    SettingsSubpage(pageModifier, state.persistenceError) {
                         DebugAlertSection(onShowDebugFullScreenReminder)
                     }
                 }
@@ -434,14 +432,7 @@ private fun SettingsSubsectionList(
         settingsSubsectionEntries.forEach { entry ->
             SettingsSubsectionRow(entry = entry, onClick = { onSelect(entry.subsection) })
         }
-        persistenceError?.let {
-            Text(
-                text = it.resolve(),
-                modifier = Modifier.padding(top = 16.dp),
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        }
+        persistenceError?.let { PersistenceError(it, Modifier.padding(top = 16.dp)) }
     }
 }
 
@@ -539,6 +530,7 @@ private fun PresetLocationSettingsIcon() {
 @Composable
 private fun SettingsSubpage(
     modifier: Modifier,
+    persistenceError: UiText?,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
@@ -557,7 +549,18 @@ private fun SettingsSubpage(
                 content = content,
             )
         }
+        persistenceError?.let { PersistenceError(it) }
     }
+}
+
+@Composable
+private fun PersistenceError(error: UiText, modifier: Modifier = Modifier) {
+    Text(
+        text = error.resolve(),
+        modifier = modifier,
+        color = MaterialTheme.colorScheme.error,
+        style = MaterialTheme.typography.bodyMedium,
+    )
 }
 
 @Composable
@@ -573,9 +576,9 @@ private fun AppearanceSection(
 
     SettingsSection(title = stringResource(R.string.appearance)) {
         Text(stringResource(R.string.theme), style = MaterialTheme.typography.titleMedium)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ThemeMode.values().forEach { mode ->
-                androidx.compose.material3.FilterChip(
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ThemeMode.entries.forEach { mode ->
+                FilterChip(
                     selected = state.settings.themeMode == mode,
                     onClick = { onThemeModeChange(mode) },
                     label = { Text(mode.localizedLabel()) },
@@ -584,7 +587,7 @@ private fun AppearanceSection(
         }
         Text(stringResource(R.string.accent), style = MaterialTheme.typography.titleMedium)
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(AccentTheme.values().toList(), key = { accent -> accent.name }) { accent ->
+            items(AccentTheme.entries.toList(), key = { accent -> accent.name }) { accent ->
                 val selected = state.settings.accentTheme == accent
                 val label = accent.localizedLabel()
                 val accessibilityLabel = stringResource(
@@ -634,7 +637,10 @@ private fun BackupSection(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             Button(onClick = onExportBackup, enabled = !inProgress) {
                 Text(stringResource(R.string.export_ics))
             }
@@ -643,7 +649,13 @@ private fun BackupSection(
             }
         }
         if (inProgress) {
-            Text(stringResource(R.string.working), style = MaterialTheme.typography.bodyMedium)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                Text(stringResource(R.string.working), style = MaterialTheme.typography.bodyMedium)
+            }
         }
         status?.let {
             Text(

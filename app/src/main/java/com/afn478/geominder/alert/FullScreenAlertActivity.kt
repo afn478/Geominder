@@ -14,7 +14,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -22,10 +22,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Alarm
@@ -144,6 +148,8 @@ private fun FullScreenAlert(
 ) {
     val colors = MaterialTheme.colorScheme
     val backgroundTransition = rememberInfiniteTransition(label = "alert background")
+    // Animated values are only read while drawing, so the background animates without
+    // recomposing the whole screen every frame.
     val pulsePhase = backgroundTransition.animateFloat(
         initialValue = 0f,
         targetValue = (2.0 * PI).toFloat(),
@@ -155,7 +161,7 @@ private fun FullScreenAlert(
             repeatMode = RepeatMode.Restart,
         ),
         label = "alert background pulse",
-    ).value
+    )
     val rotationDegrees = backgroundTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
@@ -167,89 +173,123 @@ private fun FullScreenAlert(
             repeatMode = RepeatMode.Restart,
         ),
         label = "alert background rotation",
-    ).value
-    val intensity = ((sin(pulsePhase.toDouble()) + 1.0) / 2.0).toFloat()
+    )
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .drawWithCache {
+                val intensity = ((sin(pulsePhase.value.toDouble()) + 1.0) / 2.0).toFloat()
                 val background = alertBackground(
                     colors = colors,
                     width = size.width,
                     height = size.height,
                     intensity = intensity,
-                    rotationDegrees = rotationDegrees,
+                    rotationDegrees = rotationDegrees.value,
                 )
                 onDrawBehind { drawRect(brush = background) }
             },
     ) {
+        // Thumb-reachable on tall phones, but never pushes the buttons off a short or landscape window.
+        val actionsBottomPadding = (maxHeight * ACTIONS_BOTTOM_FRACTION)
+            .coerceIn(ACTIONS_MIN_BOTTOM_PADDING, ACTIONS_MAX_BOTTOM_PADDING)
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 184.dp),
+                .safeDrawingPadding()
+                .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
         ) {
-            AlertIcon()
-            Spacer(Modifier.height(24.dp))
-            Text(
-                text = title,
-                modifier = Modifier.fillMaxWidth(),
-                style = MaterialTheme.typography.displayLarge.copy(
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = (-1).sp,
-                ),
-                color = colors.onSurface,
-                textAlign = TextAlign.Center,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (text.isNotBlank()) {
-                Spacer(Modifier.height(12.dp))
-                Text(
-                    text = text,
-                    modifier = Modifier.fillMaxWidth(),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = colors.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            if (timeText != null || locationText != null) {
-                Spacer(Modifier.height(24.dp))
+            // The message area takes whatever the actions leave and scrolls when that is not
+            // enough, so a long title can never slide underneath the buttons.
+            BoxWithConstraints(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+            ) {
                 Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .heightIn(min = maxHeight)
+                        .padding(vertical = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.Center,
                 ) {
-                    timeText?.let {
-                        AlertDetailChip(
-                            icon = Icons.Default.AccessTime,
-                            text = it,
-                        )
-                    }
-                    locationText?.let {
-                        AlertDetailChip(
-                            icon = Icons.Default.LocationOn,
-                            text = it,
-                        )
-                    }
+                    AlertMessage(
+                        title = title,
+                        text = text,
+                        timeText = timeText,
+                        locationText = locationText,
+                    )
                 }
             }
-        }
 
-        AlertActions(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 120.dp),
-            onSnooze = onSnooze,
-            onDismiss = onDismiss,
-            onDone = onDone,
+            AlertActions(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = actionsBottomPadding),
+                onSnooze = onSnooze,
+                onDismiss = onDismiss,
+                onDone = onDone,
+            )
+        }
+    }
+}
+
+@Composable
+private fun AlertMessage(
+    title: String,
+    text: String,
+    timeText: String?,
+    locationText: String?,
+) {
+    val colors = MaterialTheme.colorScheme
+    AlertIcon()
+    Spacer(Modifier.height(24.dp))
+    Text(
+        text = title,
+        modifier = Modifier.fillMaxWidth(),
+        style = MaterialTheme.typography.displayLarge.copy(
+            fontWeight = FontWeight.Bold,
+            letterSpacing = (-1).sp,
+        ),
+        color = colors.onSurface,
+        textAlign = TextAlign.Center,
+        maxLines = 3,
+        overflow = TextOverflow.Ellipsis,
+    )
+    if (text.isNotBlank() && text != title) {
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = text,
+            modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.bodyLarge,
+            color = colors.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
         )
+    }
+    if (timeText != null || locationText != null) {
+        Spacer(Modifier.height(24.dp))
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            timeText?.let {
+                AlertDetailChip(
+                    icon = Icons.Default.AccessTime,
+                    text = it,
+                )
+            }
+            locationText?.let {
+                AlertDetailChip(
+                    icon = Icons.Default.LocationOn,
+                    text = it,
+                )
+            }
+        }
     }
 }
 
@@ -288,6 +328,9 @@ private fun alertBackground(
 private const val ALERT_GRADIENT_PULSE_DURATION_MILLIS = 24_000
 private const val ALERT_GRADIENT_ROTATION_DURATION_MILLIS = 90_000
 private const val ALERT_GRADIENT_SOURCE_RADIUS_MULTIPLIER = 1.25f
+private const val ACTIONS_BOTTOM_FRACTION = 0.14f
+private val ACTIONS_MIN_BOTTOM_PADDING = 24.dp
+private val ACTIONS_MAX_BOTTOM_PADDING = 120.dp
 
 @Composable
 private fun AlertIcon() {

@@ -16,11 +16,13 @@ class RoomConverters {
     fun statusToName(value: ReminderStatus): String = value.name
 
     @TypeConverter
-    fun nameToStatus(value: String): ReminderStatus = ReminderStatus.valueOf(value)
+    fun nameToStatus(value: String): ReminderStatus =
+        ReminderStatus.entries.firstOrNull { it.name == value } ?: ReminderStatus.PENDING
 
     @TypeConverter
     fun tagToName(value: ReminderTag?): String? = value?.name
 
     @TypeConverter
-    fun nameToTag(value: String?): ReminderTag? = value?.let(ReminderTag::valueOf)
+    // Unknown names (for example after a downgrade) must not make the whole table unreadable.
+    fun nameToTag(value: String?): ReminderTag? = ReminderTag.entries.firstOrNull { it.name == value }
 }

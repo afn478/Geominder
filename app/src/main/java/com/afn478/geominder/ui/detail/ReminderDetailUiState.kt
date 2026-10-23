@@ -12,6 +12,9 @@ import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import java.util.Locale
 
+/** Visual weight of the status pill; mapped to colours by the screen. */
+enum class ReminderDetailTone { ACTIVE, WAITING, INACTIVE, DELETED }
+
 /** Read-only, Android-free presentation state for a single reminder. */
 data class ReminderDetailUiState(
     val isLoading: Boolean = true,
@@ -21,7 +24,11 @@ data class ReminderDetailUiState(
     val title: String? = null,
     val text: String? = null,
     val lifecycleLabel: UiText? = null,
+    val tone: ReminderDetailTone = ReminderDetailTone.ACTIVE,
     val timeText: String? = null,
+    /** The time trigger split for a large two-line display. */
+    val timeDateText: String? = null,
+    val timeClockText: String? = null,
     val geoCoordinates: String? = null,
     val geoLabel: String? = null,
     val geoRadius: String? = null,
@@ -75,9 +82,26 @@ data class ReminderDetailUiState(
                     },
                 )
             }
+            val tone = when {
+                reminder.isDeleted -> ReminderDetailTone.DELETED
+                !reminder.enabled ||
+                    reminder.status == ReminderStatus.DISMISSED ||
+                    reminder.status == ReminderStatus.COMPLETED -> ReminderDetailTone.INACTIVE
+                reminder.status == ReminderStatus.SNOOZED -> ReminderDetailTone.WAITING
+                else -> ReminderDetailTone.ACTIVE
+            }
+            val dateFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)
+                .withLocale(locale)
+                .withZone(zoneId)
+            val clockFormatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
+                .withLocale(locale)
+                .withZone(zoneId)
             return ReminderDetailUiState(
                 isLoading = false,
                 reminder = reminder,
+                tone = tone,
+                timeDateText = reminder.timeTrigger?.let { dateFormatter.format(it.exactAt) },
+                timeClockText = reminder.timeTrigger?.let { clockFormatter.format(it.exactAt) },
                 sourceText = reminder.sourceText,
                 title = reminder.title,
                 text = reminder.text,

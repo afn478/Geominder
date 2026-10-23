@@ -31,8 +31,6 @@
     <string name="deleted_reminders_will_appear">Les rappels supprimés apparaîtront ici.</string>
     <string name="no_tagged_reminders">Aucun rappel n’utilise encore cette étiquette de couleur.</string>
     <string name="empty_reminders_description">Créez un rappel pour une heure, un lieu ou les deux. Il apparaîtra ici pour vous permettre de l’ouvrir, de le modifier ou de le terminer.</string>
-    <string name="new_reminder">Nouveau rappel : %1$s</string>
-    <string name="create_new_reminder">Créer un rappel</string>
     <string name="loading_reminders">Chargement des rappels</string>
     <string name="scheduled_time">Heure programmée</string>
     <string name="location">Lieu</string>
@@ -178,8 +176,6 @@
     <string name="validation_keyword_too_long">Le mot-clé doit comporter au maximum 40 caractères</string>
     <string name="validation_keyword_character">Le mot-clé contient un caractère non pris en charge</string>
     <string name="validation_time_format">Utilisez une heure sur 24 heures, par exemple 08:30</string>
-    <string name="reminder_details">Détails du rappel</string>
-    <string name="reminder_input_placeholder">Me rappeler demain à 8 h…</string>
     <string name="save_reminder">Enregistrer le rappel</string>
     <string name="reminder_text">Texte du rappel</string>
     <string name="reminder_text_placeholder">Que voulez-vous retenir ?</string>
@@ -192,8 +188,6 @@
     <string name="enter_location">Notifier lorsque vous entrez dans un lieu</string>
     <string name="no_location_notification">Aucune notification de lieu définie</string>
     <string name="color_tag">Étiquette de couleur</string>
-    <string name="hide_reminder_details">Masquer les détails du rappel</string>
-    <string name="show_reminder_details">Afficher les détails du rappel</string>
     <string name="time_trigger">Déclencheur horaire</string>
     <string name="date">Date</string>
     <string name="select_date">Sélectionner la date</string>
@@ -255,14 +249,8 @@
     <string name="tag_selected">Étiquette %1$s, sélectionnée</string>
     <string name="recycling_bin">Corbeille</string>
     <string name="recycling_bin_selected">Corbeille, sélectionnée</string>
-    <string name="add_reminder">Ajouter un rappel</string>
     <string name="edit_reminder">Modifier le rappel</string>
     <string name="save_changes">Enregistrer les modifications</string>
-    <string name="dismiss_reminder_composer">Fermer la création du rappel</string>
-    <string name="discard_reminder_title">Abandonner le rappel ?</string>
-    <string name="discard_reminder_message">Le texte du rappel ne sera pas enregistré.</string>
-    <string name="discard">Abandonner</string>
-    <string name="keep">Conserver</string>
     <string name="backup_exported">Rappels exportés : %1$d.</string>
     <string name="backup_export_failed">Impossible d’exporter la sauvegarde.</string>
     <string name="backup_imported">Nouveaux rappels : %1$d ; rappels mis à jour : %2$d ; rappels programmés : %3$d ; échecs de programmation : %4$d ; rappels ignorés : %5$d ; problèmes : %6$d.</string>
@@ -290,6 +278,13 @@
     <string name="remove_checklist_item">Supprimer %1$s</string>
     <string name="checklist_progress">%1$d/%2$d</string>
     <string name="checklist_with_progress">Liste de contrôle (%1$d/%2$d)</string>
-    <string name="show_all_checklist_items">Afficher %1$d de plus</string>
+    <string name="show_all_checklist_items">Afficher %1$d autres</string>
     <string name="show_fewer_checklist_items">Afficher moins</string>
+    <string name="trigger_update_failed">Impossible de mettre à jour le déclencheur horaire ou de lieu. Vérifiez les autorisations dans les paramètres.</string>
+    <string name="reminder_saved_trigger_failed">Le rappel a été enregistré, mais son déclencheur horaire ou de lieu n’a pas pu être activé. Vérifiez les autorisations dans les paramètres.</string>
+    <string name="reminders_selected">Sélection : %1$d</string>
+    <string name="add_reminder">Ajouter un rappel</string>
+    <string name="show_on_map">Afficher sur la carte</string>
+    <string name="history">Historique</string>
+    <string name="you_wrote">Vous avez écrit</string>
 </resources>

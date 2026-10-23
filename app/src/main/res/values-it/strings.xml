@@ -31,8 +31,6 @@
     <string name="deleted_reminders_will_appear">I promemoria eliminati appariranno qui.</string>
     <string name="no_tagged_reminders">Nessun promemoria usa ancora questo tag colorato.</string>
     <string name="empty_reminders_description">Crea un promemoria per un’ora, un luogo o entrambi. Apparirà qui per permetterti di aprirlo, modificarlo o contrassegnarlo come completato.</string>
-    <string name="new_reminder">Nuovo promemoria: %1$s</string>
-    <string name="create_new_reminder">Crea un nuovo promemoria</string>
     <string name="loading_reminders">Caricamento dei promemoria</string>
     <string name="scheduled_time">Ora programmata</string>
     <string name="location">Posizione</string>
@@ -178,8 +176,6 @@
     <string name="validation_keyword_too_long">La parola chiave deve contenere al massimo 40 caratteri</string>
     <string name="validation_keyword_character">La parola chiave contiene un carattere non supportato</string>
     <string name="validation_time_format">Usa un orario a 24 ore, ad esempio 08:30</string>
-    <string name="reminder_details">Dettagli del promemoria</string>
-    <string name="reminder_input_placeholder">Ricordamelo domani alle 8…</string>
     <string name="save_reminder">Salva promemoria</string>
     <string name="reminder_text">Testo del promemoria</string>
     <string name="reminder_text_placeholder">Cosa vuoi ricordare?</string>
@@ -192,8 +188,6 @@
     <string name="enter_location">Invia una notifica quando entri in una posizione</string>
     <string name="no_location_notification">Nessuna notifica basata sulla posizione impostata</string>
     <string name="color_tag">Tag colorato</string>
-    <string name="hide_reminder_details">Nascondi dettagli del promemoria</string>
-    <string name="show_reminder_details">Mostra dettagli del promemoria</string>
     <string name="time_trigger">Condizione basata sull’orario</string>
     <string name="date">Data</string>
     <string name="select_date">Seleziona data</string>
@@ -255,14 +249,8 @@
     <string name="tag_selected">Tag %1$s, selezionato</string>
     <string name="recycling_bin">Cestino</string>
     <string name="recycling_bin_selected">Cestino, selezionato</string>
-    <string name="add_reminder">Aggiungi promemoria</string>
     <string name="edit_reminder">Modifica promemoria</string>
     <string name="save_changes">Salva modifiche</string>
-    <string name="dismiss_reminder_composer">Chiudi la composizione del promemoria</string>
-    <string name="discard_reminder_title">Abbandonare il promemoria?</string>
-    <string name="discard_reminder_message">Il testo del promemoria non verrà salvato.</string>
-    <string name="discard">Abbandona</string>
-    <string name="keep">Mantieni</string>
     <string name="backup_exported">Esportati %1$d promemoria.</string>
     <string name="backup_export_failed">Non è stato possibile esportare il backup.</string>
     <string name="backup_imported">Importati %1$d nuovi promemoria e %2$d promemoria aggiornati; %3$d programmati, %4$d errori di programmazione, %5$d ignorati, %6$d problemi.</string>
@@ -284,7 +272,7 @@
     <string name="checklist_supporting">Sottovoci semplici da spuntare. Orari e luoghi scritti qui non vengono rilevati.</string>
     <string name="add_checklist">Aggiungi lista di controllo</string>
     <string name="add_checklist_item">Aggiungi voce</string>
-    <string name="checklist_item_placeholder">Voce dell\'elenco</string>
+    <string name="checklist_item_placeholder">Voce dell’elenco</string>
     <string name="mark_checklist_item_done">Spunta %1$s</string>
     <string name="mark_checklist_item_not_done">Togli la spunta a %1$s</string>
     <string name="remove_checklist_item">Rimuovi %1$s</string>
@@ -292,4 +280,11 @@
     <string name="checklist_with_progress">Lista di controllo (%1$d/%2$d)</string>
     <string name="show_all_checklist_items">Mostra altri %1$d</string>
     <string name="show_fewer_checklist_items">Mostra meno</string>
+    <string name="trigger_update_failed">Non è stato possibile aggiornare la condizione basata sull’orario o sulla posizione. Controlla le autorizzazioni nelle Impostazioni.</string>
+    <string name="reminder_saved_trigger_failed">Il promemoria è stato salvato, ma non è stato possibile attivare la condizione basata sull’orario o sulla posizione. Controlla le autorizzazioni nelle Impostazioni.</string>
+    <string name="reminders_selected">Selezionati: %1$d</string>
+    <string name="add_reminder">Aggiungi promemoria</string>
+    <string name="show_on_map">Mostra sulla mappa</string>
+    <string name="history">Cronologia</string>
+    <string name="you_wrote">Hai scritto</string>
 </resources>

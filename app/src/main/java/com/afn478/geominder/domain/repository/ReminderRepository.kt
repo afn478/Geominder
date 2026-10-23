@@ -19,6 +19,18 @@ interface ReminderRepository {
 
     suspend fun save(reminder: Reminder)
 
+    /**
+     * Re-reads [id] and persists [transform]'s result. Returning null from [transform] leaves the
+     * reminder untouched. Implementations backed by a database run this in one transaction so a
+     * slow caller cannot overwrite (or resurrect) a reminder that changed in the meantime.
+     */
+    suspend fun update(id: ReminderId, transform: (Reminder) -> Reminder?): Reminder? {
+        val current = get(id) ?: return null
+        val updated = transform(current) ?: return null
+        save(updated)
+        return updated
+    }
+
     suspend fun moveToTrash(id: ReminderId, changedAt: Instant) {
         val current = get(id) ?: error("Reminder ${id.value} does not exist")
         save(current.copy(updatedAt = changedAt, deletedAt = changedAt))

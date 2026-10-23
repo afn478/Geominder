@@ -75,13 +75,11 @@ class AndroidAlertDelivery(
         reminder: Reminder,
         presentation: AlertPresentation,
     ): Notification {
-        val body = reminder.text.ifBlank { reminder.sourceText }
         val context = AppLanguagePreferences.localizedContext(applicationContext)
+        val body = AlertIntentFactory.detailText(reminder, context)
         val builder = Notification.Builder(context, AlertContract.CHANNEL_ID)
             .setSmallIcon(R.drawable.alert_notification_icon)
             .setContentTitle(reminder.title)
-            .setContentText(body)
-            .setStyle(Notification.BigTextStyle().bigText(body))
             .setCategory(Notification.CATEGORY_ALARM)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setAutoCancel(true)
@@ -90,6 +88,9 @@ class AndroidAlertDelivery(
             .addAction(action(reminder, AlertAction.DISMISS, R.string.alert_dismiss, context))
             .addAction(action(reminder, AlertAction.DONE, R.string.alert_done, context))
 
+        if (body.isNotBlank()) {
+            builder.setContentText(body).setStyle(Notification.BigTextStyle().bigText(body))
+        }
         contentPendingIntent(reminder)?.let(builder::setContentIntent)
 
         if (presentation == AlertPresentation.FULL_SCREEN) {
@@ -186,20 +187,30 @@ object AlertIntentFactory {
         }
     }
 
+    /**
+     * Supporting line for the notification. Reminders usually store the same string as title and
+     * text, so repeating it would just print the title twice; describe the trigger instead.
+     */
+    internal fun detailText(reminder: Reminder, context: Context): String =
+        reminder.distinctText()
+            ?: listOfNotNull(timeText(reminder, context), locationText(reminder)).joinToString(" · ")
+
     private fun Intent.putReminderContent(reminder: Reminder, context: Context) {
         putExtra(AlertContract.EXTRA_REMINDER_ID, reminder.id.value)
         putExtra(AlertContract.EXTRA_TITLE, reminder.title)
-        putExtra(AlertContract.EXTRA_TEXT, reminder.text.ifBlank { reminder.sourceText })
-        reminder.timeTrigger?.let { trigger ->
-            putExtra(AlertContract.EXTRA_TIME_TEXT, formatTime(trigger.exactAt, context))
-        }
-        reminder.geoTrigger?.let { trigger ->
-            putExtra(
-                AlertContract.EXTRA_LOCATION_TEXT,
-                formatLocation(trigger.label, trigger.latitude, trigger.longitude),
-            )
-        }
+        putExtra(AlertContract.EXTRA_TEXT, reminder.distinctText().orEmpty())
+        timeText(reminder, context)?.let { putExtra(AlertContract.EXTRA_TIME_TEXT, it) }
+        locationText(reminder)?.let { putExtra(AlertContract.EXTRA_LOCATION_TEXT, it) }
     }
+
+    private fun Reminder.distinctText(): String? =
+        text.trim().takeIf { it.isNotEmpty() && it != title.trim() }
+
+    private fun timeText(reminder: Reminder, context: Context): String? =
+        reminder.timeTrigger?.let { formatTime(it.exactAt, context) }
+
+    private fun locationText(reminder: Reminder): String? =
+        reminder.geoTrigger?.let { formatLocation(it.label, it.latitude, it.longitude) }
 
     private fun formatTime(value: Instant, context: Context): String =
         DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)

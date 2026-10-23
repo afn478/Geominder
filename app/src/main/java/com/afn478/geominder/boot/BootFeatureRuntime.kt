@@ -12,6 +12,12 @@ import java.util.concurrent.atomic.AtomicBoolean
 fun interface BootFeatureEntryPoint {
     /** Starts restoration and invokes [completion] exactly once with its aggregate result. */
     fun resynchronize(completion: (BootResyncReport) -> Unit)
+
+    /**
+     * Re-plans alarms only, for example after exact-alarm access was granted. Geofences are left
+     * alone: re-registering them would re-fire immediately for a device already inside one.
+     */
+    fun rescheduleAlarms(completion: (BootResyncReport) -> Unit) = resynchronize(completion)
 }
 
 /**
@@ -35,12 +41,21 @@ class DefaultBootFeatureEntryPoint(
         geofenceRegistrar = geofenceRegistrar,
     )
 
-    override fun resynchronize(completion: (BootResyncReport) -> Unit) {
+    override fun resynchronize(completion: (BootResyncReport) -> Unit) =
+        launch(completion) { coordinator.resynchronize() }
+
+    override fun rescheduleAlarms(completion: (BootResyncReport) -> Unit) =
+        launch(completion) { coordinator.rescheduleAlarms() }
+
+    private fun launch(
+        completion: (BootResyncReport) -> Unit,
+        work: suspend () -> BootResyncReport,
+    ) {
         val completeOnce = CompleteOnce(completion)
         try {
             val job = scope.launch {
                 val report = try {
-                    coordinator.resynchronize()
+                    work()
                 } catch (error: Throwable) {
                     BootResyncReport.fatal(error)
                 }
@@ -59,7 +74,11 @@ class DefaultBootFeatureEntryPoint(
 
 /** Keeps BroadcastReceiver.PendingResult completion safe across all runtime failure paths. */
 internal object BootResyncLauncher {
-    fun launch(entryPoint: BootFeatureEntryPoint?, finished: () -> Unit) {
+    fun launch(
+        entryPoint: BootFeatureEntryPoint?,
+        alarmsOnly: Boolean = false,
+        finished: () -> Unit,
+    ) {
         val finishOnce = CompleteOnce<Unit> { finished() }
         if (entryPoint == null) {
             finishOnce(Unit)
@@ -67,7 +86,11 @@ internal object BootResyncLauncher {
         }
 
         try {
-            entryPoint.resynchronize { finishOnce(Unit) }
+            if (alarmsOnly) {
+                entryPoint.rescheduleAlarms { finishOnce(Unit) }
+            } else {
+                entryPoint.resynchronize { finishOnce(Unit) }
+            }
         } catch (_: Throwable) {
             finishOnce(Unit)
         }

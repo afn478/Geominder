@@ -110,6 +110,24 @@ class BootResyncCoordinator(
         )
     }
 
+    /** Re-plans alarms for pending reminders without touching geofence registrations. */
+    suspend fun rescheduleAlarms(): BootResyncReport {
+        val reminders = try {
+            repository.getPending()
+        } catch (error: Throwable) {
+            return BootResyncReport.fatal(error)
+        }
+        val activeReminders = reminders.filter(Reminder::isPending)
+        val alarmResults = restoreAlarms(activeReminders)
+        return BootResyncReport(
+            loadedReminderCount = reminders.size,
+            ignoredInactiveCount = reminders.size - activeReminders.size,
+            scheduledAlarmCount = alarmResults.count(AlarmRestoreOutcome::scheduled),
+            registeredGeofenceCount = 0,
+            failures = alarmResults.mapNotNull(AlarmRestoreOutcome::failure),
+        )
+    }
+
     private fun restoreAlarms(reminders: List<Reminder>): List<AlarmRestoreOutcome> = reminders
         .filter { reminder -> reminder.needsAlarmRegistration() }
         .map { reminder ->
@@ -117,7 +135,8 @@ class BootResyncCoordinator(
                 when (val result = alarmScheduler.schedule(reminder)) {
                     is AlarmScheduleResult.Scheduled -> AlarmRestoreOutcome(scheduled = true)
                     is AlarmScheduleResult.NotApplicable
-                        if result.reason == NoAlarmReason.TIME_TRIGGER_EXPIRED -> AlarmRestoreOutcome()
+                        if result.reason == NoAlarmReason.TIME_TRIGGER_EXPIRED ||
+                            result.reason == NoAlarmReason.SNOOZE_DELIVERED -> AlarmRestoreOutcome()
                     else -> AlarmRestoreOutcome(
                         failure = BootResyncFailure.AlarmRejected(reminder.id, result),
                     )

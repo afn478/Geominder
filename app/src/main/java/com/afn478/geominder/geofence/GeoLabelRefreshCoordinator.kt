@@ -11,6 +11,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.resume
 
@@ -90,27 +91,39 @@ class GeoLabelRefreshCoordinator(
     private suspend fun refreshReminder(reminder: Reminder) {
         val trigger = reminder.geoTrigger ?: return
         if (!isFallbackLabel(trigger.label)) return
-        val resolved = runCatching { resolve(trigger.latitude, trigger.longitude) }.getOrNull()
+        val resolved = resolve(trigger.latitude, trigger.longitude)
             ?.takeIf { it.isNotBlank() && !isFallbackLabel(it) }
             ?: return
+        // Geocoding can take a while; only touch the reminder if it still exists and still points
+        // at the same place, so a concurrent edit, dismissal, or permanent delete always wins.
         runCatching {
-            repository.save(reminder.copy(geoTrigger = trigger.copy(label = resolved)))
+            repository.update(reminder.id) { current ->
+                val currentTrigger = current.geoTrigger
+                    ?.takeIf { it.id == trigger.id && it.latitude == trigger.latitude && it.longitude == trigger.longitude }
+                    ?.takeIf { isFallbackLabel(it.label) }
+                    ?: return@update null
+                current.copy(geoTrigger = currentTrigger.copy(label = resolved))
+            }
         }
     }
 
-    private suspend fun resolve(latitude: Double, longitude: Double): String =
-        suspendCancellableCoroutine { continuation ->
-            runCatching {
-                resolver.resolve(latitude, longitude) { label ->
-                    if (continuation.isActive) continuation.resume(label)
-                }
-            }.onFailure { if (continuation.isActive) continuation.resume("") }
+    /** Returns null when the platform geocoder fails or never answers. */
+    private suspend fun resolve(latitude: Double, longitude: Double): String? =
+        withTimeoutOrNull(RESOLVE_TIMEOUT_MILLIS) {
+            suspendCancellableCoroutine { continuation ->
+                runCatching {
+                    resolver.resolve(latitude, longitude) { label ->
+                        if (continuation.isActive) continuation.resume(label)
+                    }
+                }.onFailure { if (continuation.isActive) continuation.resume("") }
+            }
         }
 
     private fun isFallbackLabel(label: String?): Boolean =
         label.isNullOrBlank() || FALLBACK_LABEL.matches(label.trim())
 
     private companion object {
+        const val RESOLVE_TIMEOUT_MILLIS = 15_000L
         val FALLBACK_LABEL = Regex(
             "(?i)^(?:near\\s+)?[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)\\s*,\\s*" +
                 "[+-]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)$",

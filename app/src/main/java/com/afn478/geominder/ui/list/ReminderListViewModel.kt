@@ -14,6 +14,7 @@ import com.afn478.geominder.settings.ReminderSortOrder
 import com.afn478.geominder.settings.SettingsRepository
 import com.afn478.geominder.localization.UiText
 import com.afn478.geominder.localization.resource
+import com.afn478.geominder.ui.text.toUserMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -108,8 +109,7 @@ class ReminderListViewModel(
                     .onFailure { error ->
                         _uiState.update {
                             it.copy(
-                                message = error.message?.let(UiText::Plain)
-                                    ?: UiText.resource(R.string.sort_order_save_failed),
+                                message = error.toUserMessage(R.string.sort_order_save_failed),
                             )
                         }
                     }
@@ -390,7 +390,7 @@ class ReminderListViewModel(
                 current.copy(
                     busyReminderIds = current.busyReminderIds - selectedIds,
                     undoDeleteReminderId = undoDeleteReminderId,
-                    message = firstError?.message?.let(UiText::Plain)
+                    message = firstError?.toUserMessage(R.string.reminder_update_failed)
                         ?: if (deletedCount > 0) {
                             if (undoDeleteReminderId != null) {
                                 null
@@ -451,7 +451,7 @@ class ReminderListViewModel(
             _uiState.update { current ->
                 current.copy(
                     busyReminderIds = current.busyReminderIds - selectedIds,
-                    message = firstError?.message?.let(UiText::Plain)
+                    message = firstError?.toUserMessage(R.string.reminder_update_failed)
                         ?: when {
                             restoredCount == 0 -> null
                             restoredCount == 1 -> UiText.resource(R.string.reminder_restored)
@@ -587,10 +587,7 @@ class ReminderListViewModel(
             runCatching { mutation() }
                 .onFailure { error ->
                     _uiState.update {
-                        it.copy(
-                                message = error.message?.let(UiText::Plain)
-                                    ?: UiText.resource(R.string.reminder_update_failed),
-                        )
+                        it.copy(message = error.toUserMessage(R.string.reminder_update_failed))
                     }
                 }
             _uiState.update { it.copy(busyReminderIds = it.busyReminderIds - id) }

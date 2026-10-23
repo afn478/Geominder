@@ -51,6 +51,34 @@ class ReminderBackupManagerTest {
     }
 
     @Test
+    fun `overwriting an existing reminder releases its previous registrations first`() = runBlocking {
+        val existing = reminder("existing", "Old title")
+        val repository = FakeReminderRepository(existing)
+        val events = mutableListOf<String>()
+        val manager = manager(
+            repository = repository,
+            scheduler = object : PostImportScheduler {
+                override suspend fun schedule(reminder: Reminder) {
+                    events += "schedule:${reminder.title}"
+                }
+
+                override suspend fun cancelPrevious(reminder: Reminder) {
+                    events += "cancel:${reminder.title}"
+                }
+            },
+        )
+
+        manager.importFrom(
+            calendar(
+                timeTodo("existing", "Updated title", "20260825T100000Z"),
+                timeTodo("new", "New title", "20260825T110000Z"),
+            ).byteInputStream(),
+        )
+
+        assertEquals(listOf("cancel:Old title", "schedule:Updated title", "schedule:New title"), events)
+    }
+
+    @Test
     fun `scheduling failure is reported without rolling back a successful upsert`() = runBlocking {
         val repository = FakeReminderRepository()
         val manager = manager(

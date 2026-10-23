@@ -1,6 +1,8 @@
 package com.afn478.geominder.data.repository
 
+import android.util.Log
 import com.afn478.geominder.data.local.ReminderDao
+import com.afn478.geominder.data.local.entity.ReminderWithTriggers
 import com.afn478.geominder.data.mapper.toDomain
 import com.afn478.geominder.data.mapper.toEntities
 import com.afn478.geominder.domain.model.ChecklistItemId
@@ -16,16 +18,16 @@ class RoomReminderRepository(
     private val reminderDao: ReminderDao,
 ) : ReminderRepository {
     override fun observeAll(): Flow<List<Reminder>> =
-        reminderDao.observeAll().map { rows -> rows.map { it.toDomain() } }
+        reminderDao.observeAll().map { rows -> rows.mapNotNull { it.toDomainOrNull() } }
 
     override fun observe(id: ReminderId): Flow<Reminder?> =
-        reminderDao.observeById(id.value).map { it?.toDomain() }
+        reminderDao.observeById(id.value).map { it?.toDomainOrNull() }
 
     override suspend fun get(id: ReminderId): Reminder? =
-        reminderDao.getById(id.value)?.toDomain()
+        reminderDao.getById(id.value)?.toDomainOrNull()
 
     override suspend fun getPending(): List<Reminder> =
-        reminderDao.getPending().map { it.toDomain() }
+        reminderDao.getPending().mapNotNull { it.toDomainOrNull() }
 
     override suspend fun save(reminder: Reminder) {
         val entities = reminder.toEntities()
@@ -37,15 +39,25 @@ class RoomReminderRepository(
         )
     }
 
+    override suspend fun update(id: ReminderId, transform: (Reminder) -> Reminder?): Reminder? {
+        var updated: Reminder? = null
+        reminderDao.update(id.value) transformRow@{ row ->
+            val current = row.toDomainOrNull() ?: return@transformRow null
+            transform(current)?.also { updated = it }?.toEntities()
+        }
+        return updated
+    }
+
     override suspend fun moveToTrash(id: ReminderId, changedAt: Instant) {
-        update(id) { reminder ->
-            reminder.copy(updatedAt = changedAt, deletedAt = changedAt)
+        updateExisting(id) { reminder ->
+            val at = reminder.clamp(changedAt)
+            reminder.copy(updatedAt = at, deletedAt = at)
         }
     }
 
     override suspend fun restoreFromTrash(id: ReminderId, changedAt: Instant) {
-        update(id) { reminder ->
-            reminder.copy(updatedAt = changedAt, deletedAt = null)
+        updateExisting(id) { reminder ->
+            reminder.copy(updatedAt = reminder.clamp(changedAt), deletedAt = null)
         }
     }
 
@@ -63,22 +75,24 @@ class RoomReminderRepository(
     }
 
     override suspend fun setEnabled(id: ReminderId, enabled: Boolean, changedAt: Instant) {
-        update(id) { reminder -> reminder.copy(enabled = enabled, updatedAt = changedAt) }
+        updateExisting(id) { reminder ->
+            reminder.copy(enabled = enabled, updatedAt = reminder.clamp(changedAt))
+        }
     }
 
     override suspend fun recordTriggered(id: ReminderId, triggeredAt: Instant) {
-        update(id) { reminder ->
-            reminder.copy(lastTriggeredAt = triggeredAt, updatedAt = triggeredAt)
+        updateExisting(id) { reminder ->
+            reminder.copy(lastTriggeredAt = triggeredAt, updatedAt = reminder.clamp(triggeredAt))
         }
     }
 
     override suspend fun snooze(id: ReminderId, until: Instant, changedAt: Instant) {
         require(until.isAfter(changedAt)) { "Snooze deadline must be in the future" }
-        update(id) { reminder ->
+        updateExisting(id) { reminder ->
             reminder.copy(
                 enabled = true,
                 status = ReminderStatus.SNOOZED,
-                updatedAt = changedAt,
+                updatedAt = reminder.clamp(changedAt),
                 snoozedUntil = until,
                 dismissedAt = null,
             )
@@ -86,23 +100,24 @@ class RoomReminderRepository(
     }
 
     override suspend fun dismiss(id: ReminderId, changedAt: Instant) {
-        update(id) { reminder ->
+        updateExisting(id) { reminder ->
+            val at = reminder.clamp(changedAt)
             reminder.copy(
                 enabled = false,
                 status = ReminderStatus.DISMISSED,
-                updatedAt = changedAt,
+                updatedAt = at,
                 snoozedUntil = null,
-                dismissedAt = changedAt,
+                dismissedAt = at,
             )
         }
     }
 
     override suspend fun complete(id: ReminderId, changedAt: Instant) {
-        update(id) { reminder ->
+        updateExisting(id) { reminder ->
             reminder.copy(
                 enabled = false,
                 status = ReminderStatus.COMPLETED,
-                updatedAt = changedAt,
+                updatedAt = reminder.clamp(changedAt),
                 snoozedUntil = null,
                 dismissedAt = null,
             )
@@ -110,19 +125,31 @@ class RoomReminderRepository(
     }
 
     override suspend fun reopen(id: ReminderId, changedAt: Instant) {
-        update(id) { reminder ->
+        updateExisting(id) { reminder ->
             reminder.copy(
                 enabled = true,
                 status = ReminderStatus.PENDING,
-                updatedAt = changedAt,
+                updatedAt = reminder.clamp(changedAt),
                 snoozedUntil = null,
                 dismissedAt = null,
             )
         }
     }
 
-    private suspend fun update(id: ReminderId, transform: (Reminder) -> Reminder) {
-        val current = get(id) ?: error("Reminder ${id.value} does not exist")
-        save(transform(current))
+    private suspend fun updateExisting(id: ReminderId, transform: (Reminder) -> Reminder) {
+        update(id, transform) ?: error("Reminder ${id.value} does not exist")
+    }
+
+    /** A wall-clock change must not produce an update that precedes creation. */
+    private fun Reminder.clamp(instant: Instant): Instant = maxOf(instant, createdAt)
+
+    /** One unreadable row must not take the whole list, boot restore, or an alert down with it. */
+    private fun ReminderWithTriggers.toDomainOrNull(): Reminder? =
+        runCatching { toDomain() }
+            .onFailure { Log.w(TAG, "Skipping unreadable reminder ${reminder.id}", it) }
+            .getOrNull()
+
+    private companion object {
+        const val TAG = "GeominderRepository"
     }
 }

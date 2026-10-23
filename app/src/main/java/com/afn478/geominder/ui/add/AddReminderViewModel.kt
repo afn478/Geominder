@@ -34,6 +34,7 @@ import com.afn478.geominder.parser.ReminderTextParser
 import com.afn478.geominder.parser.SourceSpan
 import com.afn478.geominder.parser.TemporalPrecision
 import com.afn478.geominder.parser.TemporalRole
+import com.afn478.geominder.ui.text.toUserMessage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -775,13 +776,14 @@ class AddReminderViewModel(
                     it.copy(isSaving = false, savedReminder = reminder, saveError = null)
                 }
             }.onFailure { error ->
-                _uiState.update {
-                    it.copy(
-                        isSaving = false,
-                        saveError = error.message?.let(UiText::Plain)
-                            ?: UiText.resource(R.string.reminder_save_failed),
-                    )
+                val message = if (error is ReminderActivationException) {
+                    // The row exists now. A retry must update it instead of inserting a duplicate.
+                    originalReminder = reminder
+                    UiText.resource(R.string.reminder_saved_trigger_failed)
+                } else {
+                    error.toUserMessage(R.string.reminder_save_failed)
                 }
+                _uiState.update { it.copy(isSaving = false, saveError = message) }
             }
         }
     }

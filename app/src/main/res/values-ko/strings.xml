@@ -31,8 +31,6 @@
     <string name="deleted_reminders_will_appear">삭제한 리마인더가 여기에 표시됩니다.</string>
     <string name="no_tagged_reminders">아직 이 색상 태그를 사용하는 리마인더가 없습니다.</string>
     <string name="empty_reminders_description">시간이나 장소 또는 둘 다를 기준으로 리마인더를 만드세요. 여기에서 열거나 편집하거나 완료할 수 있습니다.</string>
-    <string name="new_reminder">새 리마인더: %1$s</string>
-    <string name="create_new_reminder">새 리마인더 만들기</string>
     <string name="loading_reminders">리마인더 로드 중</string>
     <string name="scheduled_time">예약 시간</string>
     <string name="location">위치</string>
@@ -178,8 +176,6 @@
     <string name="validation_keyword_too_long">키워드는 40자 이내로 입력하세요</string>
     <string name="validation_keyword_character">키워드에 지원되지 않는 문자가 포함되어 있습니다</string>
     <string name="validation_time_format">08:30과 같은 24시간 형식을 사용하세요</string>
-    <string name="reminder_details">리마인더 세부정보</string>
-    <string name="reminder_input_placeholder">내일 오전 8시에 알려 줘…</string>
     <string name="save_reminder">리마인더 저장</string>
     <string name="reminder_text">리마인더 텍스트</string>
     <string name="reminder_text_placeholder">무엇을 기억할까요?</string>
@@ -192,8 +188,6 @@
     <string name="enter_location">위치에 들어가면 알림</string>
     <string name="no_location_notification">위치 알림 조건이 설정되지 않음</string>
     <string name="color_tag">색상 태그</string>
-    <string name="hide_reminder_details">리마인더 세부정보 숨기기</string>
-    <string name="show_reminder_details">리마인더 세부정보 표시</string>
     <string name="time_trigger">시간 조건</string>
     <string name="date">날짜</string>
     <string name="select_date">날짜 선택</string>
@@ -255,14 +249,8 @@
     <string name="tag_selected">%1$s 태그, 선택됨</string>
     <string name="recycling_bin">휴지통</string>
     <string name="recycling_bin_selected">휴지통, 선택됨</string>
-    <string name="add_reminder">리마인더 추가</string>
     <string name="edit_reminder">리마인더 편집</string>
     <string name="save_changes">변경사항 저장</string>
-    <string name="dismiss_reminder_composer">리마인더 작성 화면 닫기</string>
-    <string name="discard_reminder_title">작성 중인 리마인더를 버릴까요?</string>
-    <string name="discard_reminder_message">리마인더 텍스트가 저장되지 않습니다.</string>
-    <string name="discard">버리기</string>
-    <string name="keep">계속 작성</string>
     <string name="backup_exported">리마인더 %1$d개를 내보냈습니다.</string>
     <string name="backup_export_failed">백업을 내보낼 수 없습니다.</string>
     <string name="backup_imported">새 리마인더 %1$d개와 업데이트된 리마인더 %2$d개를 가져왔습니다. 예약됨 %3$d개, 예약 실패 %4$d개, 건너뜀 %5$d개, 문제 %6$d개.</string>
@@ -292,4 +280,11 @@
     <string name="checklist_with_progress">체크리스트(%1$d/%2$d)</string>
     <string name="show_all_checklist_items">%1$d개 더 보기</string>
     <string name="show_fewer_checklist_items">간단히 보기</string>
+    <string name="trigger_update_failed">시간 또는 위치 조건을 업데이트할 수 없습니다. 설정에서 권한을 확인하세요.</string>
+    <string name="reminder_saved_trigger_failed">리마인더는 저장되었지만 시간 또는 위치 조건을 활성화할 수 없습니다. 설정에서 권한을 확인하세요.</string>
+    <string name="reminders_selected">%1$d개 선택됨</string>
+    <string name="add_reminder">리마인더 추가</string>
+    <string name="show_on_map">지도에서 보기</string>
+    <string name="history">기록</string>
+    <string name="you_wrote">입력한 내용</string>
 </resources>

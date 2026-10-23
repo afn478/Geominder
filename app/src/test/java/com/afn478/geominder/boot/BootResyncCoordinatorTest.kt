@@ -56,6 +56,31 @@ class BootResyncCoordinatorTest {
     }
 
     @Test
+    fun `alarm-only resync leaves geofences untouched and skips delivered snoozes`() = runBlocking {
+        val timeOnly = reminder(id = "time", withTime = true)
+        val geoOnly = reminder(id = "geo", withGeo = true)
+        val snoozeAt = Instant.parse("2026-08-25T11:30:00Z")
+        val deliveredSnooze = reminder(
+            id = "delivered-snooze",
+            status = ReminderStatus.SNOOZED,
+            snoozedUntil = snoozeAt,
+            withGeo = true,
+        ).copy(lastTriggeredAt = snoozeAt)
+        val scheduler = RecordingAlarmScheduler()
+        val registrar = RecordingGeofenceRegistrar()
+
+        val report = coordinator(
+            reminders = listOf(timeOnly, geoOnly, deliveredSnooze),
+            scheduler = scheduler,
+            registrar = registrar,
+        ).rescheduleAlarms()
+
+        assertTrue(report.isFullySuccessful)
+        assertEquals(1, report.scheduledAlarmCount)
+        assertTrue(registrar.specs.isEmpty())
+    }
+
+    @Test
     fun `combined reminder restores both trigger types and preserves activeFrom`() = runBlocking {
         val activeFrom = Instant.parse("2026-08-25T16:00:00Z")
         val combined = reminder(
@@ -272,7 +297,10 @@ private class RecordingAlarmScheduler(
         scheduled += reminder
         if (reminder.id == failingReminderId) error("alarm failure")
         scheduleResult?.let { return it }
-        val plan = (AlarmPlanner.forReminder(reminder) as ReminderAlarmPlan.Schedule).plan
+        val plan = when (val decision = AlarmPlanner.forReminder(reminder)) {
+            is ReminderAlarmPlan.Schedule -> decision.plan
+            is ReminderAlarmPlan.None -> return AlarmScheduleResult.NotApplicable(decision.reason)
+        }
         plans[reminder.id] = plan
         return AlarmScheduleResult.Scheduled(plan = plan, scheduledAt = plan.triggerAt)
     }

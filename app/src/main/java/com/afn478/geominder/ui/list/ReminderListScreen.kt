@@ -8,6 +8,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -74,11 +75,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntSize
@@ -103,7 +106,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun ReminderListRoute(
     viewModel: ReminderListViewModel,
-    onAddReminder: () -> Unit,
+    quickAddBar: @Composable (idleHeader: @Composable () -> Unit) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenReminder: (ReminderId) -> Unit,
     onEditReminder: (ReminderId) -> Unit,
@@ -113,10 +116,7 @@ fun ReminderListRoute(
 
     ReminderListScreen(
         state = state,
-        onAddReminder = {
-            viewModel.exitSelectionMode()
-            onAddReminder()
-        },
+        quickAddBar = quickAddBar,
         onOpenSettings = onOpenSettings,
         onSortOrderChange = viewModel::setSortOrder,
         onTagFilterClick = viewModel::toggleTagFilter,
@@ -145,7 +145,8 @@ fun ReminderListRoute(
 @Composable
 fun ReminderListScreen(
     state: ReminderListUiState,
-    onAddReminder: () -> Unit,
+    /** Bottom composer; [idleHeader] is what it shows above itself while not composing. */
+    quickAddBar: @Composable (idleHeader: @Composable () -> Unit) -> Unit,
     onOpenSettings: () -> Unit,
     onSortOrderChange: (ReminderSortOrder) -> Unit,
     onTagFilterClick: (ReminderTag) -> Unit,
@@ -203,7 +204,13 @@ fun ReminderListScreen(
     )
 
     ReachableScaffold(
-        title = stringResource(R.string.reminders),
+        title = if (state.isSelectionMode) {
+            stringResource(R.string.reminders_selected, state.selectedReminderIds.size)
+        } else {
+            stringResource(R.string.reminders)
+        },
+        // Selecting items changes the title; keep the user's scroll position while they do.
+        scrollResetKey = state.isSelectionMode,
         modifier = modifier,
         navigationIcon = if (state.isSelectionMode) {
             {
@@ -239,7 +246,7 @@ fun ReminderListScreen(
             }
         },
         bottomBar = {
-            Column {
+            quickAddBar {
                 ReminderTagChips(
                     selectedTag = state.selectedTag,
                     onTagClick = onTagFilterClick,
@@ -253,7 +260,6 @@ fun ReminderListScreen(
                         )
                     },
                 )
-                NewReminderLauncher(onClick = onAddReminder)
             }
         },
         snackbarHost = {
@@ -263,45 +269,53 @@ fun ReminderListScreen(
             )
         },
     ) { contentPadding ->
-        when {
-            state.isLoading -> LoadingContent(
-                modifier = Modifier.padding(contentPadding),
-            )
+        val focusManager = LocalFocusManager.current
+        // Tapping empty space ends quick-add typing; taps on cards are consumed by the cards.
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) { detectTapGestures { focusManager.clearFocus() } },
+        ) {
+            when {
+                state.isLoading -> LoadingContent(
+                    modifier = Modifier.padding(contentPadding),
+                )
 
-            state.isEmpty -> EmptyReminderContent(
-                title = when {
-                    state.showTrash && state.selectedTag == null ->
-                        UiText.resource(R.string.empty_recycling_bin)
-                    state.selectedTag != null ->
-                        UiText.resource(R.string.no_reminders_found)
-                    else -> UiText.resource(R.string.nothing_to_remember)
-                },
-                description = when {
-                    state.showTrash && state.selectedTag == null ->
-                        UiText.resource(R.string.deleted_reminders_will_appear)
-                    state.selectedTag != null ->
-                        UiText.resource(R.string.no_tagged_reminders)
-                    else -> UiText.resource(R.string.empty_reminders_description)
-                },
-                modifier = Modifier.padding(contentPadding),
-            )
+                state.isEmpty -> EmptyReminderContent(
+                    title = when {
+                        state.showTrash && state.selectedTag == null ->
+                            UiText.resource(R.string.empty_recycling_bin)
+                        state.selectedTag != null ->
+                            UiText.resource(R.string.no_reminders_found)
+                        else -> UiText.resource(R.string.nothing_to_remember)
+                    },
+                    description = when {
+                        state.showTrash && state.selectedTag == null ->
+                            UiText.resource(R.string.deleted_reminders_will_appear)
+                        state.selectedTag != null ->
+                            UiText.resource(R.string.no_tagged_reminders)
+                        else -> UiText.resource(R.string.empty_reminders_description)
+                    },
+                    modifier = Modifier.padding(contentPadding),
+                )
 
-            else -> ReminderItems(
-                items = state.items,
-                busyReminderIds = state.busyReminderIds,
-                onOpenReminder = onOpenReminder,
-                onEditReminder = onEditReminder,
-                onSetCompleted = onSetCompleted,
-                onSetChecklistItemDone = onSetChecklistItemDone,
-                onDeleteReminder = onDeleteReminder,
-                onRestoreReminder = onRestoreReminder,
-                selectionMode = state.isSelectionMode,
-                selectedReminderIds = state.selectedReminderIds,
-                onStartSelection = onStartSelection,
-                onToggleSelection = onToggleSelection,
-                inTrash = state.showTrash,
-                modifier = Modifier.padding(contentPadding),
-            )
+                else -> ReminderItems(
+                    items = state.items,
+                    busyReminderIds = state.busyReminderIds,
+                    onOpenReminder = onOpenReminder,
+                    onEditReminder = onEditReminder,
+                    onSetCompleted = onSetCompleted,
+                    onSetChecklistItemDone = onSetChecklistItemDone,
+                    onDeleteReminder = onDeleteReminder,
+                    onRestoreReminder = onRestoreReminder,
+                    selectionMode = state.isSelectionMode,
+                    selectedReminderIds = state.selectedReminderIds,
+                    onStartSelection = onStartSelection,
+                    onToggleSelection = onToggleSelection,
+                    inTrash = state.showTrash,
+                    modifier = Modifier.padding(contentPadding),
+                )
+            }
         }
     }
 }
@@ -512,80 +526,6 @@ private val SORT_MENU_OPTIONS = listOf(
 )
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
-private fun NewReminderLauncher(
-    onClick: () -> Unit,
-) {
-    var exampleIndex by remember { mutableIntStateOf(0) }
-    val exampleAlpha = remember { Animatable(1f) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(EXAMPLE_ROTATION_MILLIS)
-            exampleAlpha.animateTo(
-                targetValue = 0f,
-                animationSpec = tween(durationMillis = EXAMPLE_FADE_MILLIS),
-            )
-            exampleIndex = (exampleIndex + 1) % REMINDER_EXAMPLES.size
-            exampleAlpha.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(durationMillis = EXAMPLE_FADE_MILLIS),
-            )
-        }
-    }
-    val example = stringResource(REMINDER_EXAMPLES[exampleIndex])
-    val exampleDescription = stringResource(R.string.new_reminder, example)
-    val createReminderLabel = stringResource(R.string.create_new_reminder)
-
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-            .semantics(mergeDescendants = true) {
-                contentDescription = exampleDescription
-            }
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                role = Role.Button,
-                onClickLabel = createReminderLabel,
-                onClick = onClick,
-            ),
-        shape = SearchBarDefaults.inputFieldShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        tonalElevation = SearchBarDefaults.TonalElevation,
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Icon(Icons.Default.Add, contentDescription = null)
-            Text(
-                text = example,
-                modifier = Modifier
-                    .weight(1f)
-                    .graphicsLayer { alpha = exampleAlpha.value },
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
-}
-
-private const val EXAMPLE_ROTATION_MILLIS = 6_000L
-private const val EXAMPLE_FADE_MILLIS = 180
-
-private val REMINDER_EXAMPLES = listOf(
-    R.string.example_call_mum,
-    R.string.example_pick_up_groceries,
-    R.string.example_water_plants,
-    R.string.example_take_umbrella,
-)
-
-@Composable
 private fun LoadingContent(modifier: Modifier = Modifier) {
     val loadingDescription = stringResource(R.string.loading_reminders)
     Box(
@@ -620,11 +560,13 @@ private fun EmptyReminderContent(
             Text(
                 text = title.resolve(),
                 style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center,
             )
             Text(
                 text = description.resolve(),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
             )
         }
     }
@@ -728,31 +670,10 @@ private fun ReminderCard(
         item.primaryText,
     )
 
+    // The card clips its own content to [cardShape]. Clipping, size animation (which clips to
+    // bounds) and the click ripple therefore live inside it, so the elevation shadow stays visible.
     ElevatedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .animateContentSize(animationSpec = motionSpec)
-            .clip(cardShape)
-            .drawWithContent {
-                drawContent()
-                item.tag?.let { tag ->
-                    drawRect(
-                        color = tag.color,
-                        size = Size(width = 4.dp.toPx(), height = size.height),
-                    )
-                }
-            }
-            .combinedClickable(
-                enabled = !isBusy,
-                onClickLabel = if (selectionMode) selectionLabel else openLabel,
-                onLongClickLabel = selectionLabel,
-                onLongClick = {
-                    if (selectionMode) onToggleSelection() else onStartSelection()
-                },
-                onClick = {
-                    if (selectionMode) onToggleSelection() else onOpen()
-                },
-            ),
+        modifier = Modifier.fillMaxWidth(),
         shape = cardShape,
         colors = if (isSelected) {
             CardDefaults.elevatedCardColors(
@@ -763,7 +684,30 @@ private fun ReminderCard(
         },
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .animateContentSize(animationSpec = motionSpec)
+                .drawWithContent {
+                    drawContent()
+                    item.tag?.let { tag ->
+                        drawRect(
+                            color = tag.color,
+                            size = Size(width = 4.dp.toPx(), height = size.height),
+                        )
+                    }
+                }
+                .combinedClickable(
+                    enabled = !isBusy,
+                    onClickLabel = if (selectionMode) selectionLabel else openLabel,
+                    onLongClickLabel = selectionLabel,
+                    onLongClick = {
+                        if (selectionMode) onToggleSelection() else onStartSelection()
+                    },
+                    onClick = {
+                        if (selectionMode) onToggleSelection() else onOpen()
+                    },
+                )
+                .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             Row(
@@ -837,6 +781,7 @@ private fun ReminderCard(
 
             if (item.timeText != null || item.locationText != null || item.checklist.isNotEmpty()) {
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -845,7 +790,13 @@ private fun ReminderCard(
                             Icons.Default.Schedule,
                             contentDescription = stringResource(R.string.scheduled_time),
                         )
-                        Text(time, color = supportingTextColor, textDecoration = textDecoration)
+                        Text(
+                            text = time,
+                            color = supportingTextColor,
+                            textDecoration = textDecoration,
+                            maxLines = 1,
+                            softWrap = false,
+                        )
                     }
                     if (item.timeText != null && item.locationText != null) {
                         Text("·", color = supportingTextColor)
@@ -857,11 +808,11 @@ private fun ReminderCard(
                         )
                         Text(
                             text = location,
+                            modifier = Modifier.weight(1f, fill = false),
                             color = supportingTextColor,
                             textDecoration = textDecoration,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
                         )
                     }
                     if (item.checklist.isNotEmpty()) {

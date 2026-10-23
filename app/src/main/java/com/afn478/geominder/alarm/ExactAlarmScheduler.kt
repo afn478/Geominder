@@ -108,8 +108,11 @@ class AndroidExactAlarmScheduler(
         if (decision is ReminderAlarmPlan.None) {
             when (decision.reason) {
                 NoAlarmReason.NOT_PENDING -> cancel(reminder)
-                NoAlarmReason.TIME_TRIGGER_EXPIRED ->
+                NoAlarmReason.TIME_TRIGGER_EXPIRED -> {
                     reminder.timeTrigger?.let { cancelTime(reminder.id, it.id) }
+                    if (reminder.snoozedUntil != null) cancelSnooze(reminder.id)
+                }
+                NoAlarmReason.SNOOZE_DELIVERED -> cancelSnooze(reminder.id)
                 NoAlarmReason.NO_TIME_TRIGGER -> Unit
             }
             return AlarmScheduleResult.NotApplicable(decision.reason)

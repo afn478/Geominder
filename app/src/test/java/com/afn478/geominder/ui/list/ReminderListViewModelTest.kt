@@ -256,7 +256,7 @@ class ReminderListViewModelTest {
         viewModel.deleteReminder(ID)
 
         assertEquals(1, repository.current().size)
-        assertEquals("Scheduler unavailable", viewModel.uiState.value.message?.plainValue())
+        assertEquals(R.string.reminder_update_failed, viewModel.uiState.value.message?.resourceId())
         assertTrue(viewModel.uiState.value.busyReminderIds.isEmpty())
     }
 
@@ -278,7 +278,7 @@ class ReminderListViewModelTest {
             listOf("command:Cancel", "setEnabled:false", "command:Register"),
             events,
         )
-        assertEquals("Persistence unavailable", viewModel.uiState.value.message?.plainValue())
+        assertEquals(R.string.reminder_update_failed, viewModel.uiState.value.message?.resourceId())
     }
 
     @Test
@@ -295,7 +295,7 @@ class ReminderListViewModelTest {
 
         assertEquals(listOf("command:Cancel", "moveToTrash", "command:Register"), events)
         assertEquals(1, repository.current().size)
-        assertEquals("Persistence unavailable", viewModel.uiState.value.message?.plainValue())
+        assertEquals(R.string.reminder_update_failed, viewModel.uiState.value.message?.resourceId())
     }
 
     @Test
@@ -402,7 +402,7 @@ class ReminderListViewModelTest {
             events,
         )
         assertEquals(ReminderStatus.PENDING, repository.current().single().status)
-        assertEquals("Persistence unavailable", viewModel.uiState.value.message?.plainValue())
+        assertEquals(R.string.reminder_update_failed, viewModel.uiState.value.message?.resourceId())
     }
 
     @Test
@@ -438,7 +438,7 @@ class ReminderListViewModelTest {
         assertEquals(ReminderStatus.COMPLETED, repository.current().single().status)
         assertFalse(repository.current().single().enabled)
         assertTrue(viewModel.uiState.value.items.single().isCompleted)
-        assertEquals("Persistence unavailable", viewModel.uiState.value.message?.plainValue())
+        assertEquals(R.string.reminder_update_failed, viewModel.uiState.value.message?.resourceId())
     }
 
     private fun viewModel(
@@ -541,26 +541,26 @@ class ReminderListViewModelTest {
         override suspend fun moveToTrash(id: ReminderId, changedAt: Instant) {
             events += "moveToTrash"
             if (failMoveToTrash) error("Persistence unavailable")
-            update(id) { it.copy(updatedAt = changedAt, deletedAt = changedAt) }
+            mutate(id) { it.copy(updatedAt = changedAt, deletedAt = changedAt) }
         }
 
         override suspend fun restoreFromTrash(id: ReminderId, changedAt: Instant) {
             events += "restoreFromTrash"
-            update(id) { it.copy(updatedAt = changedAt, deletedAt = null) }
+            mutate(id) { it.copy(updatedAt = changedAt, deletedAt = null) }
         }
 
         override suspend fun setEnabled(id: ReminderId, enabled: Boolean, changedAt: Instant) {
             events += "setEnabled:$enabled"
             if (failSetEnabled) error("Persistence unavailable")
-            update(id) { it.copy(enabled = enabled, updatedAt = changedAt) }
+            mutate(id) { it.copy(enabled = enabled, updatedAt = changedAt) }
         }
 
         override suspend fun recordTriggered(id: ReminderId, triggeredAt: Instant) {
-            update(id) { it.copy(lastTriggeredAt = triggeredAt, updatedAt = triggeredAt) }
+            mutate(id) { it.copy(lastTriggeredAt = triggeredAt, updatedAt = triggeredAt) }
         }
 
         override suspend fun snooze(id: ReminderId, until: Instant, changedAt: Instant) {
-            update(id) {
+            mutate(id) {
                 it.copy(
                     enabled = true,
                     status = ReminderStatus.SNOOZED,
@@ -571,7 +571,7 @@ class ReminderListViewModelTest {
         }
 
         override suspend fun dismiss(id: ReminderId, changedAt: Instant) {
-            update(id) {
+            mutate(id) {
                 it.copy(
                     enabled = false,
                     status = ReminderStatus.DISMISSED,
@@ -584,7 +584,7 @@ class ReminderListViewModelTest {
         override suspend fun complete(id: ReminderId, changedAt: Instant) {
             events += "complete"
             if (failComplete) error("Persistence unavailable")
-            update(id) {
+            mutate(id) {
                 it.copy(
                     enabled = false,
                     status = ReminderStatus.COMPLETED,
@@ -596,7 +596,7 @@ class ReminderListViewModelTest {
         override suspend fun reopen(id: ReminderId, changedAt: Instant) {
             events += "reopen"
             if (failReopen) error("Persistence unavailable")
-            update(id) {
+            mutate(id) {
                 it.copy(
                     enabled = true,
                     status = ReminderStatus.PENDING,
@@ -605,7 +605,7 @@ class ReminderListViewModelTest {
             }
         }
 
-        private fun update(id: ReminderId, transform: (Reminder) -> Reminder) {
+        private fun mutate(id: ReminderId, transform: (Reminder) -> Reminder) {
             reminders.value = reminders.value.map { if (it.id == id) transform(it) else it }
         }
     }

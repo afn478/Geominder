@@ -111,6 +111,46 @@ class AlarmPlannerTest {
         assertNotEquals(first.requestCode, snooze.requestCode)
     }
 
+    @Test
+    fun `delivered snooze is not re-armed after a restart`() {
+        val snoozedUntil = Instant.parse("2026-08-25T08:15:00Z")
+        val reminder = reminder(
+            status = ReminderStatus.SNOOZED,
+            exactAt = Instant.parse("2026-08-25T08:00:00Z"),
+            snoozedUntil = snoozedUntil,
+        ).copy(lastTriggeredAt = snoozedUntil.plusSeconds(3))
+
+        assertEquals(
+            ReminderAlarmPlan.None(NoAlarmReason.TIME_TRIGGER_EXPIRED),
+            AlarmPlanner.forReminder(reminder, snoozedUntil.plusSeconds(3_600)),
+        )
+        assertEquals(
+            ReminderAlarmPlan.None(NoAlarmReason.SNOOZE_DELIVERED),
+            AlarmPlanner.forReminder(reminder.copy(timeTrigger = null, geoTrigger = geoTrigger())),
+        )
+    }
+
+    @Test
+    fun `elapsed snooze that never fired is still delivered`() {
+        val snoozedUntil = Instant.parse("2026-08-25T08:15:00Z")
+        val reminder = reminder(
+            status = ReminderStatus.SNOOZED,
+            exactAt = Instant.parse("2026-08-25T08:00:00Z"),
+            snoozedUntil = snoozedUntil,
+        ).copy(lastTriggeredAt = Instant.parse("2026-08-25T08:00:00Z"))
+
+        val plan = (AlarmPlanner.forReminder(reminder, snoozedUntil.plusSeconds(3_600)) as ReminderAlarmPlan.Schedule).plan
+
+        assertEquals(AlarmKind.SNOOZE, plan.identity.kind)
+        assertEquals(snoozedUntil, plan.triggerAt)
+    }
+
+    private fun geoTrigger() = com.afn478.geominder.domain.model.GeoTrigger(
+        latitude = 47.37,
+        longitude = 8.54,
+        radiusMeters = 100.0,
+    )
+
     private fun reminder(
         enabled: Boolean = true,
         status: ReminderStatus = ReminderStatus.PENDING,

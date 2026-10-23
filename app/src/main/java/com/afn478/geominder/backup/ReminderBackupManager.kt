@@ -91,7 +91,7 @@ class ReminderBackupManager(
                 return@repeat
             }
 
-            val existed = runCatching { repository.get(reminder.id) }.getOrElse { error ->
+            val existing = runCatching { repository.get(reminder.id) }.getOrElse { error ->
                 val message = error.message ?: "Existing reminder lookup failed."
                 issues += CalendarImportIssue(
                     code = "LOOKUP_FAILED",
@@ -107,7 +107,11 @@ class ReminderBackupManager(
                     message = message,
                 )
                 return@repeat
-            } != null
+            }
+            val existed = existing != null
+            // The imported copy may carry different trigger IDs; stale OS registrations of the
+            // overwritten reminder would otherwise keep firing next to the new ones.
+            existing?.let { runCatching { postImportScheduler.cancelPrevious(it) } }
 
             val persisted = runCatching { repository.save(reminder) }
             if (persisted.isFailure) {

@@ -1,5 +1,9 @@
 package com.afn478.geominder.ui.add
 
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
 import com.afn478.geominder.R
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
@@ -15,7 +19,6 @@ import com.afn478.geominder.geofence.CurrentLocationProvider
 import com.afn478.geominder.geofence.GeoLabelResolver
 import com.afn478.geominder.geofence.LocationFix
 import com.afn478.geominder.geofence.LocationResult
-import com.afn478.geominder.localization.UiText
 import com.afn478.geominder.localization.resourceId
 import com.afn478.geominder.parser.ReminderTextParser
 import kotlinx.coroutines.CoroutineScope
@@ -25,7 +28,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotSame
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.Clock
@@ -42,6 +47,105 @@ class AddReminderViewModelTest {
         Instant.parse("2026-08-24T10:15:00Z"),
         ZoneId.of("UTC"),
     )
+
+    @Test
+    fun `closing a saved composer starts the next reminder with fresh details`() {
+        val repository = FakeReminderRepository()
+        val composer = AddReminderComposerViewModel()
+        composer.open()
+        val first = scopedViewModel(requireNotNull(composer.session.value), repository)
+        first.onSourceTextChange("Call home tomorrow at 8:00")
+        first.onTagClick(ReminderTag.BLUE)
+        first.save()
+        assertNotNull(first.uiState.value.savedReminder)
+
+        composer.close()
+        assertNull(composer.session.value)
+        composer.open()
+        val next = scopedViewModel(requireNotNull(composer.session.value), repository)
+
+        assertNotSame(first, next)
+        assertEquals(viewModel().uiState.value, next.uiState.value)
+        assertEquals("Call home tomorrow at 8:00", repository.saved.single().sourceText)
+        composer.close()
+    }
+
+    @Test
+    fun `discarding a composer releases its location request and draft`() {
+        val repository = FakeReminderRepository()
+        var locationCancelled = false
+        val composer = AddReminderComposerViewModel()
+        composer.open()
+        val first = scopedViewModel(
+            requireNotNull(composer.session.value),
+            repository,
+            CurrentLocationProvider { CancellationHandle { locationCancelled = true } },
+        )
+        first.onSourceTextChange("Pick up parcel")
+        first.onTagClick(ReminderTag.ORANGE)
+        first.showGeoEditor()
+        first.locate()
+
+        composer.close()
+        assertTrue(locationCancelled)
+        composer.open()
+        val next = scopedViewModel(requireNotNull(composer.session.value), repository)
+
+        assertNotSame(first, next)
+        assertEquals(viewModel().uiState.value, next.uiState.value)
+        assertTrue(repository.saved.isEmpty())
+        composer.close()
+    }
+
+    @Test
+    fun `activity recreation retains only the currently open composer session`() {
+        val activityStore = ViewModelStore()
+        fun activityComposer() = ViewModelProvider(
+            activityStore,
+            ViewModelProvider.NewInstanceFactory(),
+        )[AddReminderComposerViewModel::class.java]
+
+        val composer = activityComposer()
+        composer.open()
+        val session = requireNotNull(composer.session.value)
+        val first = scopedViewModel(session)
+        first.onSourceTextChange("Open draft")
+
+        val recreatedComposer = activityComposer()
+        recreatedComposer.open()
+        assertSame(session, recreatedComposer.session.value)
+        assertSame(first, scopedViewModel(requireNotNull(recreatedComposer.session.value)))
+        assertEquals("Open draft", first.uiState.value.sourceText)
+
+        recreatedComposer.close()
+        activityComposer().open()
+        val next = scopedViewModel(requireNotNull(activityComposer().session.value))
+        assertNotSame(first, next)
+        assertEquals("", next.uiState.value.sourceText)
+        activityStore.clear()
+    }
+
+    @Test
+    fun `destroying the activity releases the open composer location request`() {
+        val activityStore = ViewModelStore()
+        val composer = ViewModelProvider(
+            activityStore,
+            ViewModelProvider.NewInstanceFactory(),
+        )[AddReminderComposerViewModel::class.java]
+        var locationCancelled = false
+        composer.open()
+        scopedViewModel(
+            requireNotNull(composer.session.value),
+            locationProvider = CurrentLocationProvider {
+                CancellationHandle { locationCancelled = true }
+            },
+        ).locate()
+
+        activityStore.clear()
+
+        assertNull(composer.session.value)
+        assertTrue(locationCancelled)
+    }
 
     @Test
     fun `typing parses offline and an edited time is persisted with filtered display text`() {
@@ -668,8 +772,49 @@ class AddReminderViewModelTest {
 
         viewModel.save()
 
-        assertEquals("persistence failed", (viewModel.uiState.value.saveError as UiText.Plain).value)
+        assertEquals(R.string.reminder_save_failed, viewModel.uiState.value.saveError?.resourceId())
         assertEquals(listOf("cancel", "save", "register"), actions.events)
+    }
+
+    @Test
+    fun `retrying after a trigger activation failure updates instead of duplicating`() {
+        val repository = FakeReminderRepository()
+        var failActivation = true
+        val actions = object : ReminderPostSaveActions {
+            val cancelled = mutableListOf<Reminder>()
+            override suspend fun scheduleTimeTrigger(reminder: Reminder) {
+                if (failActivation) error("exact alarms unavailable")
+            }
+            override suspend fun registerGeoTrigger(reminder: Reminder) = Unit
+            override suspend fun cancelReminder(reminder: Reminder) { cancelled += reminder }
+        }
+        val viewModel = AddReminderViewModel(
+            repository = repository,
+            parser = ReminderTextParser(),
+            defaultGeoRadiusProvider = DefaultGeoRadiusProvider { 150.0 },
+            locationProvider = CurrentLocationProvider { CancellationHandle {} },
+            geoLabelResolver = GeoLabelResolver { _, _, callback -> callback("") },
+            postSaveActions = actions,
+            clock = clock,
+            localeProvider = { Locale.US },
+            injectedScope = CoroutineScope(Dispatchers.Unconfined),
+        )
+        viewModel.onSourceTextChange("Call home tomorrow at 8:00")
+
+        viewModel.save()
+
+        assertEquals(
+            R.string.reminder_saved_trigger_failed,
+            viewModel.uiState.value.saveError?.resourceId(),
+        )
+        val first = repository.saved.single()
+
+        failActivation = false
+        viewModel.save()
+
+        assertEquals(first.id, repository.saved.single().id)
+        assertEquals(listOf(first.id), actions.cancelled.map(Reminder::id))
+        assertNotNull(viewModel.uiState.value.savedReminder)
     }
 
     @Test
@@ -707,6 +852,18 @@ class AddReminderViewModelTest {
             dismissedAt = Instant.parse("2026-08-23T10:00:00Z"),
         )
     }
+
+    private fun scopedViewModel(
+        session: ViewModelStoreOwner,
+        repository: FakeReminderRepository = FakeReminderRepository(),
+        locationProvider: CurrentLocationProvider = CurrentLocationProvider { CancellationHandle {} },
+    ): AddReminderViewModel = ViewModelProvider(
+        session,
+        object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                requireNotNull(modelClass.cast(viewModel(repository = repository, locationProvider = locationProvider)))
+        },
+    )["add-composer", AddReminderViewModel::class.java]
 
     private fun viewModel(
         repository: FakeReminderRepository = FakeReminderRepository(),
@@ -784,11 +941,11 @@ class AddReminderViewModelTest {
         }
 
         override suspend fun setEnabled(id: ReminderId, enabled: Boolean, changedAt: Instant) {
-            update(id) { it.copy(enabled = enabled, updatedAt = changedAt) }
+            mutate(id) { it.copy(enabled = enabled, updatedAt = changedAt) }
         }
 
         override suspend fun recordTriggered(id: ReminderId, triggeredAt: Instant) {
-            update(id) { it.copy(lastTriggeredAt = triggeredAt, updatedAt = triggeredAt) }
+            mutate(id) { it.copy(lastTriggeredAt = triggeredAt, updatedAt = triggeredAt) }
         }
 
         override suspend fun snooze(id: ReminderId, until: Instant, changedAt: Instant) = Unit
@@ -797,7 +954,7 @@ class AddReminderViewModelTest {
 
         override suspend fun complete(id: ReminderId, changedAt: Instant) = Unit
 
-        private suspend fun update(id: ReminderId, block: (Reminder) -> Reminder) {
+        private suspend fun mutate(id: ReminderId, block: (Reminder) -> Reminder) {
             val reminder = requireNotNull(get(id))
             save(block(reminder))
         }

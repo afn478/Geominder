@@ -26,7 +26,7 @@ class ReminderSchedulingCoordinator(
         when (result) {
             is AlarmScheduleResult.Scheduled -> Unit
             is AlarmScheduleResult.NotApplicable
-                if result.reason == NoAlarmReason.TIME_TRIGGER_EXPIRED -> Unit
+                if result.reason in EXPECTED_SKIPS -> Unit
             else -> throw ReminderSchedulingException("Time trigger was not scheduled: $result")
         }
     }
@@ -84,6 +84,8 @@ class ReminderSchedulingCoordinator(
 
     override suspend fun cancelReminder(reminder: Reminder) = cancel(reminder)
 
+    override suspend fun cancelPrevious(reminder: Reminder) = cancel(reminder)
+
     private suspend fun awaitGeofenceOperation(
         operation: (GeofenceOperationCallback) -> Unit,
     ): GeofenceOperationResult = withTimeout(GEOFENCE_TIMEOUT_MILLIS) {
@@ -112,6 +114,7 @@ class ReminderSchedulingCoordinator(
 
     private companion object {
         const val GEOFENCE_TIMEOUT_MILLIS = 10_000L
+        val EXPECTED_SKIPS = setOf(NoAlarmReason.TIME_TRIGGER_EXPIRED, NoAlarmReason.SNOOZE_DELIVERED)
     }
 }
 

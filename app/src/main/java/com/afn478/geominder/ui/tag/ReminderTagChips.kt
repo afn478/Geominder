@@ -62,10 +62,12 @@ internal fun ReminderTagChips(
 ) {
     val chipHeight = if (compact) 32.dp else 36.dp
     val swatchSize = if (compact) 14.dp else 16.dp
+    // Padding goes inside the scroll so chips scroll to the screen edge instead of being clipped
+    // at the content inset.
     Row(
         modifier = modifier
-            .padding(contentPadding)
-            .horizontalScroll(rememberScrollState()),
+            .horizontalScroll(rememberScrollState())
+            .padding(contentPadding),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         ReminderTag.entries.forEach { tag ->

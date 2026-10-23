@@ -31,8 +31,6 @@
     <string name="deleted_reminders_will_appear">删除的提醒会显示在这里。</string>
     <string name="no_tagged_reminders">还没有使用此颜色标签的提醒。</string>
     <string name="empty_reminders_description">为时间、位置或两者创建提醒。提醒会显示在这里，你可以打开、编辑或标记为完成。</string>
-    <string name="new_reminder">新提醒：%1$s</string>
-    <string name="create_new_reminder">创建新提醒</string>
     <string name="loading_reminders">正在加载提醒</string>
     <string name="scheduled_time">计划时间</string>
     <string name="location">位置</string>
@@ -178,8 +176,6 @@
     <string name="validation_keyword_too_long">关键词不得超过 40 个字符</string>
     <string name="validation_keyword_character">关键词包含不支持的字符</string>
     <string name="validation_time_format">使用 24 小时制时间，例如 08:30</string>
-    <string name="reminder_details">提醒详情</string>
-    <string name="reminder_input_placeholder">明天早上8点提醒我…</string>
     <string name="save_reminder">保存提醒</string>
     <string name="reminder_text">提醒文本</string>
     <string name="reminder_text_placeholder">你想记住什么？</string>
@@ -192,8 +188,6 @@
     <string name="enter_location">进入指定位置时通知</string>
     <string name="no_location_notification">未设置位置通知条件</string>
     <string name="color_tag">颜色标签</string>
-    <string name="hide_reminder_details">隐藏提醒详情</string>
-    <string name="show_reminder_details">显示提醒详情</string>
     <string name="time_trigger">时间通知条件</string>
     <string name="date">日期</string>
     <string name="select_date">选择日期</string>
@@ -255,14 +249,8 @@
     <string name="tag_selected">%1$s标签，已选择</string>
     <string name="recycling_bin">回收站</string>
     <string name="recycling_bin_selected">回收站，已选择</string>
-    <string name="add_reminder">添加提醒</string>
     <string name="edit_reminder">编辑提醒</string>
     <string name="save_changes">保存更改</string>
-    <string name="dismiss_reminder_composer">关闭提醒编辑器</string>
-    <string name="discard_reminder_title">放弃提醒？</string>
-    <string name="discard_reminder_message">提醒文本不会保存。</string>
-    <string name="discard">放弃</string>
-    <string name="keep">保留</string>
     <string name="backup_exported">已导出 %1$d 个提醒。</string>
     <string name="backup_export_failed">无法导出备份。</string>
     <string name="backup_imported">已导入 %1$d 个新提醒并更新 %2$d 个提醒；已计划 %3$d 个，计划失败 %4$d 个，跳过 %5$d 个，问题 %6$d 个。</string>
@@ -292,4 +280,11 @@
     <string name="checklist_with_progress">清单（%1$d/%2$d）</string>
     <string name="show_all_checklist_items">再显示 %1$d 项</string>
     <string name="show_fewer_checklist_items">收起</string>
+    <string name="trigger_update_failed">无法更新时间或位置通知条件。请在设置中检查权限。</string>
+    <string name="reminder_saved_trigger_failed">提醒已保存，但无法启用其时间或位置通知条件。请在设置中检查权限。</string>
+    <string name="reminders_selected">已选择 %1$d 项</string>
+    <string name="add_reminder">添加提醒</string>
+    <string name="show_on_map">在地图上显示</string>
+    <string name="history">历史记录</string>
+    <string name="you_wrote">你输入的内容</string>
 </resources>

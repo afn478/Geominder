@@ -14,6 +14,9 @@ enum class NoAlarmReason {
     NOT_PENDING,
     NO_TIME_TRIGGER,
     TIME_TRIGGER_EXPIRED,
+
+    /** The snooze alarm already fired; re-arming it would repeat the alert after every reboot. */
+    SNOOZE_DELIVERED,
 }
 
 sealed interface ReminderAlarmPlan {
@@ -29,7 +32,10 @@ object AlarmPlanner {
             return ReminderAlarmPlan.None(NoAlarmReason.NOT_PENDING)
         }
 
-        reminder.snoozedUntil?.let { snoozedUntil ->
+        val snoozedUntil = reminder.snoozedUntil
+        val snoozeDelivered = snoozedUntil != null &&
+            reminder.lastTriggeredAt?.isBefore(snoozedUntil) == false
+        if (snoozedUntil != null && !snoozeDelivered) {
             return ReminderAlarmPlan.Schedule(
                 AlarmPlan(
                     identity = AlarmIdentity(
@@ -42,7 +48,9 @@ object AlarmPlanner {
         }
 
         val timeTrigger = reminder.timeTrigger
-            ?: return ReminderAlarmPlan.None(NoAlarmReason.NO_TIME_TRIGGER)
+            ?: return ReminderAlarmPlan.None(
+                if (snoozeDelivered) NoAlarmReason.SNOOZE_DELIVERED else NoAlarmReason.NO_TIME_TRIGGER,
+            )
         return ReminderAlarmPlan.Schedule(
             AlarmPlan(
                 identity = AlarmIdentity(

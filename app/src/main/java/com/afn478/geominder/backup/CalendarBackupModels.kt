@@ -68,6 +68,9 @@ data class CalendarExportResult(
 fun interface PostImportScheduler {
     suspend fun schedule(reminder: Reminder)
 
+    /** Releases the registrations of a reminder that an import is about to overwrite. */
+    suspend fun cancelPrevious(reminder: Reminder) = Unit
+
     companion object {
         val NoOp = PostImportScheduler { }
     }

@@ -3,6 +3,8 @@ package com.afn478.geominder.backup
 import android.content.ContentResolver
 import android.content.Intent
 import android.net.Uri
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.IOException
 
 /** Storage Access Framework contracts; these require no broad storage permission. */
@@ -37,15 +39,16 @@ class SafReminderBackup(
     private val contentResolver: ContentResolver,
     private val manager: ReminderBackupManager,
 ) {
-    suspend fun exportTo(uri: Uri): CalendarExportResult {
+    // Providers may be network-backed, so opening and closing the stream stays off the main thread.
+    suspend fun exportTo(uri: Uri): CalendarExportResult = withContext(Dispatchers.IO) {
         val output = contentResolver.openOutputStream(uri, "rwt")
             ?: throw IOException("The selected document could not be opened for writing.")
-        return output.use { manager.exportTo(it) }
+        output.use { manager.exportTo(it) }
     }
 
-    suspend fun importFrom(uri: Uri): CalendarImportResult {
+    suspend fun importFrom(uri: Uri): CalendarImportResult = withContext(Dispatchers.IO) {
         val input = contentResolver.openInputStream(uri)
             ?: throw IOException("The selected document could not be opened for reading.")
-        return input.use { manager.importFrom(it) }
+        input.use { manager.importFrom(it) }
     }
 }

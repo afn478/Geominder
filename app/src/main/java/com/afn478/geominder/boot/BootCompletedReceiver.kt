@@ -1,5 +1,6 @@
 package com.afn478.geominder.boot
 
+import android.app.AlarmManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -10,7 +11,10 @@ class BootCompletedReceiver : BroadcastReceiver() {
         if (intent.action !in SUPPORTED_ACTIONS) return
 
         val pendingResult = goAsync()
-        BootResyncLauncher.launch(BootFeatureRuntime.entryPoint) {
+        BootResyncLauncher.launch(
+            entryPoint = BootFeatureRuntime.entryPoint,
+            alarmsOnly = intent.action == AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED,
+        ) {
             pendingResult.finish()
         }
     }
@@ -19,6 +23,8 @@ class BootCompletedReceiver : BroadcastReceiver() {
         val SUPPORTED_ACTIONS = setOf(
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
+            // Sent when exact-alarm access is granted: upgrade inexact fallbacks to exact alarms.
+            AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED,
         )
     }
 }

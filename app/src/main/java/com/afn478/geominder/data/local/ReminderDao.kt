@@ -9,6 +9,7 @@ import com.afn478.geominder.data.local.entity.GeoTriggerEntity
 import com.afn478.geominder.data.local.entity.ReminderEntity
 import com.afn478.geominder.data.local.entity.ReminderWithTriggers
 import com.afn478.geominder.data.local.entity.TimeTriggerEntity
+import com.afn478.geominder.data.mapper.ReminderEntities
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -64,6 +65,18 @@ abstract class ReminderDao {
 
     @Query("DELETE FROM reminders WHERE id = :id")
     abstract suspend fun deleteById(id: String)
+
+    /** Read-modify-write of one aggregate inside a single transaction. */
+    @Transaction
+    open suspend fun update(
+        id: String,
+        transform: (ReminderWithTriggers) -> ReminderEntities?,
+    ): ReminderEntities? {
+        val current = getById(id) ?: return null
+        val updated = transform(current) ?: return null
+        replace(updated.reminder, updated.timeTrigger, updated.geoTrigger, updated.checklistItems)
+        return updated
+    }
 
     /** Replaces the aggregate so removed or regenerated triggers never leave stale rows. */
     @Transaction
