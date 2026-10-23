@@ -26,6 +26,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
+import com.afn478.geominder.ui.appbar.LocalReachableHeaderMemory
+import com.afn478.geominder.ui.appbar.ReachableHeaderMemory
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.CompositionLocalProvider
 import com.afn478.geominder.ui.motion.SharedAxis
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -91,6 +95,8 @@ fun ReminderApp(
         result.data?.data?.let(backupViewModel::importFrom)
     }
 
+    val headerMemory = rememberSaveable(saver = ReachableHeaderMemory.Saver) { ReachableHeaderMemory() }
+    CompositionLocalProvider(LocalReachableHeaderMemory provides headerMemory) {
     NavHost(
         navController = navController,
         startDestination = Routes.LIST,
@@ -285,6 +291,7 @@ fun ReminderApp(
                 },
             )
         }
+    }
     }
 }
 

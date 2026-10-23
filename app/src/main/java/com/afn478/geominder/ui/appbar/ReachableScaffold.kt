@@ -33,6 +33,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.TransformOrigin
@@ -55,6 +59,21 @@ import androidx.compose.ui.unit.dp
  * larger position. Navigation and action controls use their own measured motion so they can
  * settle below the expanded title without changing the title's compact geometry.
  */
+/** Whether the last browsing page left its header pulled down; new pages open the same way. */
+@Stable
+class ReachableHeaderMemory(expanded: Boolean = true) {
+    var expanded by mutableStateOf(expanded)
+
+    companion object {
+        val Saver: Saver<ReachableHeaderMemory, Boolean> = Saver(
+            save = { it.expanded },
+            restore = { ReachableHeaderMemory(it) },
+        )
+    }
+}
+
+val LocalReachableHeaderMemory = staticCompositionLocalOf { ReachableHeaderMemory() }
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ReachableScaffold(
@@ -66,11 +85,14 @@ fun ReachableScaffold(
     bottomBar: @Composable () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
     /**
-     * Whether the page opens with the big pulled-down title. Browsing pages (the list, settings)
-     * do; pages that exist to read or change one thing open compact, so their content starts at
-     * the top, and can still be pulled down.
+     * Whether the page may open with the big pulled-down title. Browsing pages (the list,
+     * settings) open the way the previous page's header was left, so pulling it down or pushing
+     * it up carries over as you move between them. Pages that exist to read or change one thing
+     * pass false and always open compact; they can still be pulled down.
      */
     initiallyExpanded: Boolean = true,
+    /** Only top-level pages get the full-size pulled-down title; subpages use a quieter one. */
+    prominentTitle: Boolean = false,
     /** The app bar resets when this changes; pass a stable key when only the title text varies. */
     scrollResetKey: Any? = title,
     content: @Composable (PaddingValues) -> Unit,
@@ -89,9 +111,11 @@ fun ReachableScaffold(
         val collapsedOffset = with(density) {
             -(reachableAppBarExpandedHeight(windowHeight) - TopAppBarDefaults.LargeAppBarCollapsedHeight).toPx()
         }
+        val headerMemory = LocalReachableHeaderMemory.current
+        val followsMemory = initiallyExpanded
         val appBarState = rememberTopAppBarState(
             initialHeightOffsetLimit = collapsedOffset,
-            initialHeightOffset = if (initiallyExpanded) 0f else collapsedOffset,
+            initialHeightOffset = if (followsMemory && headerMemory.expanded) 0f else collapsedOffset,
         )
         val useReachableAppBar = shouldUseReachableAppBar(
             windowHeight = windowHeight,
@@ -116,10 +140,19 @@ fun ReachableScaffold(
         LaunchedEffect(scrollResetKey) {
             val key = scrollResetKey.hashCode()
             if (appliedResetKey != null && appliedResetKey != key) {
-                appBarState.heightOffset = if (initiallyExpanded) 0f else appBarState.heightOffsetLimit
+                appBarState.heightOffset =
+                    if (followsMemory && headerMemory.expanded) 0f else appBarState.heightOffsetLimit
                 appBarState.contentOffset = 0f
             }
             appliedResetKey = key
+        }
+        // The page on screen reports its header, so the next page opens the same way. A page
+        // coming back into view reports again, overriding whatever the page it left behind said.
+        if (followsMemory && useReachableAppBar) {
+            LaunchedEffect(appBarState) {
+                snapshotFlow { appBarState.collapsedFraction < HALF }
+                    .collect { headerMemory.expanded = it }
+            }
         }
         LaunchedEffect(imeVisible, useReachableAppBar) {
             val limit = appBarState.heightOffsetLimit
@@ -150,6 +183,7 @@ fun ReachableScaffold(
                     expandedHeight = reachableAppBarExpandedHeight(windowHeight),
                     appBarState = appBarState,
                     scrollBehavior = scrollBehavior,
+                    prominentTitle = prominentTitle,
                 )
             },
             bottomBar = bottomBar,
@@ -169,6 +203,7 @@ private fun ReachableTopAppBar(
     expandedHeight: Dp,
     appBarState: TopAppBarState,
     scrollBehavior: TopAppBarScrollBehavior?,
+    prominentTitle: Boolean,
 ) {
     if (scrollBehavior == null) {
         TopAppBar(
@@ -195,6 +230,7 @@ private fun ReachableTopAppBar(
             actions = actions,
             collapsedFraction = appBarState.collapsedFraction,
             compactTitleStartPadding = compactTitleStartPadding,
+            maxTitleScale = if (prominentTitle) EXPANDED_TITLE_SCALE else SUBPAGE_TITLE_SCALE,
             modifier = Modifier.matchParentSize(),
         )
     }
@@ -207,6 +243,7 @@ private fun ReachableTopAppBarOverlay(
     actions: @Composable RowScope.() -> Unit,
     collapsedFraction: Float,
     compactTitleStartPadding: Dp,
+    maxTitleScale: Float,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = modifier) {
@@ -234,10 +271,10 @@ private fun ReachableTopAppBarOverlay(
         val expandedTitleScale = if (titleSize.width > 0) {
             (maxExpandedTitleWidthPx / titleSize.width).coerceIn(
                 minimumValue = 1f,
-                maximumValue = EXPANDED_TITLE_SCALE,
+                maximumValue = maxTitleScale,
             )
         } else {
-            EXPANDED_TITLE_SCALE
+            maxTitleScale
         }
         val expandedTitleStartPx = if (titleSize.width > 0) {
             (containerWidthPx - titleSize.width) / 2f
@@ -328,6 +365,8 @@ internal fun reachableAppBarExpandedHeight(windowHeight: Dp): Dp =
 private const val REACHABLE_APP_BAR_HEIGHT_FRACTION = 0.40f
 private const val IME_COLLAPSE_MILLIS = 200
 private const val EXPANDED_TITLE_SCALE = 1.55f
+private const val SUBPAGE_TITLE_SCALE = 1.2f
+private const val HALF = 0.5f
 private val COMPACT_TITLE_START_PADDING = 24.dp
 private val EXPANDED_TITLE_VERTICAL_OFFSET = 20.dp
 private val EXPANDED_TITLE_HORIZONTAL_PADDING = 16.dp

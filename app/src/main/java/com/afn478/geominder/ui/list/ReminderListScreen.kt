@@ -213,6 +213,7 @@ fun ReminderListScreen(
         // Selecting items changes the title; keep the user's scroll position while they do.
         scrollResetKey = state.isSelectionMode,
         modifier = modifier,
+        prominentTitle = true,
         navigationIcon = if (state.isSelectionMode) {
             {
                 IconButton(
