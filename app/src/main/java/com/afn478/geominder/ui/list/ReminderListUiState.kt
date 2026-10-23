@@ -1,6 +1,8 @@
 package com.afn478.geominder.ui.list
 
 import com.afn478.geominder.R
+import com.afn478.geominder.domain.model.ChecklistItem
+import com.afn478.geominder.domain.model.ChecklistItemId
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
@@ -47,6 +49,17 @@ data class ReminderListItem(
     val triggerKind: ReminderTriggerKind,
     val lifecycle: ReminderLifecyclePresentation,
     val isCompleted: Boolean,
+    /** Open items first, then ticked ones, each group in the user's order. */
+    val checklist: List<ChecklistRow> = emptyList(),
+) {
+    val checklistDoneCount: Int
+        get() = checklist.count(ChecklistRow::done)
+}
+
+data class ChecklistRow(
+    val id: ChecklistItemId,
+    val text: String,
+    val done: Boolean,
 )
 
 enum class ReminderTriggerKind(val label: UiText) {
@@ -194,6 +207,9 @@ object ReminderListPresenter {
             triggerKind = kind,
             lifecycle = lifecycle,
             isCompleted = status == ReminderStatus.COMPLETED,
+            checklist = checklist
+                .sortedBy(ChecklistItem::done)
+                .map { ChecklistRow(id = it.id, text = it.text, done = it.done) },
         )
     }
 

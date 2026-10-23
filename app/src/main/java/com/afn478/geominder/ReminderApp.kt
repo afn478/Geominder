@@ -321,7 +321,7 @@ private fun AddReminderDialog(
     )
     val state by addViewModel.uiState.collectAsStateWithLifecycle()
     val requestDismiss = {
-        if (state.sourceText.isNotBlank()) showDiscardConfirmation = true else onDismiss()
+        if (state.hasUnsavedInput) showDiscardConfirmation = true else onDismiss()
     }
     val currentRequestDismiss = rememberUpdatedState(requestDismiss)
     val sheetScope = rememberCoroutineScope()

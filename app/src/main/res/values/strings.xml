@@ -280,4 +280,16 @@
     <string name="invalid_coordinates">Coordinates are outside the valid latitude/longitude range</string>
     <string name="invalid_time">Time is outside the valid range</string>
     <string name="invalid_date">Date is not valid</string>
+    <string name="checklist">Checklist</string>
+    <string name="checklist_supporting">Plain sub-items you can tick off. Times and places typed here are not detected.</string>
+    <string name="add_checklist">Add checklist</string>
+    <string name="add_checklist_item">Add item</string>
+    <string name="checklist_item_placeholder">List item</string>
+    <string name="mark_checklist_item_done">Mark %1$s done</string>
+    <string name="mark_checklist_item_not_done">Mark %1$s not done</string>
+    <string name="remove_checklist_item">Remove %1$s</string>
+    <string name="checklist_progress">%1$d/%2$d</string>
+    <string name="checklist_with_progress">Checklist (%1$d/%2$d)</string>
+    <string name="show_all_checklist_items">Show %1$d more</string>
+    <string name="show_fewer_checklist_items">Show less</string>
 </resources>

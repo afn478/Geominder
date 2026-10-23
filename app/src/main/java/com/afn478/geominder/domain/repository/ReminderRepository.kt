@@ -1,5 +1,6 @@
 package com.afn478.geominder.domain.repository
 
+import com.afn478.geominder.domain.model.ChecklistItemId
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
@@ -29,6 +30,24 @@ interface ReminderRepository {
     }
 
     suspend fun delete(id: ReminderId)
+
+    /**
+     * Ticks or restores one checklist item. Deliberately leaves [Reminder.updatedAt], the
+     * lifecycle, and every trigger untouched so list ordering and scheduling stay stable.
+     */
+    suspend fun setChecklistItemDone(id: ReminderId, itemId: ChecklistItemId, done: Boolean) {
+        val current = get(id) ?: error("Reminder ${id.value} does not exist")
+        require(current.checklist.any { it.id == itemId }) {
+            "Checklist item ${itemId.value} does not exist"
+        }
+        save(
+            current.copy(
+                checklist = current.checklist.map { item ->
+                    if (item.id == itemId) item.copy(done = done) else item
+                },
+            ),
+        )
+    }
 
     suspend fun setEnabled(id: ReminderId, enabled: Boolean, changedAt: Instant)
 

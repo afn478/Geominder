@@ -280,4 +280,16 @@
     <string name="preset_location_summary">%1$s ・ 半径 %2$s メートル</string>
     <string name="no_preset_locations">場所のプリセットがありません。名前で場所を認識するには追加してください。</string>
     <string name="reset_preset_locations">場所のプリセットをリセット</string>
+    <string name="checklist">チェックリスト</string>
+    <string name="checklist_supporting">チェックを付けられるシンプルな項目です。ここに入力した日時や場所は検出されません。</string>
+    <string name="add_checklist">チェックリストを追加</string>
+    <string name="add_checklist_item">項目を追加</string>
+    <string name="checklist_item_placeholder">リスト項目</string>
+    <string name="mark_checklist_item_done">%1$sを完了にする</string>
+    <string name="mark_checklist_item_not_done">%1$sを未完了にする</string>
+    <string name="remove_checklist_item">%1$sを削除</string>
+    <string name="checklist_progress">%1$d/%2$d</string>
+    <string name="checklist_with_progress">チェックリスト（%1$d/%2$d）</string>
+    <string name="show_all_checklist_items">さらに%1$d件を表示</string>
+    <string name="show_fewer_checklist_items">表示を減らす</string>
 </resources>

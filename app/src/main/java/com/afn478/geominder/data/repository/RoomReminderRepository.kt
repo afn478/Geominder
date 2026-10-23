@@ -3,6 +3,7 @@ package com.afn478.geominder.data.repository
 import com.afn478.geominder.data.local.ReminderDao
 import com.afn478.geominder.data.mapper.toDomain
 import com.afn478.geominder.data.mapper.toEntities
+import com.afn478.geominder.domain.model.ChecklistItemId
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
@@ -28,7 +29,12 @@ class RoomReminderRepository(
 
     override suspend fun save(reminder: Reminder) {
         val entities = reminder.toEntities()
-        reminderDao.replace(entities.reminder, entities.timeTrigger, entities.geoTrigger)
+        reminderDao.replace(
+            entities.reminder,
+            entities.timeTrigger,
+            entities.geoTrigger,
+            entities.checklistItems,
+        )
     }
 
     override suspend fun moveToTrash(id: ReminderId, changedAt: Instant) {
@@ -45,6 +51,15 @@ class RoomReminderRepository(
 
     override suspend fun delete(id: ReminderId) {
         reminderDao.deleteById(id.value)
+    }
+
+    override suspend fun setChecklistItemDone(
+        id: ReminderId,
+        itemId: ChecklistItemId,
+        done: Boolean,
+    ) {
+        val changed = reminderDao.setChecklistItemDone(id.value, itemId.value, done)
+        check(changed == 1) { "Checklist item ${itemId.value} does not exist" }
     }
 
     override suspend fun setEnabled(id: ReminderId, enabled: Boolean, changedAt: Instant) {

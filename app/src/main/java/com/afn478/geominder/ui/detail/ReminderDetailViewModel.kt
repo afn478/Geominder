@@ -3,6 +3,7 @@ package com.afn478.geominder.ui.detail
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.afn478.geominder.domain.model.ChecklistItemId
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.repository.ReminderRepository
 import kotlinx.coroutines.CoroutineScope
@@ -31,6 +32,13 @@ class ReminderDetailViewModel(
                     ReminderDetailUiState.present(it, zoneId, locale)
                 } ?: ReminderDetailUiState.notFound()
             }
+        }
+    }
+
+    fun setChecklistItemDone(itemId: ChecklistItemId, done: Boolean) {
+        if (!_uiState.value.canEditChecklist) return
+        workScope().launch {
+            runCatching { repository.setChecklistItemDone(reminderId, itemId, done) }
         }
     }
 

@@ -3,10 +3,15 @@ package com.afn478.geominder.ui.detail
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -19,10 +24,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.afn478.geominder.R
+import com.afn478.geominder.domain.model.ChecklistItemId
 import com.afn478.geominder.ui.appbar.ReachableScaffold
 import com.afn478.geominder.ui.text.resolve
 import com.afn478.geominder.ui.text.resolveNearbyLabel
@@ -35,7 +43,12 @@ fun ReminderDetailRoute(
     modifier: Modifier = Modifier,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    ReminderDetailScreen(state, onBack, modifier)
+    ReminderDetailScreen(
+        state = state,
+        onBack = onBack,
+        onSetChecklistItemDone = viewModel::setChecklistItemDone,
+        modifier = modifier,
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,6 +56,7 @@ fun ReminderDetailRoute(
 fun ReminderDetailScreen(
     state: ReminderDetailUiState,
     onBack: () -> Unit,
+    onSetChecklistItemDone: (ChecklistItemId, Boolean) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val title = state.title ?: stringResource(R.string.reminder)
@@ -72,7 +86,7 @@ fun ReminderDetailScreen(
                 stringResource(R.string.reminder_not_found),
                 Modifier.padding(padding),
             )
-            else -> DetailContent(state, Modifier.padding(padding))
+            else -> DetailContent(state, onSetChecklistItemDone, Modifier.padding(padding))
         }
     }
 }
@@ -88,7 +102,11 @@ private fun DetailMessage(message: String, modifier: Modifier) {
 }
 
 @Composable
-private fun DetailContent(state: ReminderDetailUiState, modifier: Modifier) {
+private fun DetailContent(
+    state: ReminderDetailUiState,
+    onSetChecklistItemDone: (ChecklistItemId, Boolean) -> Unit,
+    modifier: Modifier,
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -98,6 +116,53 @@ private fun DetailContent(state: ReminderDetailUiState, modifier: Modifier) {
     ) {
         state.sourceText?.let { DetailField(stringResource(R.string.source), it) }
         state.text?.takeIf { it.isNotBlank() }?.let { DetailField(stringResource(R.string.text), it) }
+        if (state.checklist.isNotEmpty()) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    stringResource(
+                        R.string.checklist_with_progress,
+                        state.checklist.count { it.done },
+                        state.checklist.size,
+                    ),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                state.checklist.forEach { item ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .toggleable(
+                                value = item.done,
+                                enabled = state.canEditChecklist,
+                                role = Role.Checkbox,
+                                onValueChange = { done -> onSetChecklistItemDone(item.id, done) },
+                            ),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(
+                            checked = item.done,
+                            onCheckedChange = null,
+                            enabled = state.canEditChecklist,
+                            modifier = Modifier.padding(end = 12.dp),
+                        )
+                        Text(
+                            item.text,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (item.done) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                            textDecoration = if (item.done) {
+                                TextDecoration.LineThrough
+                            } else {
+                                TextDecoration.None
+                            },
+                        )
+                    }
+                }
+            }
+        }
         state.lifecycleLabel?.let {
             DetailField(stringResource(R.string.status), it.resolve())
         }

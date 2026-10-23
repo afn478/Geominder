@@ -7,6 +7,7 @@ import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -27,6 +29,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -57,6 +60,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -81,6 +85,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.afn478.geominder.R
+import com.afn478.geominder.domain.model.ChecklistItemId
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderTag
 import com.afn478.geominder.localization.UiText
@@ -118,6 +123,7 @@ fun ReminderListRoute(
         onOpenReminder = onOpenReminder,
         onEditReminder = onEditReminder,
         onSetCompleted = viewModel::setCompleted,
+        onSetChecklistItemDone = viewModel::setChecklistItemDone,
         onToggleTrash = viewModel::toggleTrash,
         onDeleteReminder = viewModel::deleteReminder,
         onRestoreReminder = viewModel::restoreReminder,
@@ -159,6 +165,7 @@ fun ReminderListScreen(
     onDeleteSelectedReminders: () -> Unit = {},
     onRestoreSelectedReminders: () -> Unit = {},
     onExitSelectionMode: () -> Unit = {},
+    onSetChecklistItemDone: (ReminderId, ChecklistItemId, Boolean) -> Unit = { _, _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -285,6 +292,7 @@ fun ReminderListScreen(
                 onOpenReminder = onOpenReminder,
                 onEditReminder = onEditReminder,
                 onSetCompleted = onSetCompleted,
+                onSetChecklistItemDone = onSetChecklistItemDone,
                 onDeleteReminder = onDeleteReminder,
                 onRestoreReminder = onRestoreReminder,
                 selectionMode = state.isSelectionMode,
@@ -629,6 +637,7 @@ private fun ReminderItems(
     onOpenReminder: (ReminderId) -> Unit,
     onEditReminder: (ReminderId) -> Unit,
     onSetCompleted: (ReminderId, Boolean) -> Unit,
+    onSetChecklistItemDone: (ReminderId, ChecklistItemId, Boolean) -> Unit,
     onDeleteReminder: (ReminderId) -> Unit,
     onRestoreReminder: (ReminderId) -> Unit,
     selectionMode: Boolean,
@@ -658,6 +667,9 @@ private fun ReminderItems(
                 onOpen = { onOpenReminder(item.id) },
                 onEdit = { onEditReminder(item.id) },
                 onSetCompleted = { completed -> onSetCompleted(item.id, completed) },
+                onSetChecklistItemDone = { itemId, done ->
+                    onSetChecklistItemDone(item.id, itemId, done)
+                },
                 onDelete = { onDeleteReminder(item.id) },
                 onRestore = { onRestoreReminder(item.id) },
                 selectionMode = selectionMode,
@@ -678,6 +690,7 @@ private fun ReminderCard(
     onOpen: () -> Unit,
     onEdit: () -> Unit,
     onSetCompleted: (Boolean) -> Unit,
+    onSetChecklistItemDone: (ChecklistItemId, Boolean) -> Unit,
     onDelete: () -> Unit,
     onRestore: () -> Unit,
     selectionMode: Boolean,
@@ -813,7 +826,16 @@ private fun ReminderCard(
                 }
             }
 
-            if (item.timeText != null || item.locationText != null) {
+            if (item.checklist.isNotEmpty()) {
+                CardChecklist(
+                    rows = item.checklist,
+                    reminderId = item.id,
+                    enabled = !isBusy && !selectionMode && !inTrash,
+                    onSetDone = onSetChecklistItemDone,
+                )
+            }
+
+            if (item.timeText != null || item.locationText != null || item.checklist.isNotEmpty()) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -839,6 +861,24 @@ private fun ReminderCard(
                             textDecoration = textDecoration,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                    }
+                    if (item.checklist.isNotEmpty()) {
+                        if (item.timeText != null || item.locationText != null) {
+                            Text("·", color = supportingTextColor)
+                        }
+                        Icon(
+                            Icons.Default.Checklist,
+                            contentDescription = stringResource(R.string.checklist),
+                        )
+                        Text(
+                            stringResource(
+                                R.string.checklist_progress,
+                                item.checklistDoneCount,
+                                item.checklist.size,
+                            ),
+                            color = supportingTextColor,
                         )
                     }
                 }
@@ -846,6 +886,76 @@ private fun ReminderCard(
         }
     }
 }
+
+/** Checklist preview that can be ticked in place, as Samsung Reminder allows since One UI 5. */
+@Composable
+private fun CardChecklist(
+    rows: List<ChecklistRow>,
+    reminderId: ReminderId,
+    enabled: Boolean,
+    onSetDone: (ChecklistItemId, Boolean) -> Unit,
+) {
+    var expanded by rememberSaveable(reminderId.value) { mutableStateOf(false) }
+    val visibleRows = if (expanded) rows else rows.take(COLLAPSED_CHECKLIST_ROWS)
+    Column(modifier = Modifier.padding(start = 8.dp)) {
+        visibleRows.forEach { row ->
+            val description = stringResource(
+                if (row.done) R.string.mark_checklist_item_not_done else R.string.mark_checklist_item_done,
+                row.text,
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 40.dp)
+                    .clip(MaterialTheme.shapes.small)
+                    .toggleable(
+                        value = row.done,
+                        enabled = enabled,
+                        role = Role.Checkbox,
+                        onValueChange = { done -> onSetDone(row.id, done) },
+                    )
+                    .semantics { contentDescription = description },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Checkbox(
+                    checked = row.done,
+                    onCheckedChange = null,
+                    enabled = enabled,
+                    modifier = Modifier.padding(horizontal = 12.dp),
+                )
+                Text(
+                    text = row.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (row.done) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    },
+                    textDecoration = if (row.done) TextDecoration.LineThrough else TextDecoration.None,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        if (rows.size > COLLAPSED_CHECKLIST_ROWS) {
+            TextButton(onClick = { expanded = !expanded }) {
+                Text(
+                    if (expanded) {
+                        stringResource(R.string.show_fewer_checklist_items)
+                    } else {
+                        stringResource(
+                            R.string.show_all_checklist_items,
+                            rows.size - COLLAPSED_CHECKLIST_ROWS,
+                        )
+                    },
+                )
+            }
+        }
+    }
+}
+
+private const val COLLAPSED_CHECKLIST_ROWS = 3
 
 @Composable
 private fun IconButtonWithDescription(

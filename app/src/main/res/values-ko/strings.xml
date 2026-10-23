@@ -280,4 +280,16 @@
     <string name="preset_location_summary">%1$s · 반경 %2$s미터</string>
     <string name="no_preset_locations">미리 설정한 위치가 없습니다. 이름으로 장소를 인식하려면 하나 추가하세요.</string>
     <string name="reset_preset_locations">미리 설정한 위치 초기화</string>
+    <string name="checklist">체크리스트</string>
+    <string name="checklist_supporting">체크할 수 있는 간단한 하위 항목입니다. 여기에 입력한 시간과 장소는 인식되지 않습니다.</string>
+    <string name="add_checklist">체크리스트 추가</string>
+    <string name="add_checklist_item">항목 추가</string>
+    <string name="checklist_item_placeholder">목록 항목</string>
+    <string name="mark_checklist_item_done">%1$s 완료로 표시</string>
+    <string name="mark_checklist_item_not_done">%1$s 미완료로 표시</string>
+    <string name="remove_checklist_item">%1$s 삭제</string>
+    <string name="checklist_progress">%1$d/%2$d</string>
+    <string name="checklist_with_progress">체크리스트(%1$d/%2$d)</string>
+    <string name="show_all_checklist_items">%1$d개 더 보기</string>
+    <string name="show_fewer_checklist_items">간단히 보기</string>
 </resources>

@@ -16,6 +16,8 @@ data class Reminder(
     val status: ReminderStatus = ReminderStatus.PENDING,
     val timeTrigger: TimeTrigger? = null,
     val geoTrigger: GeoTrigger? = null,
+    /** Ordered sub-items; ticking them never changes scheduling or the reminder lifecycle. */
+    val checklist: List<ChecklistItem> = emptyList(),
     val createdAt: Instant,
     val updatedAt: Instant = createdAt,
     val lastTriggeredAt: Instant? = null,
@@ -34,6 +36,9 @@ data class Reminder(
         }
         require(status != ReminderStatus.DISMISSED || dismissedAt != null) {
             "A dismissed reminder must have a dismissal timestamp"
+        }
+        require(checklist.distinctBy(ChecklistItem::id).size == checklist.size) {
+            "Checklist item IDs must be unique"
         }
     }
 

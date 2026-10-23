@@ -2,6 +2,8 @@ package com.afn478.geominder.backup
 
 import biweekly.Biweekly
 import biweekly.component.VAlarm
+import com.afn478.geominder.domain.model.ChecklistItem
+import com.afn478.geominder.domain.model.ChecklistItemId
 import com.afn478.geominder.domain.model.GeoTrigger
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
@@ -71,6 +73,32 @@ class BiweeklyReminderCalendarCodecTest {
         )
         assertEquals(1, decoded.totalTodos)
         assertTrue(decoded.issues.none { it.severity == CalendarImportIssueSeverity.ERROR })
+        assertEquals(reminder, decoded.reminders.single())
+    }
+
+    @Test
+    fun `checklist items round trip in order with ticks and punctuation`() {
+        val reminder = Reminder(
+            id = ReminderId("checklist-1"),
+            sourceText = "Groceries",
+            title = "Groceries",
+            text = "Groceries",
+            timeTrigger = TimeTrigger(
+                id = TriggerId("time-1"),
+                exactAt = Instant.parse("2026-08-25T18:30:00Z"),
+            ),
+            checklist = listOf(
+                ChecklistItem(ChecklistItemId("i1"), "Milk, 2% ; organic: yes", done = true),
+                ChecklistItem(ChecklistItemId("i2"), "Bread \\ rolls"),
+            ),
+            createdAt = Instant.parse("2026-08-24T08:00:00Z"),
+        )
+
+        val decoded = codec.decode(
+            ByteArrayInputStream(encode(reminder)),
+            importedAt = Instant.parse("2030-01-01T00:00:00Z"),
+        )
+
         assertEquals(reminder, decoded.reminders.single())
     }
 

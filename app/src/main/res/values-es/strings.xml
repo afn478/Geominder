@@ -280,4 +280,16 @@
     <string name="preset_location_summary">%1$s · radio: %2$s metros</string>
     <string name="no_preset_locations">No hay ubicaciones preestablecidas. Añade una para reconocer un lugar por su nombre.</string>
     <string name="reset_preset_locations">Restablecer ubicaciones preestablecidas</string>
+    <string name="checklist">Lista de verificación</string>
+    <string name="checklist_supporting">Subelementos sencillos para marcar. Las horas y lugares escritos aquí no se detectan.</string>
+    <string name="add_checklist">Añadir lista de verificación</string>
+    <string name="add_checklist_item">Añadir elemento</string>
+    <string name="checklist_item_placeholder">Elemento de la lista</string>
+    <string name="mark_checklist_item_done">Marcar %1$s como hecho</string>
+    <string name="mark_checklist_item_not_done">Marcar %1$s como no hecho</string>
+    <string name="remove_checklist_item">Quitar %1$s</string>
+    <string name="checklist_progress">%1$d/%2$d</string>
+    <string name="checklist_with_progress">Lista de verificación (%1$d/%2$d)</string>
+    <string name="show_all_checklist_items">Mostrar %1$d más</string>
+    <string name="show_fewer_checklist_items">Mostrar menos</string>
 </resources>

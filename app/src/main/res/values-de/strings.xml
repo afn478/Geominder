@@ -280,4 +280,16 @@
     <string name="preset_location_summary">%1$s · Radius: %2$s Meter</string>
     <string name="no_preset_locations">Keine voreingestellten Orte. Füge einen hinzu, um einen Ort anhand seines Namens zu erkennen.</string>
     <string name="reset_preset_locations">Voreingestellte Orte zurücksetzen</string>
+    <string name="checklist">Checkliste</string>
+    <string name="checklist_supporting">Einfache Unterpunkte zum Abhaken. Hier eingegebene Zeiten und Orte werden nicht erkannt.</string>
+    <string name="add_checklist">Checkliste hinzufügen</string>
+    <string name="add_checklist_item">Eintrag hinzufügen</string>
+    <string name="checklist_item_placeholder">Listeneintrag</string>
+    <string name="mark_checklist_item_done">%1$s abhaken</string>
+    <string name="mark_checklist_item_not_done">Haken bei %1$s entfernen</string>
+    <string name="remove_checklist_item">%1$s entfernen</string>
+    <string name="checklist_progress">%1$d/%2$d</string>
+    <string name="checklist_with_progress">Checkliste (%1$d/%2$d)</string>
+    <string name="show_all_checklist_items">%1$d weitere anzeigen</string>
+    <string name="show_fewer_checklist_items">Weniger anzeigen</string>
 </resources>

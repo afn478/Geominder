@@ -65,3 +65,23 @@ data class GeoTriggerEntity(
     val label: String?,
     @ColumnInfo(name = "active_from") val activeFrom: Instant?,
 )
+
+@Entity(
+    tableName = "checklist_items",
+    foreignKeys = [
+        ForeignKey(
+            entity = ReminderEntity::class,
+            parentColumns = ["id"],
+            childColumns = ["reminder_id"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index(value = ["reminder_id"])],
+)
+data class ChecklistItemEntity(
+    @PrimaryKey val id: String,
+    @ColumnInfo(name = "reminder_id") val reminderId: String,
+    val text: String,
+    val done: Boolean,
+    val position: Int,
+)

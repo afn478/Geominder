@@ -1,6 +1,7 @@
 package com.afn478.geominder.ui.detail
 
 import com.afn478.geominder.R
+import com.afn478.geominder.domain.model.ChecklistItem
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderStatus
 import com.afn478.geominder.localization.UiText
@@ -30,6 +31,9 @@ data class ReminderDetailUiState(
     val triggeredAt: String? = null,
     val snoozedUntil: String? = null,
     val dismissedAt: String? = null,
+    val checklist: List<ChecklistItem> = emptyList(),
+    /** Ticking is offered for live reminders only; the recycling bin stays read-only. */
+    val canEditChecklist: Boolean = false,
 ) {
     companion object {
         fun loading() = ReminderDetailUiState()
@@ -88,6 +92,8 @@ data class ReminderDetailUiState(
                 triggeredAt = reminder.lastTriggeredAt?.let(formatter::format),
                 snoozedUntil = reminder.snoozedUntil?.let(formatter::format),
                 dismissedAt = reminder.dismissedAt?.let(formatter::format),
+                checklist = reminder.checklist,
+                canEditChecklist = !reminder.isDeleted,
             )
         }
 

@@ -1,5 +1,6 @@
 package com.afn478.geominder.ui.add
 
+import com.afn478.geominder.domain.model.ChecklistItemId
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderTag
@@ -36,10 +37,24 @@ data class AddReminderUiState(
     val isSaving: Boolean = false,
     val saveError: UiText? = null,
     val savedReminder: Reminder? = null,
+    val checklistVisible: Boolean = false,
+    val checklist: List<ChecklistDraftItem> = emptyList(),
+    /** One-shot focus request consumed by the screen after moving focus to that row. */
+    val checklistFocusItemId: ChecklistItemId? = null,
 ) {
+    val hasUnsavedInput: Boolean
+        get() = sourceText.isNotBlank() || checklist.any { it.text.isNotBlank() }
+
     val hasDateTimeDetection: Boolean
         get() = parseResult?.dateTime != null
 
     val hasGpsDetection: Boolean
         get() = parseResult?.gps != null
 }
+
+/** Editable checklist row. Its text is kept verbatim and is never parsed for triggers. */
+data class ChecklistDraftItem(
+    val id: ChecklistItemId = ChecklistItemId.create(),
+    val text: String = "",
+    val done: Boolean = false,
+)

@@ -280,4 +280,16 @@
     <string name="preset_location_summary">%1$s · rayon : %2$s mètres</string>
     <string name="no_preset_locations">Aucun lieu prédéfini. Ajoutez-en un pour reconnaître un lieu par son nom.</string>
     <string name="reset_preset_locations">Réinitialiser les lieux prédéfinis</string>
+    <string name="checklist">Liste de contrôle</string>
+    <string name="checklist_supporting">Sous-éléments simples à cocher. Les heures et lieux saisis ici ne sont pas détectés.</string>
+    <string name="add_checklist">Ajouter une liste de contrôle</string>
+    <string name="add_checklist_item">Ajouter un élément</string>
+    <string name="checklist_item_placeholder">Élément de liste</string>
+    <string name="mark_checklist_item_done">Cocher %1$s</string>
+    <string name="mark_checklist_item_not_done">Décocher %1$s</string>
+    <string name="remove_checklist_item">Supprimer %1$s</string>
+    <string name="checklist_progress">%1$d/%2$d</string>
+    <string name="checklist_with_progress">Liste de contrôle (%1$d/%2$d)</string>
+    <string name="show_all_checklist_items">Afficher %1$d de plus</string>
+    <string name="show_fewer_checklist_items">Afficher moins</string>
 </resources>

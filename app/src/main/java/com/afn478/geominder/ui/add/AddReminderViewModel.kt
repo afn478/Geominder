@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.afn478.geominder.R
+import com.afn478.geominder.domain.model.ChecklistItem
+import com.afn478.geominder.domain.model.ChecklistItemId
 import com.afn478.geominder.domain.model.GeoTrigger
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
@@ -141,6 +143,10 @@ class AddReminderViewModel(
                 geoLabel = geo?.label, activeFromEnabled = geo?.activeFrom != null,
                 activeFromDateText = geo?.activeFrom?.atZone(clock.zone)?.toLocalDate()?.let(::formatDate) ?: "",
                 activeFromTimeText = geo?.activeFrom?.atZone(clock.zone)?.toLocalTime()?.let(::formatTime) ?: "",
+                checklistVisible = reminder.checklist.isNotEmpty(),
+                checklist = reminder.checklist.map { item ->
+                    ChecklistDraftItem(id = item.id, text = item.text, done = item.done)
+                },
             )
         }
     }
@@ -157,6 +163,106 @@ class AddReminderViewModel(
                 savedReminder = null,
             )
         }
+    }
+
+    /** Opens the checklist with a focused first row, or focuses a new row when already open. */
+    fun onChecklistClick() {
+        val state = _uiState.value
+        if (state.checklistVisible && state.checklist.isNotEmpty()) {
+            val lastBlank = state.checklist.lastOrNull()?.takeIf { it.text.isBlank() }
+            if (lastBlank != null) {
+                _uiState.update { it.copy(checklistFocusItemId = lastBlank.id) }
+            } else {
+                addChecklistItem(after = state.checklist.last().id)
+            }
+            return
+        }
+        val item = ChecklistDraftItem()
+        _uiState.update {
+            it.copy(
+                expanded = true,
+                checklistVisible = true,
+                checklist = listOf(item),
+                checklistFocusItemId = item.id,
+                saveError = null,
+            )
+        }
+    }
+
+    /** Inserts an empty row after [after], or appends one, and moves focus to it. */
+    fun addChecklistItem(after: ChecklistItemId? = null) {
+        val item = ChecklistDraftItem()
+        _uiState.update { state ->
+            val index = after
+                ?.let { id -> state.checklist.indexOfFirst { it.id == id } }
+                ?.takeIf { it >= 0 }
+                ?.plus(1)
+                ?: state.checklist.size
+            state.copy(
+                expanded = true,
+                checklistVisible = true,
+                checklist = state.checklist.toMutableList().apply { add(index, item) },
+                checklistFocusItemId = item.id,
+                saveError = null,
+            )
+        }
+    }
+
+    /** Pasted multi-line text becomes one row per line, as in Samsung Reminder. */
+    fun onChecklistItemTextChange(id: ChecklistItemId, text: String) {
+        val lines = text.split(LINE_BREAK)
+        _uiState.update { state ->
+            val index = state.checklist.indexOfFirst { it.id == id }
+            if (index < 0) return@update state
+            val current = state.checklist[index]
+            if (lines.size == 1) {
+                return@update state.copy(
+                    checklist = state.checklist.replaceAt(index, current.copy(text = text)),
+                    saveError = null,
+                )
+            }
+            val extra = lines.drop(1)
+                .filter(String::isNotBlank)
+                .map { line -> ChecklistDraftItem(text = line.trim()) }
+            val updated = state.checklist.toMutableList().apply {
+                set(index, current.copy(text = lines.first()))
+                addAll(index + 1, extra)
+            }
+            state.copy(
+                checklist = updated,
+                checklistFocusItemId = extra.lastOrNull()?.id ?: current.id,
+                saveError = null,
+            )
+        }
+    }
+
+    fun onChecklistItemDoneChange(id: ChecklistItemId, done: Boolean) {
+        _uiState.update { state ->
+            state.copy(
+                checklist = state.checklist.map { item ->
+                    if (item.id == id) item.copy(done = done) else item
+                },
+            )
+        }
+    }
+
+    /** Removes a row and returns focus to the row above; the last removal closes the list. */
+    fun removeChecklistItem(id: ChecklistItemId) {
+        _uiState.update { state ->
+            val index = state.checklist.indexOfFirst { it.id == id }
+            if (index < 0) return@update state
+            val remaining = state.checklist.filterNot { it.id == id }
+            state.copy(
+                checklistVisible = remaining.isNotEmpty(),
+                checklist = remaining,
+                checklistFocusItemId = remaining.getOrNull(index - 1)?.id
+                    ?: remaining.firstOrNull()?.id,
+            )
+        }
+    }
+
+    fun consumeChecklistFocus() {
+        _uiState.update { it.copy(checklistFocusItemId = null) }
     }
 
     fun onDetailsExpandedChange(expanded: Boolean) {
@@ -748,6 +854,9 @@ class AddReminderViewModel(
                 tag = state.tag,
                 timeTrigger = timeTrigger,
                 geoTrigger = geoTrigger,
+                checklist = state.checklist
+                    .filter { it.text.isNotBlank() }
+                    .map { ChecklistItem(id = it.id, text = it.text.trim(), done = it.done) },
                 createdAt = now,
             ),
         )
@@ -833,6 +942,9 @@ class AddReminderViewModel(
 
     private fun workScope(): CoroutineScope = injectedScope ?: viewModelScope
 
+    private fun <T> List<T>.replaceAt(index: Int, value: T): List<T> =
+        toMutableList().apply { set(index, value) }
+
     private fun Double.toPlainString(): String = when {
         this == toLong().toDouble() -> toLong().toString()
         else -> toString()
@@ -869,6 +981,7 @@ class AddReminderViewModel(
         const val MANUAL_TIME_DETECTION_ID = "manual-time"
         const val DEFAULT_TRIGGER_DELAY_SECONDS = 60L * 60L
         const val DEFAULT_REMINDER_TEXT = "Reminder"
+        val LINE_BREAK = Regex("\\r\\n|\\r|\\n")
         val FALLBACK_TIME_FORMATTER: DateTimeFormatter =
             DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
     }

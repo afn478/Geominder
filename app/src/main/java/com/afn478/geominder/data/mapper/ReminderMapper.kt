@@ -1,9 +1,12 @@
 package com.afn478.geominder.data.mapper
 
+import com.afn478.geominder.data.local.entity.ChecklistItemEntity
 import com.afn478.geominder.data.local.entity.GeoTriggerEntity
 import com.afn478.geominder.data.local.entity.ReminderEntity
 import com.afn478.geominder.data.local.entity.ReminderWithTriggers
 import com.afn478.geominder.data.local.entity.TimeTriggerEntity
+import com.afn478.geominder.domain.model.ChecklistItem
+import com.afn478.geominder.domain.model.ChecklistItemId
 import com.afn478.geominder.domain.model.GeoTrigger
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
@@ -14,6 +17,7 @@ data class ReminderEntities(
     val reminder: ReminderEntity,
     val timeTrigger: TimeTriggerEntity?,
     val geoTrigger: GeoTriggerEntity?,
+    val checklistItems: List<ChecklistItemEntity> = emptyList(),
 )
 
 fun Reminder.toEntities(): ReminderEntities = ReminderEntities(
@@ -50,6 +54,15 @@ fun Reminder.toEntities(): ReminderEntities = ReminderEntities(
             activeFrom = trigger.activeFrom,
         )
     },
+    checklistItems = checklist.mapIndexed { index, item ->
+        ChecklistItemEntity(
+            id = item.id.value,
+            reminderId = id.value,
+            text = item.text,
+            done = item.done,
+            position = index,
+        )
+    },
 )
 
 fun ReminderWithTriggers.toDomain(): Reminder = Reminder(
@@ -76,6 +89,15 @@ fun ReminderWithTriggers.toDomain(): Reminder = Reminder(
             activeFrom = trigger.activeFrom,
         )
     },
+    checklist = checklistItems
+        .sortedWith(compareBy(ChecklistItemEntity::position, ChecklistItemEntity::id))
+        .map { item ->
+            ChecklistItem(
+                id = ChecklistItemId(item.id),
+                text = item.text,
+                done = item.done,
+            )
+        },
     createdAt = reminder.createdAt,
     updatedAt = reminder.updatedAt,
     lastTriggeredAt = reminder.lastTriggeredAt,

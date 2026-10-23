@@ -28,6 +28,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -170,6 +171,14 @@ fun AddReminderRoute(
         onActiveFromDateChange = viewModel::onActiveFromDateChange,
         onActiveFromTimeChange = viewModel::onActiveFromTimeChange,
         onSave = viewModel::save,
+        checklistActions = ChecklistActions(
+            onChecklistClick = viewModel::onChecklistClick,
+            onItemTextChange = viewModel::onChecklistItemTextChange,
+            onItemDoneChange = viewModel::onChecklistItemDoneChange,
+            onAddItem = viewModel::addChecklistItem,
+            onRemoveItem = viewModel::removeChecklistItem,
+            onFocusConsumed = viewModel::consumeChecklistFocus,
+        ),
         modifier = modifier,
         autoFocusSource = autoFocusSource,
         bottomSheetMode = bottomSheetMode,
@@ -204,6 +213,7 @@ fun AddReminderScreen(
     onActiveFromDateChange: (String) -> Unit,
     onActiveFromTimeChange: (String) -> Unit,
     onSave: () -> Unit,
+    checklistActions: ChecklistActions = ChecklistActions(),
     modifier: Modifier = Modifier,
     autoFocusSource: Boolean = false,
     bottomSheetMode: Boolean = false,
@@ -239,6 +249,7 @@ fun AddReminderScreen(
             onActiveFromDateChange = onActiveFromDateChange,
             onActiveFromTimeChange = onActiveFromTimeChange,
             onSave = onSave,
+            checklistActions = checklistActions,
             autoFocusSource = autoFocusSource,
             scrollEnabled = sheetContentScrollEnabled,
             modifier = modifier,
@@ -265,6 +276,7 @@ fun AddReminderScreen(
             onActiveFromEnabledChange = onActiveFromEnabledChange,
             onActiveFromDateChange = onActiveFromDateChange,
             onActiveFromTimeChange = onActiveFromTimeChange,
+            checklistActions = checklistActions,
             modifier = modifier,
         )
         return
@@ -344,9 +356,22 @@ fun AddReminderScreen(
                         state = state,
                         onDateTimeChipClick = onDateTimeChipClick,
                         onGeoChipClick = onGeoChipClick,
+                        onChecklistClick = checklistActions.onChecklistClick,
                     )
                     state.saveError?.let {
                         SupportingError(it, Modifier.padding(horizontal = 16.dp))
+                    }
+                    if (state.checklistVisible) {
+                        ChecklistEditor(
+                            items = state.checklist,
+                            focusItemId = state.checklistFocusItemId,
+                            enabled = !state.isSaving,
+                            actions = checklistActions,
+                            modifier = Modifier
+                                .heightIn(max = 280.dp)
+                                .verticalScroll(rememberScrollState())
+                                .padding(horizontal = 4.dp),
+                        )
                     }
                 }
 
@@ -404,6 +429,7 @@ private fun EditReminderContent(
     onActiveFromEnabledChange: (Boolean) -> Unit,
     onActiveFromDateChange: (String) -> Unit,
     onActiveFromTimeChange: (String) -> Unit,
+    checklistActions: ChecklistActions,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -434,6 +460,25 @@ private fun EditReminderContent(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
                 modifier = Modifier.fillMaxWidth(),
             )
+
+            Column {
+                Text(
+                    stringResource(R.string.checklist),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+                Text(
+                    stringResource(R.string.checklist_supporting),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                ChecklistEditor(
+                    items = state.checklist,
+                    focusItemId = state.checklistFocusItemId,
+                    enabled = !state.isSaving,
+                    actions = checklistActions,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
 
             Text(
                 stringResource(R.string.triggers),
@@ -590,6 +635,7 @@ private fun BottomSheetComposerContent(
     onActiveFromDateChange: (String) -> Unit,
     onActiveFromTimeChange: (String) -> Unit,
     onSave: () -> Unit,
+    checklistActions: ChecklistActions,
     autoFocusSource: Boolean,
     scrollEnabled: Boolean,
     modifier: Modifier = Modifier,
@@ -611,6 +657,7 @@ private fun BottomSheetComposerContent(
             state = state,
             onDateTimeChipClick = onDateTimeChipClick,
             onGeoChipClick = onGeoChipClick,
+            onChecklistClick = checklistActions.onChecklistClick,
         )
         state.saveError?.let {
             SupportingError(it, Modifier.padding(horizontal = 16.dp))
@@ -624,7 +671,11 @@ private fun BottomSheetComposerContent(
             onExpandedChange = onExpandedChange,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 16.dp, end = 16.dp, bottom = 24.dp),
+                .padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                    bottom = if (state.checklistVisible) 8.dp else 24.dp,
+                ),
             enabled = !state.isSaving,
             autoFocusSource = autoFocusSource,
             placeholder = { Text(stringResource(R.string.reminder_input_placeholder)) },
@@ -632,6 +683,15 @@ private fun BottomSheetComposerContent(
                 SaveReminderIconButton(state = state, onSave = onSave)
             },
         )
+        if (state.checklistVisible) {
+            ChecklistEditor(
+                items = state.checklist,
+                focusItemId = state.checklistFocusItemId,
+                enabled = !state.isSaving,
+                actions = checklistActions,
+                modifier = Modifier.padding(start = 20.dp, end = 16.dp, bottom = 16.dp),
+            )
+        }
 
         Box(
             modifier = Modifier
@@ -846,6 +906,7 @@ private fun DetectionChips(
     state: AddReminderUiState,
     onDateTimeChipClick: () -> Unit,
     onGeoChipClick: () -> Unit,
+    onChecklistClick: () -> Unit,
 ) {
     val timeDetection = state.parseResult?.dateTime
     val coordinateSummary = state.geoLabel?.let { it.resolveNearbyLabel() }
@@ -869,6 +930,29 @@ private fun DetectionChips(
             onClick = onGeoChipClick,
             leadingIcon = { Icon(Icons.Default.LocationOn, contentDescription = null) },
             label = { Text(coordinateSummary ?: "+") },
+        )
+        val checklistCount = state.checklist.count { it.text.isNotBlank() }
+        AssistChip(
+            onClick = onChecklistClick,
+            leadingIcon = {
+                Icon(
+                    Icons.Default.Checklist,
+                    contentDescription = stringResource(R.string.add_checklist),
+                )
+            },
+            label = {
+                Text(
+                    if (checklistCount > 0) {
+                        stringResource(
+                            R.string.checklist_progress,
+                            state.checklist.count { it.done && it.text.isNotBlank() },
+                            checklistCount,
+                        )
+                    } else {
+                        "+"
+                    },
+                )
+            },
         )
     }
 }

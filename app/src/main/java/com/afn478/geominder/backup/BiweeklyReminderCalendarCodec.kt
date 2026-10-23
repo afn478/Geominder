@@ -16,6 +16,8 @@ import biweekly.property.TextProperty
 import biweekly.property.Trigger
 import biweekly.property.Uid
 import biweekly.property.Url
+import com.afn478.geominder.domain.model.ChecklistItem
+import com.afn478.geominder.domain.model.ChecklistItemId
 import com.afn478.geominder.domain.model.GeoTrigger
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
@@ -191,6 +193,7 @@ class BiweeklyReminderCalendarCodec(
                 status = status,
                 timeTrigger = timeTrigger,
                 geoTrigger = geoTrigger,
+                checklist = decodeChecklist(todo),
                 createdAt = createdAt,
                 updatedAt = updatedAt,
                 lastTriggeredAt = todo.instantValue(X_LAST_TRIGGERED_AT, componentIndex, uid, issues),
@@ -210,6 +213,22 @@ class BiweeklyReminderCalendarCodec(
         }
 
         return DecodedTodo(reminder, issues)
+    }
+
+    private fun decodeChecklist(todo: VTodo): List<ChecklistItem> {
+        val seenIds = mutableSetOf<String>()
+        return todo.getExperimentalProperties(X_CHECKLIST_ITEM).mapNotNull { property ->
+            val text = property.value?.trim()?.takeIf(String::isNotEmpty) ?: return@mapNotNull null
+            val id = property.parameters.first(X_ITEM_ID)
+                ?.takeIf { it.isNotBlank() && seenIds.add(it) }
+                ?.let(::ChecklistItemId)
+                ?: ChecklistItemId.create()
+            ChecklistItem(
+                id = id,
+                text = text,
+                done = property.parameters.first(X_ITEM_DONE).equals("TRUE", ignoreCase = true),
+            )
+        }
     }
 
     private fun decodeTimeTrigger(
@@ -408,6 +427,16 @@ class BiweeklyReminderCalendarCodec(
         snoozedUntil?.let { todo.addText(X_SNOOZED_UNTIL, it.toString()) }
         dismissedAt?.let { todo.addText(X_DISMISSED_AT, it.toString()) }
         deletedAt?.let { todo.addText(X_DELETED_AT, it.toString()) }
+        checklist.forEach { item ->
+            todo.addExperimentalProperty(
+                X_CHECKLIST_ITEM,
+                ICalDataType.TEXT,
+                item.text.replace(LINE_BREAKS, " "),
+            ).apply {
+                parameters.put(X_ITEM_ID, item.id.value)
+                parameters.put(X_ITEM_DONE, if (item.done) "TRUE" else "FALSE")
+            }
+        }
 
         timeTrigger?.let { trigger ->
             todo.setDateStart(trigger.exactAt.toDate())
@@ -601,6 +630,10 @@ class BiweeklyReminderCalendarCodec(
         private const val X_TRIGGER_KIND = "X-GEOMINDER-TRIGGER-KIND"
         private const val TRIGGER_KIND_TIME = "TIME"
         private const val TRIGGER_KIND_GEO = "GEO"
+        private const val X_CHECKLIST_ITEM = "X-GEOMINDER-CHECKLIST-ITEM"
+        private const val X_ITEM_ID = "X-ITEM-ID"
+        private const val X_ITEM_DONE = "X-DONE"
+        private val LINE_BREAKS = Regex("[\\r\\n]+")
 
         /** RFC 9074's conventional ignored trigger for proximity alarms. */
         private val IGNORED_PROXIMITY_TRIGGER = Instant.parse("1976-04-01T00:55:45Z")

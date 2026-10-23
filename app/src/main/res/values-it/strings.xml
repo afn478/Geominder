@@ -280,4 +280,16 @@
     <string name="preset_location_summary">%1$s · raggio: %2$s metri</string>
     <string name="no_preset_locations">Nessuna posizione predefinita. Aggiungine una per riconoscere un luogo dal suo nome.</string>
     <string name="reset_preset_locations">Reimposta le posizioni predefinite</string>
+    <string name="checklist">Lista di controllo</string>
+    <string name="checklist_supporting">Sottovoci semplici da spuntare. Orari e luoghi scritti qui non vengono rilevati.</string>
+    <string name="add_checklist">Aggiungi lista di controllo</string>
+    <string name="add_checklist_item">Aggiungi voce</string>
+    <string name="checklist_item_placeholder">Voce dell\'elenco</string>
+    <string name="mark_checklist_item_done">Spunta %1$s</string>
+    <string name="mark_checklist_item_not_done">Togli la spunta a %1$s</string>
+    <string name="remove_checklist_item">Rimuovi %1$s</string>
+    <string name="checklist_progress">%1$d/%2$d</string>
+    <string name="checklist_with_progress">Lista di controllo (%1$d/%2$d)</string>
+    <string name="show_all_checklist_items">Mostra altri %1$d</string>
+    <string name="show_fewer_checklist_items">Mostra meno</string>
 </resources>

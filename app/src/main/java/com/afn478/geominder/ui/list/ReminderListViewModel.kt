@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.afn478.geominder.R
+import com.afn478.geominder.domain.model.ChecklistItemId
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
 import com.afn478.geominder.domain.model.ReminderStatus
@@ -297,6 +298,28 @@ class ReminderListViewModel(
                 }
                 throw error
             }
+        }
+    }
+
+    /**
+     * Ticks a checklist item straight from the list. No scheduling command is needed: checklist
+     * items never own triggers, and the parent's lifecycle is left as the user set it.
+     */
+    fun setChecklistItemDone(id: ReminderId, itemId: ChecklistItemId, done: Boolean) {
+        val reminder = remindersById[id] ?: return
+        if (reminder.isDeleted || id in _uiState.value.busyReminderIds) return
+        if (reminder.checklist.none { it.id == itemId && it.done != done }) return
+
+        workScope().launch {
+            runCatching { repository.setChecklistItemDone(id, itemId, done) }
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            message = error.message?.let(UiText::Plain)
+                                ?: UiText.resource(R.string.reminder_update_failed),
+                        )
+                    }
+                }
         }
     }
 

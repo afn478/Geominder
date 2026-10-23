@@ -10,4 +10,6 @@ data class ReminderWithTriggers(
     val timeTrigger: TimeTriggerEntity?,
     @Relation(parentColumn = "id", entityColumn = "reminder_id")
     val geoTrigger: GeoTriggerEntity?,
+    @Relation(parentColumn = "id", entityColumn = "reminder_id")
+    val checklistItems: List<ChecklistItemEntity> = emptyList(),
 )

@@ -280,4 +280,16 @@
     <string name="preset_location_summary">%1$s · радиус: %2$s м</string>
     <string name="no_preset_locations">Предустановленных мест нет. Добавьте одно, чтобы распознавать место по его названию.</string>
     <string name="reset_preset_locations">Сбросить предустановленные места</string>
+    <string name="checklist">Чек-лист</string>
+    <string name="checklist_supporting">Простые подпункты, которые можно отмечать. Время и места, введённые здесь, не распознаются.</string>
+    <string name="add_checklist">Добавить чек-лист</string>
+    <string name="add_checklist_item">Добавить пункт</string>
+    <string name="checklist_item_placeholder">Пункт списка</string>
+    <string name="mark_checklist_item_done">Отметить «%1$s»</string>
+    <string name="mark_checklist_item_not_done">Снять отметку с «%1$s»</string>
+    <string name="remove_checklist_item">Удалить «%1$s»</string>
+    <string name="checklist_progress">%1$d/%2$d</string>
+    <string name="checklist_with_progress">Чек-лист (%1$d/%2$d)</string>
+    <string name="show_all_checklist_items">Показать ещё %1$d</string>
+    <string name="show_fewer_checklist_items">Свернуть</string>
 </resources>

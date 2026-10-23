@@ -44,6 +44,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Installs beside the release app, with its own data, alarms and geofences.
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true

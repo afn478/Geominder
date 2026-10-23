@@ -280,4 +280,16 @@
     <string name="preset_location_summary">%1$s · 半径 %2$s 米</string>
     <string name="no_preset_locations">没有预设位置。添加一个即可通过名称识别地点。</string>
     <string name="reset_preset_locations">重置预设位置</string>
+    <string name="checklist">清单</string>
+    <string name="checklist_supporting">可勾选的简单子项。此处输入的时间和地点不会被识别。</string>
+    <string name="add_checklist">添加清单</string>
+    <string name="add_checklist_item">添加项目</string>
+    <string name="checklist_item_placeholder">清单项目</string>
+    <string name="mark_checklist_item_done">将“%1$s”标记为已完成</string>
+    <string name="mark_checklist_item_not_done">将“%1$s”标记为未完成</string>
+    <string name="remove_checklist_item">移除“%1$s”</string>
+    <string name="checklist_progress">%1$d/%2$d</string>
+    <string name="checklist_with_progress">清单（%1$d/%2$d）</string>
+    <string name="show_all_checklist_items">再显示 %1$d 项</string>
+    <string name="show_fewer_checklist_items">收起</string>
 </resources>

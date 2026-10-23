@@ -1,6 +1,8 @@
 package com.afn478.geominder.data.mapper
 
 import com.afn478.geominder.data.local.entity.ReminderWithTriggers
+import com.afn478.geominder.domain.model.ChecklistItem
+import com.afn478.geominder.domain.model.ChecklistItemId
 import com.afn478.geominder.domain.model.GeoTrigger
 import com.afn478.geominder.domain.model.Reminder
 import com.afn478.geominder.domain.model.ReminderId
@@ -46,6 +48,34 @@ class ReminderMapperTest {
             reminder = entities.reminder,
             timeTrigger = entities.timeTrigger,
             geoTrigger = entities.geoTrigger,
+        ).toDomain()
+
+        assertEquals(reminder, roundTripped)
+    }
+
+    @Test
+    fun `checklist order follows stored positions regardless of row order`() {
+        val reminder = Reminder(
+            id = ReminderId("reminder-2"),
+            sourceText = "Groceries",
+            title = "Groceries",
+            text = "Groceries",
+            timeTrigger = TimeTrigger(exactAt = Instant.parse("2026-09-01T06:00:00Z")),
+            checklist = listOf(
+                ChecklistItem(ChecklistItemId("z"), "Milk"),
+                ChecklistItem(ChecklistItemId("a"), "Bread", done = true),
+                ChecklistItem(ChecklistItemId("m"), "Eggs"),
+            ),
+            createdAt = Instant.parse("2026-08-24T08:00:00Z"),
+        )
+
+        val entities = reminder.toEntities()
+        assertEquals(listOf(0, 1, 2), entities.checklistItems.map { it.position })
+        val roundTripped = ReminderWithTriggers(
+            reminder = entities.reminder,
+            timeTrigger = entities.timeTrigger,
+            geoTrigger = entities.geoTrigger,
+            checklistItems = entities.checklistItems.reversed(),
         ).toDomain()
 
         assertEquals(reminder, roundTripped)

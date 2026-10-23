@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Every locale defines app_name, so the debug label is replaced here rather than in resources. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application
+        android:label="geominder debug"
+        tools:replace="android:label" />
+</manifest>
