@@ -292,7 +292,7 @@
     <string name="clear_search">Borrar búsqueda</string>
     <string name="use_this_location">Usar esta ubicación</string>
     <string name="finding_address">Buscando dirección…</string>
-    <string name="no_places_found">No se han encontrado lugares</string>
+    <string name="no_places_found">No se ha encontrado ningún lugar</string>
     <string name="place_search_unavailable">La búsqueda no está disponible ahora mismo. Comprueba la conexión.</string>
     <string name="map_load_failed">No se ha podido cargar el mapa. Comprueba la conexión.</string>
     <string name="distance_meters">%1$s m</string>

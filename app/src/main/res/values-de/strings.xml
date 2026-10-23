@@ -287,7 +287,7 @@
     <string name="history">Verlauf</string>
     <string name="you_wrote">Deine Eingabe</string>
     <string name="map_link_unreachable">Der Link konnte nicht geöffnet werden. Prüfe deine Verbindung und versuche es erneut.</string>
-    <string name="pick_on_map">Auf Karte auswählen</string>
+    <string name="pick_on_map">Auf der Karte auswählen</string>
     <string name="search_places">Nach einem Ort suchen</string>
     <string name="clear_search">Suche löschen</string>
     <string name="use_this_location">Diesen Ort verwenden</string>
