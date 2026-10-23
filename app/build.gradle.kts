@@ -62,10 +62,10 @@ android {
             versionNameSuffix = "-debug"
         }
         release {
-            // MapLibre's native map engine is ~10 MB per CPU type; phones are ARM, so the x86
-            // builds (emulators, a few Chromebooks) stay in debug builds only.
+            // MapLibre's native map engine is ~10 MB per CPU type, so releases carry only the
+            // 64-bit ARM one that current phones run; other CPU types stay in debug builds.
             ndk {
-                abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+                abiFilters += listOf("arm64-v8a")
             }
             isMinifyEnabled = true
             isShrinkResources = true
