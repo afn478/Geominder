@@ -212,7 +212,7 @@
     <string name="must_be_positive">Doit être positif</string>
     <string name="reminder_could_not_be_found">Ce rappel est introuvable</string>
     <string name="invalid_date_time">Saisissez une date et une heure valides</string>
-    <string name="invalid_clipboard_coordinates">Le presse-papiers ne contient pas de coordonnées valides</string>
+    <string name="invalid_clipboard_coordinates">Aucun lieu trouvé dans le presse-papiers</string>
     <string name="reminder_save_failed">Impossible d’enregistrer le rappel</string>
     <string name="check_active_from">Vérifiez la date et l’heure d’activation</string>
     <string name="invalid_active_from">Saisissez une date et une heure d’activation valides</string>
@@ -221,7 +221,6 @@
     <string name="location_permission_required">L’autorisation de localisation est requise</string>
     <string name="background_location_permission_required">L’autorisation de localisation en arrière-plan est requise</string>
     <string name="location_services_disabled">Activez les services de localisation pour trouver cet appareil</string>
-    <string name="play_services_unavailable">Les services Google Play sont indisponibles</string>
     <string name="no_current_location">Aucune position actuelle n’est disponible</string>
     <string name="location_request_failed">La demande de localisation a échoué</string>
     <string name="reminder">Rappel</string>
@@ -287,4 +286,15 @@
     <string name="show_on_map">Afficher sur la carte</string>
     <string name="history">Historique</string>
     <string name="you_wrote">Vous avez écrit</string>
+    <string name="map_link_unreachable">Impossible d’ouvrir ce lien. Vérifiez votre connexion et réessayez.</string>
+    <string name="pick_on_map">Choisir sur la carte</string>
+    <string name="search_places">Rechercher un lieu</string>
+    <string name="clear_search">Effacer la recherche</string>
+    <string name="use_this_location">Utiliser ce lieu</string>
+    <string name="finding_address">Recherche de l’adresse…</string>
+    <string name="no_places_found">Aucun lieu trouvé</string>
+    <string name="place_search_unavailable">La recherche est indisponible pour le moment. Vérifiez votre connexion.</string>
+    <string name="map_load_failed">Impossible de charger la carte. Vérifiez votre connexion.</string>
+    <string name="distance_meters">%1$s m</string>
+    <string name="distance_kilometers">%1$s km</string>
 </resources>

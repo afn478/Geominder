@@ -11,8 +11,10 @@ material3 = "1.5.0-alpha10"
 navigationCompose = "2.9.6"
 playServicesLocation = "21.3.0"
 biweekly = "0.6.8"
+maplibre = "13.6.1"
 desugarJdkLibs = "2.1.5"
 junit = "4.13.2"
+orgJson = "20260719"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -32,9 +34,12 @@ androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 google-play-services-location = { module = "com.google.android.gms:play-services-location", version.ref = "playServicesLocation" }
+maplibre-android-sdk = { module = "org.maplibre.gl:android-sdk", version.ref = "maplibre" }
 biweekly = { module = "net.sf.biweekly:biweekly", version.ref = "biweekly" }
 desugar-jdk-libs = { module = "com.android.tools:desugar_jdk_libs", version.ref = "desugarJdkLibs" }
 junit = { module = "junit:junit", version.ref = "junit" }
+# Android ships org.json; local unit tests need a real implementation instead of the stub.
+org-json = { module = "org.json:json", version.ref = "orgJson" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

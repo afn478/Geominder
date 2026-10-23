@@ -5,21 +5,16 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
 import androidx.core.content.ContextCompat
-import com.google.android.gms.common.ConnectionResult
-import com.google.android.gms.common.GoogleApiAvailability
 
 sealed interface LocationCapability {
     data object Available : LocationCapability
     data object FineLocationPermissionRequired : LocationCapability
     data object BackgroundLocationPermissionRequired : LocationCapability
     data object LocationServicesDisabled : LocationCapability
-    data class PlayServicesUnavailable(val errorCode: Int) : LocationCapability
 }
 
-class LocationCapabilityChecker(
-    context: Context,
-    private val playServicesAvailability: GoogleApiAvailability = GoogleApiAvailability.getInstance(),
-) {
+/** Permission and settings checks shared by the platform and Play services location backends. */
+class LocationCapabilityChecker(context: Context) {
     private val applicationContext = context.applicationContext
 
     fun check(requireBackgroundLocation: Boolean): LocationCapability {
@@ -37,16 +32,18 @@ class LocationCapabilityChecker(
         if (locationManager?.isLocationEnabled != true) {
             return LocationCapability.LocationServicesDisabled
         }
-
-        val playServicesStatus =
-            playServicesAvailability.isGooglePlayServicesAvailable(applicationContext)
-        if (playServicesStatus != ConnectionResult.SUCCESS) {
-            return LocationCapability.PlayServicesUnavailable(playServicesStatus)
-        }
         return LocationCapability.Available
     }
 
     private fun hasPermission(permission: String): Boolean =
         ContextCompat.checkSelfPermission(applicationContext, permission) ==
             PackageManager.PERMISSION_GRANTED
+}
+
+internal fun LocationCapability.toLocationFailure(): LocationFailure = when (this) {
+    LocationCapability.Available -> error("Available is not a failure")
+    LocationCapability.FineLocationPermissionRequired -> LocationFailure.PERMISSION_REQUIRED
+    LocationCapability.BackgroundLocationPermissionRequired ->
+        LocationFailure.BACKGROUND_PERMISSION_REQUIRED
+    LocationCapability.LocationServicesDisabled -> LocationFailure.LOCATION_DISABLED
 }

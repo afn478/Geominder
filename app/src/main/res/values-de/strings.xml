@@ -212,7 +212,7 @@
     <string name="must_be_positive">Muss positiv sein</string>
     <string name="reminder_could_not_be_found">Diese Erinnerung wurde nicht gefunden</string>
     <string name="invalid_date_time">Gib ein gültiges Datum und eine gültige Zeit ein</string>
-    <string name="invalid_clipboard_coordinates">Die Zwischenablage enthält keine gültigen Koordinaten</string>
+    <string name="invalid_clipboard_coordinates">Kein Ort in der Zwischenablage gefunden</string>
     <string name="reminder_save_failed">Die Erinnerung konnte nicht gespeichert werden</string>
     <string name="check_active_from">Prüfe das Aktivierungsdatum und die Aktivierungszeit</string>
     <string name="invalid_active_from">Gib ein gültiges Aktivierungsdatum und eine gültige Aktivierungszeit ein</string>
@@ -221,7 +221,6 @@
     <string name="location_permission_required">Standortberechtigung erforderlich</string>
     <string name="background_location_permission_required">Berechtigung für Standort im Hintergrund erforderlich</string>
     <string name="location_services_disabled">Aktiviere die Standortdienste, um dieses Gerät zu orten</string>
-    <string name="play_services_unavailable">Google Play-Dienste sind nicht verfügbar</string>
     <string name="no_current_location">Kein aktueller Standort verfügbar</string>
     <string name="location_request_failed">Die Standortabfrage ist fehlgeschlagen</string>
     <string name="reminder">Erinnerung</string>
@@ -287,4 +286,15 @@
     <string name="show_on_map">Auf Karte anzeigen</string>
     <string name="history">Verlauf</string>
     <string name="you_wrote">Deine Eingabe</string>
+    <string name="map_link_unreachable">Der Link konnte nicht geöffnet werden. Prüfe deine Verbindung und versuche es erneut.</string>
+    <string name="pick_on_map">Auf Karte auswählen</string>
+    <string name="search_places">Nach einem Ort suchen</string>
+    <string name="clear_search">Suche löschen</string>
+    <string name="use_this_location">Diesen Ort verwenden</string>
+    <string name="finding_address">Adresse wird gesucht…</string>
+    <string name="no_places_found">Keine Orte gefunden</string>
+    <string name="place_search_unavailable">Die Suche ist gerade nicht verfügbar. Prüfe deine Verbindung.</string>
+    <string name="map_load_failed">Die Karte konnte nicht geladen werden. Prüfe deine Verbindung.</string>
+    <string name="distance_meters">%1$s m</string>
+    <string name="distance_kilometers">%1$s km</string>
 </resources>

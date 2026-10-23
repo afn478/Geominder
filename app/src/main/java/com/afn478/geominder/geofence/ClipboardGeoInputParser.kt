@@ -15,6 +15,8 @@ object ClipboardGeoInputParser {
         val text = decodeUrlComponents(clipboardText.trim())
         if (text.isBlank()) return null
 
+        // Google's place pin; the "@" part of the same link is only the viewport centre.
+        googlePlaceCoordinates.find(text)?.toCoordinates()?.let { return it }
         parameterNames.forEach { parameterName ->
             parameterCoordinates(parameterName).find(text)?.toCoordinates()?.let { return it }
         }
@@ -28,6 +30,7 @@ object ClipboardGeoInputParser {
                 coordinates(match.groupValues[1], match.groupValues[2])
             }
             ?: atCoordinates.find(text)?.toCoordinates()
+            ?: pathCoordinates.find(text)?.toCoordinates()
             ?: dmsCoordinates.find(text)?.toDmsCoordinates()
             ?: plainCoordinates.matchEntire(text)?.toPlainCoordinates()
     }
@@ -104,16 +107,20 @@ object ClipboardGeoInputParser {
 
     private const val number = "[+-]?(?:\\d{1,3}(?:\\.\\d+)?|\\.\\d+)"
     private val parameterNames = listOf(
-        "pin", "q", "query", "ll", "destination", "daddr", "finish", "start", "saddr",
+        "pin", "q", "query", "ll", "coordinate", "center", "sll", "destination", "daddr",
+        "finish", "start", "saddr",
     )
+    private val googlePlaceCoordinates = Regex("!3d($number)!4d($number)")
+    /** A "lat,lon" path segment, as in google.com/maps/search/40.7,-74.0 or /maps/place/40.7,-74.0. */
+    private val pathCoordinates = Regex("/\\s*($number)\\s*,\\s*($number)\\s*(?=[/?#]|$)")
     private val geoCoordinates = Regex("(?i)\\bgeo:\\s*($number)\\s*,\\s*($number)")
     private val labeledCoordinates = Regex(
-        "(?i)\\b(?:lat|latitude)\\s*[:=]?\\s*($number).*?" +
-            "(?:lon|lng|longitude)\\s*[:=]?\\s*($number)",
+        "(?i)\\b(?:m?lat|latitude)\\s*[:=]?\\s*($number).*?" +
+            "(?:m?lon|lng|longitude)\\s*[:=]?\\s*($number)",
     )
     private val reversedLabeledCoordinates = Regex(
-        "(?i)\\b(?:lon|lng|longitude)\\s*[:=]?\\s*($number).*?" +
-            "(?:lat|latitude)\\s*[:=]?\\s*($number)",
+        "(?i)\\b(?:m?lon|lng|longitude)\\s*[:=]?\\s*($number).*?" +
+            "(?:m?lat|latitude)\\s*[:=]?\\s*($number)",
     )
     private val mapFragmentCoordinates = Regex(
         "(?i)#(?:map=)?\\d+(?:\\.\\d+)?/($number)/($number)",

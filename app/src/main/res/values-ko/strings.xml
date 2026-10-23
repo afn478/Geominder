@@ -212,7 +212,7 @@
     <string name="must_be_positive">양수여야 함</string>
     <string name="reminder_could_not_be_found">해당 리마인더를 찾을 수 없음</string>
     <string name="invalid_date_time">유효한 날짜와 시간을 입력하세요</string>
-    <string name="invalid_clipboard_coordinates">클립보드에 유효한 좌표가 없음</string>
+    <string name="invalid_clipboard_coordinates">클립보드에서 위치를 찾을 수 없음</string>
     <string name="reminder_save_failed">리마인더를 저장할 수 없음</string>
     <string name="check_active_from">활성화 시작 날짜와 시간을 확인하세요</string>
     <string name="invalid_active_from">올바른 활성화 시작 날짜와 시간을 입력하세요</string>
@@ -221,7 +221,6 @@
     <string name="location_permission_required">위치 정보 권한이 필요함</string>
     <string name="background_location_permission_required">백그라운드 위치 정보 권한이 필요함</string>
     <string name="location_services_disabled">이 기기의 위치를 확인하려면 위치 서비스를 켜세요</string>
-    <string name="play_services_unavailable">Google Play 서비스를 사용할 수 없음</string>
     <string name="no_current_location">현재 위치를 사용할 수 없음</string>
     <string name="location_request_failed">위치 요청 실패</string>
     <string name="reminder">리마인더</string>
@@ -287,4 +286,15 @@
     <string name="show_on_map">지도에서 보기</string>
     <string name="history">기록</string>
     <string name="you_wrote">입력한 내용</string>
+    <string name="map_link_unreachable">링크를 열 수 없습니다. 연결을 확인하고 다시 시도하세요.</string>
+    <string name="pick_on_map">지도에서 선택</string>
+    <string name="search_places">장소 검색</string>
+    <string name="clear_search">검색어 지우기</string>
+    <string name="use_this_location">이 위치 사용</string>
+    <string name="finding_address">주소 찾는 중…</string>
+    <string name="no_places_found">장소를 찾을 수 없음</string>
+    <string name="place_search_unavailable">지금은 검색을 사용할 수 없습니다. 연결을 확인하세요.</string>
+    <string name="map_load_failed">지도를 불러올 수 없습니다. 연결을 확인하세요.</string>
+    <string name="distance_meters">%1$sm</string>
+    <string name="distance_kilometers">%1$skm</string>
 </resources>

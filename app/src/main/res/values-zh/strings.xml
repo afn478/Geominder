@@ -212,7 +212,7 @@
     <string name="must_be_positive">必须为正数</string>
     <string name="reminder_could_not_be_found">找不到该提醒</string>
     <string name="invalid_date_time">输入有效的日期和时间</string>
-    <string name="invalid_clipboard_coordinates">剪贴板中没有有效坐标</string>
+    <string name="invalid_clipboard_coordinates">剪贴板中未找到位置</string>
     <string name="reminder_save_failed">无法保存提醒</string>
     <string name="check_active_from">检查生效日期和时间</string>
     <string name="invalid_active_from">输入有效的生效日期和时间</string>
@@ -221,7 +221,6 @@
     <string name="location_permission_required">需要位置信息权限</string>
     <string name="background_location_permission_required">需要后台位置信息权限</string>
     <string name="location_services_disabled">开启位置服务以定位此设备</string>
-    <string name="play_services_unavailable">Google Play 服务不可用</string>
     <string name="no_current_location">无法获取当前位置</string>
     <string name="location_request_failed">位置请求失败</string>
     <string name="reminder">提醒</string>
@@ -287,4 +286,15 @@
     <string name="show_on_map">在地图上显示</string>
     <string name="history">历史记录</string>
     <string name="you_wrote">你输入的内容</string>
+    <string name="map_link_unreachable">无法打开此链接。请检查网络连接后重试。</string>
+    <string name="pick_on_map">在地图上选择</string>
+    <string name="search_places">搜索地点</string>
+    <string name="clear_search">清除搜索</string>
+    <string name="use_this_location">使用此位置</string>
+    <string name="finding_address">正在查找地址…</string>
+    <string name="no_places_found">未找到地点</string>
+    <string name="place_search_unavailable">搜索暂时不可用。请检查网络连接。</string>
+    <string name="map_load_failed">无法加载地图。请检查网络连接。</string>
+    <string name="distance_meters">%1$s 米</string>
+    <string name="distance_kilometers">%1$s 公里</string>
 </resources>

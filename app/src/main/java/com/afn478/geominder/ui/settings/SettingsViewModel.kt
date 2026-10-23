@@ -12,6 +12,8 @@ import com.afn478.geominder.geofence.GeoInputError
 import com.afn478.geominder.geofence.GeoInputField
 import com.afn478.geominder.geofence.LocationFailure
 import com.afn478.geominder.geofence.LocationResult
+import com.afn478.geominder.geofence.MapLinkResolver
+import com.afn478.geominder.geofence.MapLinkResult
 import com.afn478.geominder.geofence.NumericGeoInputParser
 import com.afn478.geominder.geofence.NumericGeoInputResult
 import com.afn478.geominder.localization.SupportedLanguage
@@ -26,13 +28,16 @@ import com.afn478.geominder.settings.SettingsValidation
 import com.afn478.geominder.settings.ValidationError
 import com.afn478.geominder.settings.ValidationResult
 import com.afn478.geominder.ui.text.toUserMessage
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 class SettingsViewModel(
@@ -41,6 +46,8 @@ class SettingsViewModel(
     private val injectedScope: CoroutineScope? = null,
     private val localeProvider: () -> Locale = Locale::getDefault,
     private val locationProvider: CurrentLocationProvider? = null,
+    private val mapLinkResolver: MapLinkResolver? = null,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
     private val initialSettings = repository.settings.value
     private val locale = localeProvider()
@@ -261,21 +268,71 @@ class SettingsViewModel(
         updateLocationText(radius = value)
     }
 
+    /** Same inputs as the reminder editor: coordinates, map links (short ones too), or addresses. */
     fun pasteLocation(clipboardText: String) {
-        val coordinates = ClipboardGeoInputParser.parse(clipboardText)
-        if (coordinates == null) {
+        locationRequest?.cancel()
+        locationRequest = null
+        val version = ++locationRequestVersion
+        ClipboardGeoInputParser.parse(clipboardText)?.let { coordinates ->
+            applyLocation(coordinates.latitude, coordinates.longitude, radiusMeters = null)
+            return
+        }
+        val resolver = mapLinkResolver
+        if (resolver == null) {
             _uiState.update {
-                it.copy(locationError = UiText.resource(R.string.invalid_clipboard_coordinates))
+                it.copy(
+                    isLocatingLocation = false,
+                    locationError = UiText.resource(R.string.invalid_clipboard_coordinates),
+                )
             }
             return
         }
+        _uiState.update { it.copy(isLocatingLocation = true, locationError = null) }
+        workScope().launch {
+            val result = runCatching { withContext(ioDispatcher) { resolver.resolve(clipboardText) } }
+                .getOrDefault(MapLinkResult.NotFound)
+            if (version != locationRequestVersion) return@launch
+            when (result) {
+                is MapLinkResult.Found -> applyLocation(
+                    result.coordinates.latitude,
+                    result.coordinates.longitude,
+                    radiusMeters = null,
+                )
+                MapLinkResult.NotFound -> _uiState.update {
+                    it.copy(
+                        isLocatingLocation = false,
+                        locationError = UiText.resource(R.string.invalid_clipboard_coordinates),
+                    )
+                }
+                MapLinkResult.Unreachable -> _uiState.update {
+                    it.copy(
+                        isLocatingLocation = false,
+                        locationError = UiText.resource(R.string.map_link_unreachable),
+                    )
+                }
+            }
+        }
+    }
+
+    /** Applies a place chosen on the map to the preset being edited. */
+    fun applyPickedLocation(latitude: Double, longitude: Double, radiusMeters: Double) {
+        locationRequest?.cancel()
+        locationRequest = null
+        locationRequestVersion++
+        applyLocation(latitude, longitude, radiusMeters)
+    }
+
+    private fun applyLocation(latitude: Double, longitude: Double, radiusMeters: Double?) {
         _uiState.update {
             it.copy(
                 locationEditorVisible = true,
-                locationLatitudeText = coordinates.latitude.toPlainString(),
-                locationLongitudeText = coordinates.longitude.toPlainString(),
+                locationLatitudeText = latitude.toPlainString(),
+                locationLongitudeText = longitude.toPlainString(),
+                locationRadiusText = radiusMeters?.let(SettingsValidation::formatRadius)
+                    ?: it.locationRadiusText,
                 locationInputErrors = emptyMap(),
                 locationError = null,
+                isLocatingLocation = false,
                 persistenceError = null,
             )
         }
@@ -484,7 +541,6 @@ class SettingsViewModel(
             LocationFailure.PERMISSION_REQUIRED -> R.string.location_permission_required
             LocationFailure.BACKGROUND_PERMISSION_REQUIRED -> R.string.background_location_permission_required
             LocationFailure.LOCATION_DISABLED -> R.string.location_services_disabled
-            LocationFailure.PLAY_SERVICES_UNAVAILABLE -> R.string.play_services_unavailable
             LocationFailure.NO_LOCATION -> R.string.no_current_location
             LocationFailure.REQUEST_FAILED -> R.string.location_request_failed
         },
@@ -508,6 +564,7 @@ class SettingsViewModelFactory(
     private val permissionStatusProvider: SettingsPermissionStatusProvider,
     private val localeProvider: () -> Locale = Locale::getDefault,
     private val locationProvider: CurrentLocationProvider? = null,
+    private val mapLinkResolver: MapLinkResolver? = null,
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -519,6 +576,7 @@ class SettingsViewModelFactory(
             permissionStatusProvider = permissionStatusProvider,
             localeProvider = localeProvider,
             locationProvider = locationProvider,
+            mapLinkResolver = mapLinkResolver,
         ) as T
     }
 }

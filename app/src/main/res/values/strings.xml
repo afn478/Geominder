@@ -222,7 +222,7 @@
     <string name="must_be_positive">Must be positive</string>
     <string name="reminder_could_not_be_found">That reminder could not be found</string>
     <string name="invalid_date_time">Enter a valid date and time</string>
-    <string name="invalid_clipboard_coordinates">Clipboard does not contain valid coordinates</string>
+    <string name="invalid_clipboard_coordinates">No location found in the clipboard</string>
     <string name="reminder_save_failed">The reminder could not be saved</string>
     <string name="check_active_from">Check the active-from date and time</string>
     <string name="invalid_active_from">Enter a valid active date and time</string>
@@ -231,7 +231,6 @@
     <string name="location_permission_required">Location permission is required</string>
     <string name="background_location_permission_required">Background location permission is required</string>
     <string name="location_services_disabled">Turn on location services to locate this device</string>
-    <string name="play_services_unavailable">Google Play services is unavailable</string>
     <string name="no_current_location">No current location is available</string>
     <string name="location_request_failed">The location request failed</string>
     <string name="reminder">Reminder</string>
@@ -287,4 +286,15 @@
     <string name="show_on_map">Show on map</string>
     <string name="history">History</string>
     <string name="you_wrote">You wrote</string>
+    <string name="map_link_unreachable">Couldn’t open this link. Check your connection and try again.</string>
+    <string name="pick_on_map">Pick on map</string>
+    <string name="search_places">Search for a place</string>
+    <string name="clear_search">Clear search</string>
+    <string name="use_this_location">Use this location</string>
+    <string name="finding_address">Finding address…</string>
+    <string name="no_places_found">No places found</string>
+    <string name="place_search_unavailable">Search isn’t available right now. Check your connection.</string>
+    <string name="map_load_failed">The map couldn’t load. Check your connection.</string>
+    <string name="distance_meters">%1$s m</string>
+    <string name="distance_kilometers">%1$s km</string>
 </resources>

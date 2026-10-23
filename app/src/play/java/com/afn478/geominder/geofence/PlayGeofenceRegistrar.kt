@@ -11,23 +11,8 @@ import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.location.GeofenceStatusCodes
 import com.google.android.gms.location.GeofencingClient
 
-sealed interface GeofenceOperationResult {
-    data object Success : GeofenceOperationResult
-    data class CapabilityUnavailable(val capability: LocationCapability) : GeofenceOperationResult
-    data object RadiusTooLarge : GeofenceOperationResult
-    data class Failed(val cause: Throwable) : GeofenceOperationResult
-}
-
-fun interface GeofenceOperationCallback {
-    fun onComplete(result: GeofenceOperationResult)
-}
-
-interface GeofenceRegistrar {
-    fun register(spec: GeofenceSpec, callback: GeofenceOperationCallback)
-    fun cancel(triggerId: TriggerId, callback: GeofenceOperationCallback)
-}
-
-class AndroidGeofenceRegistrar(
+/** Geofencing through Google Play services; [FallbackGeofenceRegistrar] decides when to use it. */
+class PlayGeofenceRegistrar(
     context: Context,
     private val geofencingClient: GeofencingClient,
     private val capabilityChecker: LocationCapabilityChecker = LocationCapabilityChecker(context),

@@ -212,7 +212,7 @@
     <string name="must_be_positive">正の値にしてください</string>
     <string name="reminder_could_not_be_found">そのリマインダーが見つかりません</string>
     <string name="invalid_date_time">有効な日付と時刻を入力してください</string>
-    <string name="invalid_clipboard_coordinates">クリップボードに有効な座標がありません</string>
+    <string name="invalid_clipboard_coordinates">クリップボードに場所が見つかりません</string>
     <string name="reminder_save_failed">リマインダーを保存できませんでした</string>
     <string name="check_active_from">有効開始日と時刻を確認してください</string>
     <string name="invalid_active_from">有効な開始日と時刻を入力してください</string>
@@ -221,7 +221,6 @@
     <string name="location_permission_required">位置情報の権限が必要です</string>
     <string name="background_location_permission_required">バックグラウンドでの位置情報の権限が必要です</string>
     <string name="location_services_disabled">この端末の位置を確認するには位置情報サービスをオンにしてください</string>
-    <string name="play_services_unavailable">Google Play 開発者サービスを利用できません</string>
     <string name="no_current_location">現在地を利用できません</string>
     <string name="location_request_failed">位置情報の取得に失敗しました</string>
     <string name="reminder">リマインダー</string>
@@ -287,4 +286,15 @@
     <string name="show_on_map">地図に表示</string>
     <string name="history">履歴</string>
     <string name="you_wrote">入力内容</string>
+    <string name="map_link_unreachable">リンクを開けませんでした。接続を確認して、もう一度お試しください。</string>
+    <string name="pick_on_map">地図で選択</string>
+    <string name="search_places">場所を検索</string>
+    <string name="clear_search">検索を消去</string>
+    <string name="use_this_location">この場所を使用</string>
+    <string name="finding_address">住所を検索中…</string>
+    <string name="no_places_found">場所が見つかりません</string>
+    <string name="place_search_unavailable">現在、検索を利用できません。接続を確認してください。</string>
+    <string name="map_load_failed">地図を読み込めませんでした。接続を確認してください。</string>
+    <string name="distance_meters">%1$s m</string>
+    <string name="distance_kilometers">%1$s km</string>
 </resources>

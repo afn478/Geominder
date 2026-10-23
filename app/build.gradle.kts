@@ -32,6 +32,18 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // "play" uses Google Play services for location when installed and falls back to Android's
+    // own APIs otherwise; "libre" contains no Google Play services code at all.
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("play") {
+            dimension = "distribution"
+        }
+        create("libre") {
+            dimension = "distribution"
+        }
+    }
+
     signingConfigs {
         if (releaseSigningConfigured) {
             create("release") {
@@ -50,6 +62,11 @@ android {
             versionNameSuffix = "-debug"
         }
         release {
+            // MapLibre's native map engine is ~10 MB per CPU type; phones are ARM, so the x86
+            // builds (emulators, a few Chromebooks) stay in debug builds only.
+            ndk {
+                abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
@@ -72,6 +89,11 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+
+    lint {
+        // Timber's lint rules arrive with MapLibre; the app itself logs with android.util.Log.
+        disable += "LogNotTimber"
     }
 
     packaging {
@@ -98,7 +120,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
-    // Play Services Basement still declares Fragment 1.1.0; Activity Result requires 1.3+.
+    // Play services Basement still declares Fragment 1.1.0; Activity Result requires 1.3+.
     implementation(libs.androidx.fragment.ktx)
     implementation(libs.androidx.navigation.compose)
 
@@ -113,10 +135,12 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     kapt(libs.androidx.room.compiler)
 
-    implementation(libs.google.play.services.location)
+    "playImplementation"(libs.google.play.services.location)
     implementation(libs.biweekly)
+    implementation(libs.maplibre.android.sdk)
 
     coreLibraryDesugaring(libs.desugar.jdk.libs)
 
     testImplementation(libs.junit)
+    testImplementation(libs.org.json)
 }

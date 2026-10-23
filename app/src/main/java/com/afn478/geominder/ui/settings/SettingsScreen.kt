@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.LocationOn
@@ -168,6 +169,7 @@ fun SettingsRoute(
     backupInProgress: Boolean,
     onShowDebugFullScreenReminder: () -> Unit,
     modifier: Modifier = Modifier,
+    onPickLocationOnMap: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -205,6 +207,7 @@ fun SettingsRoute(
         onLocationRadiusChange = viewModel::onLocationRadiusChange,
         onPasteLocation = viewModel::pasteLocation,
         onLocateLocation = viewModel::locateLocation,
+        onPickLocationOnMap = onPickLocationOnMap,
         onSaveLocation = viewModel::saveLocation,
         onCancelLocationEdit = viewModel::cancelLocationEdit,
         onRemoveLocation = viewModel::removeLocation,
@@ -246,6 +249,7 @@ fun SettingsScreen(
     onLocationRadiusChange: (String) -> Unit,
     onPasteLocation: (String) -> Unit,
     onLocateLocation: () -> Unit,
+    onPickLocationOnMap: () -> Unit,
     onSaveLocation: () -> Unit,
     onCancelLocationEdit: () -> Unit,
     onRemoveLocation: (String) -> Unit,
@@ -334,6 +338,7 @@ fun SettingsScreen(
                         onLocationRadiusChange = onLocationRadiusChange,
                         onPasteLocation = onPasteLocation,
                         onLocateLocation = onLocateLocation,
+                        onPickLocationOnMap = onPickLocationOnMap,
                         onSaveLocation = onSaveLocation,
                         onCancelLocationEdit = onCancelLocationEdit,
                         onRemoveLocation = onRemoveLocation,
@@ -732,6 +737,7 @@ private fun LocationPresetSection(
     onLocationRadiusChange: (String) -> Unit,
     onPasteLocation: (String) -> Unit,
     onLocateLocation: () -> Unit,
+    onPickLocationOnMap: () -> Unit,
     onSaveLocation: () -> Unit,
     onCancelLocationEdit: () -> Unit,
     onRemoveLocation: (String) -> Unit,
@@ -756,6 +762,7 @@ private fun LocationPresetSection(
                     onPasteLocation(clipboardManager.getText()?.text.orEmpty())
                 },
                 onLocate = onLocateLocation,
+                onPickOnMap = onPickLocationOnMap,
                 onSave = onSaveLocation,
                 onCancel = onCancelLocationEdit,
             )
@@ -817,6 +824,7 @@ private fun LocationPresetEditor(
     onRadiusChange: (String) -> Unit,
     onPasteLocation: () -> Unit,
     onLocate: () -> Unit,
+    onPickOnMap: () -> Unit,
     onSave: () -> Unit,
     onCancel: () -> Unit,
 ) {
@@ -836,6 +844,12 @@ private fun LocationPresetEditor(
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )
+                IconButton(onClick = onPickOnMap) {
+                    Icon(
+                        imageVector = Icons.Default.Map,
+                        contentDescription = stringResource(R.string.pick_on_map),
+                    )
+                }
                 IconButton(onClick = onPasteLocation) {
                     Icon(
                         imageVector = Icons.Default.ContentPaste,

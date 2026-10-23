@@ -31,6 +31,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -94,9 +95,16 @@ fun ReachableScaffold(
             null
         }
 
+        // Only a real key change re-expands the bar. Coming back to this screen (say, from the map
+        // picker) restores the saved header and content scroll together, so they stay in step.
+        var appliedResetKey by rememberSaveable { mutableStateOf<Int?>(null) }
         LaunchedEffect(scrollResetKey) {
-            appBarState.heightOffset = 0f
-            appBarState.contentOffset = 0f
+            val key = scrollResetKey.hashCode()
+            if (appliedResetKey != null && appliedResetKey != key) {
+                appBarState.heightOffset = 0f
+                appBarState.contentOffset = 0f
+            }
+            appliedResetKey = key
         }
         LaunchedEffect(imeVisible, useReachableAppBar) {
             val collapsedOffset = appBarState.heightOffsetLimit

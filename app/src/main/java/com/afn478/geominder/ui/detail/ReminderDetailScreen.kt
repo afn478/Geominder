@@ -54,6 +54,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.afn478.geominder.R
+import com.afn478.geominder.ui.map.LocationMapPreview
 import com.afn478.geominder.domain.model.ChecklistItemId
 import com.afn478.geominder.domain.model.GeoTrigger
 import com.afn478.geominder.ui.appbar.ReachableScaffold
@@ -275,6 +276,13 @@ private fun LocationCard(state: ReminderDetailUiState, trigger: GeoTrigger) {
     val context = LocalContext.current
     val placeName = state.geoLabel?.resolveNearbyLabel() ?: state.geoCoordinates.orEmpty()
     DetailCard(icon = Icons.Default.LocationOn, label = stringResource(R.string.location)) {
+        LocationMapPreview(
+            latitude = trigger.latitude,
+            longitude = trigger.longitude,
+            radiusMeters = trigger.radiusMeters,
+            onClick = null,
+            height = 152.dp,
+        )
         Text(
             text = placeName,
             style = MaterialTheme.typography.titleLarge,

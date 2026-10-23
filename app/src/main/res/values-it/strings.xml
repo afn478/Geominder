@@ -212,7 +212,7 @@
     <string name="must_be_positive">Deve essere positivo</string>
     <string name="reminder_could_not_be_found">Impossibile trovare questo promemoria</string>
     <string name="invalid_date_time">Inserisci una data e un’ora valide</string>
-    <string name="invalid_clipboard_coordinates">Gli appunti non contengono coordinate valide</string>
+    <string name="invalid_clipboard_coordinates">Nessuna posizione trovata negli appunti</string>
     <string name="reminder_save_failed">Non è stato possibile salvare il promemoria</string>
     <string name="check_active_from">Controlla la data e l’ora di attivazione</string>
     <string name="invalid_active_from">Inserisci una data e un’ora di attivazione valide</string>
@@ -221,7 +221,6 @@
     <string name="location_permission_required">È necessaria l’autorizzazione alla posizione</string>
     <string name="background_location_permission_required">È necessaria l’autorizzazione alla posizione in background</string>
     <string name="location_services_disabled">Attiva i servizi di localizzazione per trovare questo dispositivo</string>
-    <string name="play_services_unavailable">I servizi Google Play non sono disponibili</string>
     <string name="no_current_location">Nessuna posizione attuale disponibile</string>
     <string name="location_request_failed">La richiesta di posizione non è riuscita</string>
     <string name="reminder">Promemoria</string>
@@ -287,4 +286,15 @@
     <string name="show_on_map">Mostra sulla mappa</string>
     <string name="history">Cronologia</string>
     <string name="you_wrote">Hai scritto</string>
+    <string name="map_link_unreachable">Impossibile aprire il link. Controlla la connessione e riprova.</string>
+    <string name="pick_on_map">Scegli sulla mappa</string>
+    <string name="search_places">Cerca un luogo</string>
+    <string name="clear_search">Cancella ricerca</string>
+    <string name="use_this_location">Usa questa posizione</string>
+    <string name="finding_address">Ricerca dell’indirizzo…</string>
+    <string name="no_places_found">Nessun luogo trovato</string>
+    <string name="place_search_unavailable">La ricerca non è disponibile al momento. Controlla la connessione.</string>
+    <string name="map_load_failed">Impossibile caricare la mappa. Controlla la connessione.</string>
+    <string name="distance_meters">%1$s m</string>
+    <string name="distance_kilometers">%1$s km</string>
 </resources>

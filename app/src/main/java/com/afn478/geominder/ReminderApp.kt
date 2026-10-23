@@ -1,6 +1,7 @@
 package com.afn478.geominder
 
 import android.content.Intent
+import android.os.Bundle
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -14,6 +15,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -45,6 +47,10 @@ import com.afn478.geominder.ui.detail.ReminderDetailRoute
 import com.afn478.geominder.ui.detail.ReminderDetailViewModel
 import com.afn478.geominder.ui.detail.ReminderDetailViewModelFactory
 import com.afn478.geominder.ui.list.ReminderListRoute
+import com.afn478.geominder.ui.map.LocationPickerRoute
+import com.afn478.geominder.ui.map.LocationPickerViewModel
+import com.afn478.geominder.ui.map.LocationPickerViewModelFactory
+import com.afn478.geominder.ui.map.PickedLocation
 import com.afn478.geominder.ui.list.ReminderListViewModel
 import com.afn478.geominder.ui.list.ReminderListViewModelFactory
 import com.afn478.geominder.ui.settings.SettingsRoute
@@ -135,6 +141,10 @@ fun ReminderApp(
             val session = draftSession ?: return@composable
             ReminderEditorHost(
                 viewModel = draftViewModel(session, container, settings, localeProvider),
+                backStackEntry = backStackEntry,
+                onPickOnMap = { latitude, longitude, radius ->
+                    navController.navigate(Routes.pickLocation(latitude, longitude, radius))
+                },
                 title = stringResource(R.string.add_reminder),
                 autoFocusText = backStackEntry.arguments?.getBoolean(Routes.ARG_FOCUS) == true,
                 // Leaving without saving keeps the draft; it is still in the quick-add bar.
@@ -155,6 +165,10 @@ fun ReminderApp(
                         key = "edit-${settings.editorKey}",
                         factory = editorViewModelFactory(container, settings, localeProvider, reminderId),
                     ),
+                    backStackEntry = backStackEntry,
+                    onPickOnMap = { latitude, longitude, radius ->
+                        navController.navigate(Routes.pickLocation(latitude, longitude, radius))
+                    },
                     title = stringResource(R.string.edit_reminder),
                     onBack = { navController.popBackStack() },
                     // Return to wherever editing started: the list, or the detail page that now
@@ -183,7 +197,7 @@ fun ReminderApp(
                 )
             }
         }
-        composable(Routes.SETTINGS) {
+        composable(Routes.SETTINGS) { backStackEntry ->
             val settingsViewModel: SettingsViewModel = viewModel(
                 key = "settings-${settings.keywordLanguage.languageTag}",
                 factory = SettingsViewModelFactory(
@@ -191,10 +205,25 @@ fun ReminderApp(
                     permissionStatusProvider = container.permissionStatusProvider,
                     localeProvider = localeProvider,
                     locationProvider = container.currentLocationProvider,
+                    mapLinkResolver = container.mapLinkResolver,
                 ),
             )
+            ConsumePickedLocation(backStackEntry) { picked ->
+                settingsViewModel.applyPickedLocation(picked.latitude, picked.longitude, picked.radiusMeters)
+            }
             SettingsRoute(
                 viewModel = settingsViewModel,
+                onPickLocationOnMap = {
+                    val preset = settingsViewModel.uiState.value
+                    navController.navigate(
+                        Routes.pickLocation(
+                            preset.locationLatitudeText.trim().toDoubleOrNull(),
+                            preset.locationLongitudeText.trim().toDoubleOrNull(),
+                            preset.locationRadiusText.trim().toDoubleOrNull()
+                                ?: settings.defaultGeofenceRadiusMeters,
+                        ),
+                    )
+                },
                 onKeywordLanguageChanged = onLanguageChanged,
                 onPermissionAction = onPermissionAction,
                 onBack = { navController.popBackStack() },
@@ -212,6 +241,42 @@ fun ReminderApp(
                     runCatching {
                         context.startActivity(AlertIntentFactory.debugFullScreenIntent(context))
                     }
+                },
+            )
+        }
+        composable(
+            route = Routes.PICK_LOCATION,
+            arguments = listOf(
+                navArgument(Routes.ARG_LATITUDE) { type = NavType.StringType; nullable = true },
+                navArgument(Routes.ARG_LONGITUDE) { type = NavType.StringType; nullable = true },
+                navArgument(Routes.ARG_RADIUS) { type = NavType.StringType; nullable = true },
+            ),
+        ) { backStackEntry ->
+            val arguments = backStackEntry.arguments
+            val latitude = arguments?.getString(Routes.ARG_LATITUDE)?.toDoubleOrNull()
+                ?.takeIf { it in -90.0..90.0 }
+            val longitude = arguments?.getString(Routes.ARG_LONGITUDE)?.toDoubleOrNull()
+                ?.takeIf { it in -180.0..180.0 }
+            val radius = arguments?.getString(Routes.ARG_RADIUS)?.toDoubleOrNull()
+                ?.takeIf { it.isFinite() && it > 0.0 }
+                ?: settings.defaultGeofenceRadiusMeters
+            val pickerViewModel: LocationPickerViewModel = viewModel(
+                factory = LocationPickerViewModelFactory(
+                    initialLatitude = latitude?.takeIf { longitude != null },
+                    initialLongitude = longitude?.takeIf { latitude != null },
+                    initialRadiusMeters = radius,
+                    placeSearch = container.geocoding,
+                    labelResolver = container.geocoding,
+                    locationProvider = container.currentLocationProvider,
+                ),
+            )
+            LocationPickerRoute(
+                viewModel = pickerViewModel,
+                onBack = { navController.popBackStack() },
+                onConfirm = { picked ->
+                    navController.previousBackStackEntry?.savedStateHandle
+                        ?.set(PickedLocation.RESULT_KEY, picked.toBundle())
+                    navController.popBackStack()
                 },
             )
         }
@@ -252,6 +317,7 @@ private fun editorViewModelFactory(
     removeTimeExpressionsFromText = settings.removeTimeExpressionsFromText,
     localeProvider = localeProvider,
     editingReminderId = editingReminderId,
+    mapLinkResolver = container.mapLinkResolver,
 )
 
 /**
@@ -270,12 +336,17 @@ private val ReminderSettings.editorKey: Int
 @Composable
 private fun ReminderEditorHost(
     viewModel: AddReminderViewModel,
+    backStackEntry: NavBackStackEntry,
+    onPickOnMap: (latitude: Double?, longitude: Double?, radiusMeters: Double?) -> Unit,
     title: String,
     onBack: () -> Unit,
     onSaved: () -> Unit,
     autoFocusText: Boolean = false,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    ConsumePickedLocation(backStackEntry) { picked ->
+        viewModel.applyPickedLocation(picked.latitude, picked.longitude, picked.radiusMeters, picked.label)
+    }
     // An edit can only be saved once the existing reminder has loaded.
     val canSave = !state.isSaving &&
         (viewModel.editingReminderId == null || state.editingReminderId != null)
@@ -311,7 +382,32 @@ private fun ReminderEditorHost(
             onReminderSaved = { onSaved() },
             modifier = Modifier.padding(contentPadding),
             autoFocusText = autoFocusText,
+            onPickOnMap = {
+                val current = viewModel.uiState.value
+                onPickOnMap(
+                    current.latitudeText.trim().toDoubleOrNull(),
+                    current.longitudeText.trim().toDoubleOrNull(),
+                    current.radiusText.trim().toDoubleOrNull(),
+                )
+            },
         )
+    }
+}
+
+/** Delivers a place confirmed in the map picker to the screen that opened it, once. */
+@Composable
+private fun ConsumePickedLocation(
+    backStackEntry: NavBackStackEntry,
+    onPicked: (PickedLocation) -> Unit,
+) {
+    val handle = backStackEntry.savedStateHandle
+    val bundle by handle.getStateFlow<Bundle?>(PickedLocation.RESULT_KEY, null)
+        .collectAsStateWithLifecycle()
+    val currentOnPicked by rememberUpdatedState(onPicked)
+    LaunchedEffect(bundle) {
+        val result = bundle ?: return@LaunchedEffect
+        handle.remove<Bundle>(PickedLocation.RESULT_KEY)
+        PickedLocation.fromBundle(result)?.let(currentOnPicked)
     }
 }
 
@@ -339,8 +435,22 @@ private object Routes {
     const val EDIT = "edit/{reminderId}"
     const val SETTINGS = "settings"
     const val REMINDER_DETAIL = "reminder/{reminderId}"
+    const val ARG_LATITUDE = "lat"
+    const val ARG_LONGITUDE = "lon"
+    const val ARG_RADIUS = "radius"
+    const val PICK_LOCATION =
+        "pick-location?$ARG_LATITUDE={$ARG_LATITUDE}&$ARG_LONGITUDE={$ARG_LONGITUDE}&$ARG_RADIUS={$ARG_RADIUS}"
 
     fun new(focusText: Boolean): String = "new?$ARG_FOCUS=$focusText"
     fun detail(reminderId: String): String = "reminder/$reminderId"
     fun edit(reminderId: String): String = "edit/$reminderId"
+    fun pickLocation(latitude: Double?, longitude: Double?, radiusMeters: Double?): String =
+        buildString {
+            append("pick-location?")
+            append(listOfNotNull(
+                latitude?.let { "$ARG_LATITUDE=$it" },
+                longitude?.let { "$ARG_LONGITUDE=$it" },
+                radiusMeters?.let { "$ARG_RADIUS=$it" },
+            ).joinToString("&"))
+        }
 }

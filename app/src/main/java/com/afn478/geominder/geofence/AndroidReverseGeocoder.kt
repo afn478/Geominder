@@ -14,13 +14,16 @@ fun interface GeoLabelResolver {
     fun resolve(latitude: Double, longitude: Double, callback: (String) -> Unit)
 }
 
-/** Resolves an optional address while always returning a useful place or coordinate label. */
+/**
+ * The platform [Geocoder]. Its backend is supplied by the device (Google Play services on most
+ * phones), so [Geocoder.isPresent] decides whether it can be used at all.
+ */
 class AndroidReverseGeocoder(
     context: Context,
     private val callbackExecutor: Executor = ContextCompat.getMainExecutor(context),
     private val workerExecutor: Executor = GEOCODER_EXECUTOR,
     private val localeProvider: () -> Locale = Locale::getDefault,
-) : GeoLabelResolver {
+) : Geocoding {
     private val applicationContext = context.applicationContext
 
     override fun resolve(latitude: Double, longitude: Double, callback: (String) -> Unit) {
@@ -64,6 +67,28 @@ class AndroidReverseGeocoder(
         }
     }
 
+    override fun search(query: String, nearLatitude: Double?, nearLongitude: Double?): List<PlaceResult> {
+        val trimmed = query.trim()
+        if (trimmed.isEmpty() || !Geocoder.isPresent()) return emptyList()
+        // Blocking by contract, so the deprecated synchronous call is the simplest fit here.
+        @Suppress("DEPRECATION")
+        val addresses = Geocoder(applicationContext, localeProvider())
+            .getFromLocationName(trimmed, SEARCH_LIMIT)
+            .orEmpty()
+        return addresses.filter { it.hasLatitude() && it.hasLongitude() }.map { address ->
+            val full = address.displayName()
+            val name = address.featureName?.takeIf { it.isNotBlank() && it != address.subThoroughfare }
+                ?: full
+                ?: String.format(Locale.US, "%.5f, %.5f", address.latitude, address.longitude)
+            PlaceResult(
+                name = name,
+                detail = full?.takeIf { it != name },
+                latitude = address.latitude,
+                longitude = address.longitude,
+            )
+        }
+    }
+
     private fun Address.displayName(): String? = GeoAddressFormatter.format(
         GeoAddressComponents(
             featureName = featureName,
@@ -92,6 +117,7 @@ class AndroidReverseGeocoder(
         String.format(Locale.US, "%.5f, %.5f", latitude, longitude)
 
     private companion object {
+        const val SEARCH_LIMIT = 6
         val GEOCODER_EXECUTOR: Executor = Executors.newSingleThreadExecutor { runnable ->
             Thread(runnable, "geominder-geocoder").apply { isDaemon = true }
         }

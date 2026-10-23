@@ -56,6 +56,9 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import com.afn478.geominder.ui.map.LocationMapPreview
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -132,6 +135,7 @@ fun AddReminderRoute(
     onReminderSaved: (Reminder) -> Unit,
     modifier: Modifier = Modifier,
     autoFocusText: Boolean = false,
+    onPickOnMap: () -> Unit = {},
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val savedReminder = state.savedReminder
@@ -159,6 +163,7 @@ fun AddReminderRoute(
         onRadiusChange = viewModel::onRadiusChange,
         onPasteLocation = viewModel::pasteLocation,
         onLocate = viewModel::locate,
+        onPickOnMap = onPickOnMap,
         onActiveFromEnabledChange = viewModel::onActiveFromEnabledChange,
         onActiveFromDateChange = viewModel::onActiveFromDateChange,
         onActiveFromTimeChange = viewModel::onActiveFromTimeChange,
@@ -191,6 +196,7 @@ fun AddReminderScreen(
     onRadiusChange: (String) -> Unit,
     onPasteLocation: (String) -> Unit,
     onLocate: () -> Unit,
+    onPickOnMap: () -> Unit = {},
     onActiveFromEnabledChange: (Boolean) -> Unit,
     onActiveFromDateChange: (String) -> Unit,
     onActiveFromTimeChange: (String) -> Unit,
@@ -213,6 +219,7 @@ fun AddReminderScreen(
         onRadiusChange = onRadiusChange,
         onPasteLocation = onPasteLocation,
         onLocate = onLocate,
+        onPickOnMap = onPickOnMap,
         onActiveFromEnabledChange = onActiveFromEnabledChange,
         onActiveFromDateChange = onActiveFromDateChange,
         onActiveFromTimeChange = onActiveFromTimeChange,
@@ -238,6 +245,7 @@ private fun EditReminderContent(
     onRadiusChange: (String) -> Unit,
     onPasteLocation: (String) -> Unit,
     onLocate: () -> Unit,
+    onPickOnMap: () -> Unit,
     onActiveFromEnabledChange: (Boolean) -> Unit,
     onActiveFromDateChange: (String) -> Unit,
     onActiveFromTimeChange: (String) -> Unit,
@@ -246,8 +254,13 @@ private fun EditReminderContent(
     autoFocusText: Boolean = false,
 ) {
     val textFocusRequester = remember { FocusRequester() }
+    // Once per visit: coming back from the map picker must not pop the keyboard up again.
+    var autoFocusDone by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(autoFocusText) {
-        if (autoFocusText) textFocusRequester.requestFocus()
+        if (autoFocusText && !autoFocusDone) {
+            textFocusRequester.requestFocus()
+            autoFocusDone = true
+        }
     }
     Box(
         modifier = modifier
@@ -316,6 +329,7 @@ private fun EditReminderContent(
                 onRadiusChange = onRadiusChange,
                 onPasteLocation = onPasteLocation,
                 onLocate = onLocate,
+                onPickOnMap = onPickOnMap,
                 onActiveFromEnabledChange = onActiveFromEnabledChange,
                 onActiveFromDateChange = onActiveFromDateChange,
                 onActiveFromTimeChange = onActiveFromTimeChange,
@@ -372,6 +386,7 @@ private fun TriggerControls(
     onRadiusChange: (String) -> Unit,
     onPasteLocation: (String) -> Unit,
     onLocate: () -> Unit,
+    onPickOnMap: () -> Unit,
     onActiveFromEnabledChange: (Boolean) -> Unit,
     onActiveFromDateChange: (String) -> Unit,
     onActiveFromTimeChange: (String) -> Unit,
@@ -424,6 +439,7 @@ private fun TriggerControls(
                 onRadiusChange = onRadiusChange,
                 onPasteLocation = onPasteLocation,
                 onLocate = onLocate,
+                onPickOnMap = onPickOnMap,
                 onActiveFromEnabledChange = onActiveFromEnabledChange,
                 onActiveFromDateChange = onActiveFromDateChange,
                 onActiveFromTimeChange = onActiveFromTimeChange,
@@ -783,12 +799,18 @@ private fun GeoEditor(
     onRadiusChange: (String) -> Unit,
     onPasteLocation: (String) -> Unit,
     onLocate: () -> Unit,
+    onPickOnMap: () -> Unit,
     onActiveFromEnabledChange: (Boolean) -> Unit,
     onActiveFromDateChange: (String) -> Unit,
     onActiveFromTimeChange: (String) -> Unit,
 ) {
     val clipboardManager = LocalClipboardManager.current
     val locatingDescription = stringResource(R.string.locating_current_position)
+    val latitude = state.latitudeText.trim().toDoubleOrNull()?.takeIf { it in -90.0..90.0 }
+    val longitude = state.longitudeText.trim().toDoubleOrNull()?.takeIf { it in -180.0..180.0 }
+    // Manual entry is a fallback behind the map; it opens by itself when something needs fixing.
+    var coordinatesExpanded by rememberSaveable { mutableStateOf(false) }
+    val showCoordinates = coordinatesExpanded || state.geoInputErrors.isNotEmpty()
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -801,35 +823,16 @@ private fun GeoEditor(
             )
             IconButton(
                 onClick = { onPasteLocation(clipboardManager.getText()?.text.orEmpty()) },
+                enabled = !state.isLocating,
             ) {
                 Icon(
                     Icons.Default.ContentPaste,
                     contentDescription = stringResource(R.string.paste_location),
                 )
             }
-        }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            GeoNumberField(
-                value = state.latitudeText,
-                onValueChange = onLatitudeChange,
-                label = stringResource(R.string.latitude),
-                error = state.geoInputErrors[GeoInputField.LATITUDE],
-                modifier = Modifier.weight(1f),
-            )
-            GeoNumberField(
-                value = state.longitudeText,
-                onValueChange = onLongitudeChange,
-                label = stringResource(R.string.longitude),
-                error = state.geoInputErrors[GeoInputField.LONGITUDE],
-                modifier = Modifier.weight(1f),
-            )
             IconButton(
                 onClick = onLocate,
                 enabled = !state.isLocating,
-                modifier = Modifier.size(48.dp),
             ) {
                 if (state.isLocating) {
                     CircularProgressIndicator(
@@ -848,18 +851,68 @@ private fun GeoEditor(
                 }
             }
         }
-        GeoNumberField(
-            value = state.radiusText,
-            onValueChange = onRadiusChange,
-            label = stringResource(R.string.radius_metres),
-            error = state.geoInputErrors[GeoInputField.RADIUS],
-            modifier = Modifier.fillMaxWidth(),
+        LocationMapPreview(
+            latitude = latitude,
+            longitude = longitude,
+            radiusMeters = state.radiusText.trim().toDoubleOrNull(),
+            onClick = onPickOnMap.takeIf { !state.isSaving },
         )
-
         state.geoLabel?.let {
             Text(text = it.resolveNearbyLabel(), style = MaterialTheme.typography.bodyMedium)
         }
         state.locationError?.let { SupportingError(it) }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .toggleable(
+                    value = showCoordinates,
+                    role = Role.Button,
+                    onValueChange = { coordinatesExpanded = it },
+                )
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                stringResource(R.string.coordinates),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+            Icon(
+                if (showCoordinates) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (showCoordinates) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                GeoNumberField(
+                    value = state.latitudeText,
+                    onValueChange = onLatitudeChange,
+                    label = stringResource(R.string.latitude),
+                    error = state.geoInputErrors[GeoInputField.LATITUDE],
+                    modifier = Modifier.weight(1f),
+                )
+                GeoNumberField(
+                    value = state.longitudeText,
+                    onValueChange = onLongitudeChange,
+                    label = stringResource(R.string.longitude),
+                    error = state.geoInputErrors[GeoInputField.LONGITUDE],
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            GeoNumberField(
+                value = state.radiusText,
+                onValueChange = onRadiusChange,
+                label = stringResource(R.string.radius_metres),
+                error = state.geoInputErrors[GeoInputField.RADIUS],
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
         Row(
             modifier = Modifier

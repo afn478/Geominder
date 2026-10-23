@@ -21,6 +21,8 @@ import com.afn478.geominder.geofence.GeoInputField
 import com.afn478.geominder.geofence.GeoLabelResolver
 import com.afn478.geominder.geofence.LocationFailure
 import com.afn478.geominder.geofence.LocationResult
+import com.afn478.geominder.geofence.MapLinkResolver
+import com.afn478.geominder.geofence.MapLinkResult
 import com.afn478.geominder.geofence.NumericGeoInputParser
 import com.afn478.geominder.geofence.NumericGeoInputResult
 import com.afn478.geominder.localization.UiText
@@ -35,12 +37,15 @@ import com.afn478.geominder.parser.SourceSpan
 import com.afn478.geominder.parser.TemporalPrecision
 import com.afn478.geominder.parser.TemporalRole
 import com.afn478.geominder.ui.text.toUserMessage
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Clock
 import java.time.DateTimeException
 import java.time.Instant
@@ -65,6 +70,8 @@ class AddReminderViewModel(
     private val localeProvider: () -> Locale = Locale::getDefault,
     private val injectedScope: CoroutineScope? = null,
     val editingReminderId: ReminderId? = null,
+    private val mapLinkResolver: MapLinkResolver? = null,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
 ) : ViewModel() {
     private val defaultRadiusMeters = defaultGeoRadiusProvider
         .getDefaultRadiusMeters()
@@ -498,28 +505,76 @@ class AddReminderViewModel(
 
     fun onRadiusChange(value: String) = updateGeoText(radius = value)
 
+    /**
+     * Fills the location from pasted text: coordinates, a map link (short share links are
+     * expanded over the network), or a place name or address.
+     */
     fun pasteLocation(clipboardText: String) {
-        val coordinates = ClipboardGeoInputParser.parse(clipboardText)
-        if (coordinates == null) {
+        locationRequest?.cancel()
+        locationRequest = null
+        val version = ++locationRequestVersion
+        ClipboardGeoInputParser.parse(clipboardText)?.let { coordinates ->
+            applyResolvedLocation(coordinates.latitude, coordinates.longitude, radiusMeters = null, label = null)
+            return
+        }
+        val resolver = mapLinkResolver
+        if (resolver == null) {
             _uiState.update {
-                it.copy(locationError = UiText.resource(R.string.invalid_clipboard_coordinates))
+                it.copy(isLocating = false, locationError = UiText.resource(R.string.invalid_clipboard_coordinates))
             }
             return
         }
+        _uiState.update { it.copy(isLocating = true, locationError = null) }
+        workScope().launch {
+            val result = runCatching { withContext(ioDispatcher) { resolver.resolve(clipboardText) } }
+                .getOrDefault(MapLinkResult.NotFound)
+            if (version != locationRequestVersion) return@launch
+            when (result) {
+                is MapLinkResult.Found -> applyResolvedLocation(
+                    result.coordinates.latitude,
+                    result.coordinates.longitude,
+                    radiusMeters = null,
+                    label = result.label,
+                )
+                MapLinkResult.NotFound -> _uiState.update {
+                    it.copy(isLocating = false, locationError = UiText.resource(R.string.invalid_clipboard_coordinates))
+                }
+                MapLinkResult.Unreachable -> _uiState.update {
+                    it.copy(isLocating = false, locationError = UiText.resource(R.string.map_link_unreachable))
+                }
+            }
+        }
+    }
+
+    /** Applies a place chosen on the map, keeping the label the picker already resolved. */
+    fun applyPickedLocation(latitude: Double, longitude: Double, radiusMeters: Double, label: String?) {
+        locationRequest?.cancel()
+        locationRequest = null
+        locationRequestVersion++
+        applyResolvedLocation(latitude, longitude, radiusMeters, label)
+    }
+
+    private fun applyResolvedLocation(
+        latitude: Double,
+        longitude: Double,
+        radiusMeters: Double?,
+        label: String?,
+    ) {
         _uiState.update {
             it.copy(
                 expanded = true,
                 geoEditorVisible = true,
-                latitudeText = coordinates.latitude.toPlainString(),
-                longitudeText = coordinates.longitude.toPlainString(),
-                radiusText = it.radiusText.ifBlank(::defaultRadiusText),
+                latitudeText = latitude.toPlainString(),
+                longitudeText = longitude.toPlainString(),
+                radiusText = radiusMeters?.toPlainString() ?: it.radiusText.ifBlank(::defaultRadiusText),
                 geoInputErrors = emptyMap(),
                 geoLabel = null,
+                isLocating = false,
                 locationError = null,
                 saveError = null,
             )
         }
-        applyValidGeoInput(coordinates.latitude, coordinates.longitude)
+        applyValidGeoInput(latitude, longitude, label)
     }
 
     private fun updateGeoText(
@@ -563,7 +618,7 @@ class AddReminderViewModel(
         }
     }
 
-    private fun applyValidGeoInput(latitude: Double, longitude: Double) {
+    private fun applyValidGeoInput(latitude: Double, longitude: Double, label: String? = null) {
         val current = _uiState.value
         val gpsDetection = current.parseResult?.gps
         val editedParseResult = if (gpsDetection != null) {
@@ -584,7 +639,11 @@ class AddReminderViewModel(
                 saveError = null,
             )
         }
-        resolveGeoLabel(latitude, longitude)
+        if (label.isNullOrBlank()) {
+            resolveGeoLabel(latitude, longitude)
+        } else {
+            _uiState.update { it.copy(geoLabel = label) }
+        }
     }
 
     fun onActiveFromEnabledChange(enabled: Boolean) {
@@ -965,7 +1024,6 @@ class AddReminderViewModel(
             LocationFailure.PERMISSION_REQUIRED -> R.string.location_permission_required
             LocationFailure.BACKGROUND_PERMISSION_REQUIRED -> R.string.background_location_permission_required
             LocationFailure.LOCATION_DISABLED -> R.string.location_services_disabled
-            LocationFailure.PLAY_SERVICES_UNAVAILABLE -> R.string.play_services_unavailable
             LocationFailure.NO_LOCATION -> R.string.no_current_location
             LocationFailure.REQUEST_FAILED -> R.string.location_request_failed
         },
@@ -1009,6 +1067,7 @@ class AddReminderViewModelFactory(
     private val clock: Clock = Clock.systemDefaultZone(),
     private val localeProvider: () -> Locale = Locale::getDefault,
     private val editingReminderId: ReminderId? = null,
+    private val mapLinkResolver: MapLinkResolver? = null,
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -1027,6 +1086,7 @@ class AddReminderViewModelFactory(
             clock = clock,
             localeProvider = localeProvider,
             editingReminderId = editingReminderId,
+            mapLinkResolver = mapLinkResolver,
         ) as T
     }
 }

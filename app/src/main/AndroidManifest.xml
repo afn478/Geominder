@@ -9,6 +9,8 @@
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- Map tiles (OpenFreeMap) and expanding shared map short links. -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:name=".ReminderApplication"
@@ -41,7 +43,7 @@
         <receiver android:name=".alarm.TimeAlarmReceiver" android:exported="false" />
         <receiver android:name=".alarm.GatedAlarmReceiver" android:exported="false" />
         <receiver android:name=".alarm.SnoozeAlarmReceiver" android:exported="false" />
-        <receiver android:name=".geofence.GeofenceBroadcastReceiver" android:exported="false" />
+        <receiver android:name=".geofence.ProximityAlertReceiver" android:exported="false" />
         <receiver android:name=".alert.AlertActionReceiver" android:exported="false" />
         <receiver
             android:name=".boot.BootCompletedReceiver"

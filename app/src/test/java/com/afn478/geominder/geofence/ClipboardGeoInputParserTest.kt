@@ -36,6 +36,27 @@ class ClipboardGeoInputParserTest {
     }
 
     @Test
+    fun `prefers a Google place pin over the viewport centre`() {
+        assertCoordinates(
+            40.7506,
+            -73.9935,
+            "https://www.google.com/maps/place/Penn+Station/@40.7489,-73.9900,17z/data=!3m1!4b1!4m6!3m5!1s0x0:0x0!8m2!3d40.7506!4d-73.9935",
+        )
+    }
+
+    @Test
+    fun `parses coordinates in map link paths and parameters`() {
+        assertCoordinates(40.7128, -74.0060, "https://www.google.com/maps/search/40.7128,+-74.0060?entry=tts")
+        assertCoordinates(40.7128, -74.0060, "https://www.google.com/maps/place/40.7128,-74.0060")
+        assertCoordinates(40.7128, -74.0060, "https://maps.apple.com/place?coordinate=40.7128,-74.0060&name=Pin")
+        assertCoordinates(
+            40.7580,
+            -73.9855,
+            "https://www.openstreetmap.org/?mlat=40.7580&mlon=-73.9855#map=17/40.7812/-73.9665",
+        )
+    }
+
+    @Test
     fun `parses degrees minutes and seconds copied from map apps`() {
         assertCoordinates(40.7128, -74.0060, "40°42′46.08″N 74°00′21.6″W", tolerance = 0.000001)
         assertCoordinates(40.7128, -74.0060, "40°42.768′ N, 74°00.36′ W", tolerance = 0.000001)

@@ -10,6 +10,7 @@ import com.google.android.gms.tasks.CancellationTokenSource
 import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
 
+/** Current location through Google Play services; used while Play services is available. */
 class FusedCurrentLocationProvider(
     context: Context,
     private val client: FusedLocationProviderClient =
@@ -70,15 +71,6 @@ class FusedCurrentLocationProvider(
                 cancellationTokenSource.cancel()
             }
         }
-    }
-
-    private fun LocationCapability.toLocationFailure(): LocationFailure = when (this) {
-        LocationCapability.Available -> error("Available is not a failure")
-        LocationCapability.FineLocationPermissionRequired -> LocationFailure.PERMISSION_REQUIRED
-        LocationCapability.BackgroundLocationPermissionRequired ->
-            LocationFailure.BACKGROUND_PERMISSION_REQUIRED
-        LocationCapability.LocationServicesDisabled -> LocationFailure.LOCATION_DISABLED
-        is LocationCapability.PlayServicesUnavailable -> LocationFailure.PLAY_SERVICES_UNAVAILABLE
     }
 
     private companion object {

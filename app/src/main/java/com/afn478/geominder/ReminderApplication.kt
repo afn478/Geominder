@@ -15,11 +15,11 @@ import com.afn478.geominder.boot.DefaultBootFeatureEntryPoint
 import com.afn478.geominder.data.local.ReminderDatabase
 import com.afn478.geominder.data.repository.RoomReminderRepository
 import com.afn478.geominder.domain.repository.ReminderRepository
-import com.afn478.geominder.geofence.AndroidGeofenceRegistrar
-import com.afn478.geominder.geofence.AndroidReverseGeocoder
+import com.afn478.geominder.geofence.Geocoding
+import com.afn478.geominder.geofence.MapLinkResolver
 import com.afn478.geominder.geofence.CurrentLocationProvider
 import com.afn478.geominder.geofence.ExactAlarmGeoVerificationScheduler
-import com.afn478.geominder.geofence.FusedCurrentLocationProvider
+import com.afn478.geominder.geofence.FlavorLocationServices
 import com.afn478.geominder.geofence.GeoEnterCoordinator
 import com.afn478.geominder.geofence.GeoFeatureRuntime
 import com.afn478.geominder.geofence.GeoLabelResolver
@@ -38,7 +38,6 @@ import com.afn478.geominder.settings.SettingsPermissionIntentProvider
 import com.afn478.geominder.settings.SettingsPermissionStatusProvider
 import com.afn478.geominder.settings.SettingsRepository
 import com.afn478.geominder.settings.SharedPreferencesSettingsRepository
-import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -78,6 +77,8 @@ interface AppContainer {
     val geofenceRegistrar: GeofenceRegistrar
     val currentLocationProvider: CurrentLocationProvider
     val geoLabelResolver: GeoLabelResolver
+    val geocoding: Geocoding
+    val mapLinkResolver: MapLinkResolver
     val permissionStatusProvider: SettingsPermissionStatusProvider
     val permissionIntentProvider: SettingsPermissionIntentProvider
     val schedulingCoordinator: ReminderSchedulingCoordinator
@@ -104,17 +105,16 @@ private class DefaultAppContainer(application: Application) : AppContainer {
     override val exactAlarmScheduler: ExactAlarmScheduler =
         AndroidExactAlarmScheduler(applicationContext, permissionController = alarmPermissionController)
 
-    private val geofencingClient = LocationServices.getGeofencingClient(applicationContext)
-    override val geofenceRegistrar: GeofenceRegistrar = AndroidGeofenceRegistrar(
-        context = applicationContext,
-        geofencingClient = geofencingClient,
-    )
+    override val geofenceRegistrar: GeofenceRegistrar =
+        FlavorLocationServices.geofenceRegistrar(applicationContext)
     override val currentLocationProvider: CurrentLocationProvider =
-        FusedCurrentLocationProvider(applicationContext)
-    override val geoLabelResolver: GeoLabelResolver = AndroidReverseGeocoder(
+        FlavorLocationServices.currentLocationProvider(applicationContext)
+    override val geocoding: Geocoding = FlavorLocationServices.geocoding(
         context = applicationContext,
         localeProvider = { AppLanguagePreferences.locale(applicationContext) },
     )
+    override val geoLabelResolver: GeoLabelResolver get() = geocoding
+    override val mapLinkResolver = MapLinkResolver(placeSearch = geocoding)
     override val permissionStatusProvider: SettingsPermissionStatusProvider =
         AndroidSettingsPermissionStatusProvider(
             context = applicationContext,

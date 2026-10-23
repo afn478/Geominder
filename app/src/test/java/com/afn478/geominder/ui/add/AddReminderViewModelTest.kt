@@ -17,6 +17,7 @@ import com.afn478.geominder.domain.repository.ReminderRepository
 import com.afn478.geominder.geofence.CancellationHandle
 import com.afn478.geominder.geofence.CurrentLocationProvider
 import com.afn478.geominder.geofence.GeoLabelResolver
+import com.afn478.geominder.geofence.MapLinkResolver
 import com.afn478.geominder.geofence.LocationFailure
 import com.afn478.geominder.geofence.LocationFix
 import com.afn478.geominder.geofence.LocationResult
@@ -281,6 +282,60 @@ class AddReminderViewModelTest {
         assertEquals("-73.9855", state.longitudeText)
         assertEquals("near pasted place", state.geoLabel)
         assertNull(state.locationError)
+    }
+
+    @Test
+    fun `pasting a short map link expands it and keeps the place name as label`() {
+        val viewModel = viewModel(
+            labelResolver = GeoLabelResolver { _, _, _ -> error("label comes from the link") },
+            mapLinkResolver = MapLinkResolver(
+                placeSearch = { _, _, _ -> emptyList() },
+                redirectTarget = {
+                    "https://www.google.com/maps/place/Penn+Station/@40.7,-74.0,17z/data=!3d40.7506!4d-73.9935"
+                },
+            ),
+        )
+
+        viewModel.pasteLocation("Penn Station\nhttps://maps.app.goo.gl/abc123")
+
+        val state = viewModel.uiState.value
+        assertTrue(state.geoEditorVisible)
+        assertEquals("40.7506", state.latitudeText)
+        assertEquals("-73.9935", state.longitudeText)
+        assertEquals("Penn Station", state.geoLabel)
+        assertFalse(state.isLocating)
+        assertNull(state.locationError)
+    }
+
+    @Test
+    fun `an unreachable short link explains the connection problem`() {
+        val viewModel = viewModel(
+            mapLinkResolver = MapLinkResolver(
+                placeSearch = { _, _, _ -> emptyList() },
+                redirectTarget = { throw java.io.IOException("offline") },
+            ),
+        )
+
+        viewModel.pasteLocation("https://maps.app.goo.gl/abc123")
+
+        assertEquals(R.string.map_link_unreachable, viewModel.uiState.value.locationError?.resourceId())
+        assertFalse(viewModel.uiState.value.isLocating)
+    }
+
+    @Test
+    fun `a place picked on the map sets coordinates radius and label`() {
+        val viewModel = viewModel(
+            labelResolver = GeoLabelResolver { _, _, _ -> error("picker already resolved the label") },
+        )
+
+        viewModel.applyPickedLocation(40.7484, -73.9857, 250.0, "Empire State Building")
+
+        val state = viewModel.uiState.value
+        assertTrue(state.geoEditorVisible)
+        assertEquals("40.7484", state.latitudeText)
+        assertEquals("-73.9857", state.longitudeText)
+        assertEquals("250", state.radiusText)
+        assertEquals("Empire State Building", state.geoLabel)
     }
 
     @Test
@@ -910,6 +965,7 @@ class AddReminderViewModelTest {
         },
         removeTimeExpressionsFromText: Boolean = true,
         editingReminderId: ReminderId? = null,
+        mapLinkResolver: MapLinkResolver? = null,
     ): AddReminderViewModel = AddReminderViewModel(
         repository = repository,
         parser = parser,
@@ -922,6 +978,8 @@ class AddReminderViewModelTest {
         localeProvider = { Locale.US },
         injectedScope = CoroutineScope(Dispatchers.Unconfined),
         editingReminderId = editingReminderId,
+        mapLinkResolver = mapLinkResolver,
+        ioDispatcher = Dispatchers.Unconfined,
     )
 
     private class RecordingPostSaveActions(val events: MutableList<String> = mutableListOf()) : ReminderPostSaveActions {

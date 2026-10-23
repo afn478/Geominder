@@ -212,7 +212,7 @@
     <string name="must_be_positive">Должно быть положительным</string>
     <string name="reminder_could_not_be_found">Это напоминание не найдено</string>
     <string name="invalid_date_time">Введите корректные дату и время</string>
-    <string name="invalid_clipboard_coordinates">В буфере обмена нет корректных координат</string>
+    <string name="invalid_clipboard_coordinates">В буфере обмена не найдено местоположение</string>
     <string name="reminder_save_failed">Не удалось сохранить напоминание</string>
     <string name="check_active_from">Проверьте дату и время начала действия</string>
     <string name="invalid_active_from">Введите корректные дату и время начала действия</string>
@@ -221,7 +221,6 @@
     <string name="location_permission_required">Требуется разрешение на доступ к местоположению</string>
     <string name="background_location_permission_required">Требуется разрешение на фоновый доступ к местоположению</string>
     <string name="location_services_disabled">Включите службы геолокации, чтобы определить местоположение этого устройства</string>
-    <string name="play_services_unavailable">Сервисы Google Play недоступны</string>
     <string name="no_current_location">Текущее местоположение недоступно</string>
     <string name="location_request_failed">Не удалось получить местоположение</string>
     <string name="reminder">Напоминание</string>
@@ -287,4 +286,15 @@
     <string name="show_on_map">Показать на карте</string>
     <string name="history">История</string>
     <string name="you_wrote">Вы написали</string>
+    <string name="map_link_unreachable">Не удалось открыть ссылку. Проверьте подключение и повторите попытку.</string>
+    <string name="pick_on_map">Выбрать на карте</string>
+    <string name="search_places">Поиск места</string>
+    <string name="clear_search">Очистить поиск</string>
+    <string name="use_this_location">Использовать это место</string>
+    <string name="finding_address">Поиск адреса…</string>
+    <string name="no_places_found">Места не найдены</string>
+    <string name="place_search_unavailable">Поиск сейчас недоступен. Проверьте подключение.</string>
+    <string name="map_load_failed">Не удалось загрузить карту. Проверьте подключение.</string>
+    <string name="distance_meters">%1$s м</string>
+    <string name="distance_kilometers">%1$s км</string>
 </resources>
