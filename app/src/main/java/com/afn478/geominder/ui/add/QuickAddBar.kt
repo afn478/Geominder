@@ -30,6 +30,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +49,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.afn478.geominder.R
 import kotlinx.coroutines.delay
@@ -68,6 +71,8 @@ fun QuickAddBar(
     /** Opens the full editor on this draft; `focusText` puts the cursor in its text field. */
     onOpenDetails: (focusText: Boolean) -> Unit,
     onSaved: () -> Unit,
+    /** Replaces the draft with a fresh one, for drafts abandoned before any text was written. */
+    onDiscardDraft: () -> Unit,
     idleHeader: @Composable () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -99,6 +104,17 @@ fun QuickAddBar(
     }
     BackHandler(enabled = focused) { focusManager.clearFocus() }
 
+    // A time, place or tag picked without writing anything is abandoned once the bar is left,
+    // including on returning from the full editor, so it can't resurface in the next reminder.
+    // Only while the list is in the foreground: leaving for the editor tears focus down mid-transition.
+    val lifecycleState by LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
+    val abandoned = lifecycleState.isAtLeast(Lifecycle.State.RESUMED) &&
+        !focused && !state.isSaving && !state.hasUnsavedInput && state.hasDraftSelections
+    val currentOnDiscardDraft by rememberUpdatedState(onDiscardDraft)
+    LaunchedEffect(viewModel, abandoned) {
+        if (abandoned) currentOnDiscardDraft()
+    }
+
     val save = {
         if (hasText && !state.isSaving) viewModel.save()
     }
@@ -107,13 +123,23 @@ fun QuickAddBar(
         if (composing) {
             DetectionChips(
                 state = state,
+                // An unset time or place is filled in right here (next hour, current location);
+                // only changing an existing one needs the full editor.
                 onDateTimeChipClick = {
+                    val editExisting = state.hasDateTimeDetection
                     viewModel.beginDateTimeEdit()
-                    onOpenDetails(false)
+                    if (editExisting) onOpenDetails(false)
                 },
                 onGeoChipClick = {
-                    viewModel.onGeoChipClick()
-                    onOpenDetails(false)
+                    val hasPlace = state.latitudeText.isNotBlank() && state.longitudeText.isNotBlank()
+                    when {
+                        hasPlace -> {
+                            viewModel.onGeoChipClick()
+                            onOpenDetails(false)
+                        }
+                        // Also retries after a failed attempt (permission granted since, GPS on).
+                        !state.isLocating -> viewModel.locate(keepSectionOnFailure = false)
+                    }
                 },
                 onChecklistClick = {
                     viewModel.onChecklistClick()
@@ -121,7 +147,7 @@ fun QuickAddBar(
                 },
                 enabled = !state.isSaving,
             )
-            state.saveError?.let {
+            (state.saveError ?: state.locationError)?.let {
                 SupportingError(it, Modifier.padding(horizontal = 24.dp))
             }
         } else {

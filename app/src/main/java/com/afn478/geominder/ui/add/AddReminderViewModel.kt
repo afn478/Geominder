@@ -615,7 +615,12 @@ class AddReminderViewModel(
         _uiState.update { it.copy(activeFromTimeText = value, activeFromError = null) }
     }
 
-    fun locate() {
+    /**
+     * Fills the location trigger from the current position. With [keepSectionOnFailure] false (the
+     * quick-add bar), a failed fix closes an otherwise empty location section again, so it can't
+     * block saving with "check the location details"; the error stays visible.
+     */
+    fun locate(keepSectionOnFailure: Boolean = true) {
         locationRequest?.cancel()
         val version = ++locationRequestVersion
         _uiState.update {
@@ -648,9 +653,12 @@ class AddReminderViewModel(
 
                 is LocationResult.Unavailable -> {
                     _uiState.update {
+                        val emptySection = it.latitudeText.isBlank() && it.longitudeText.isBlank()
                         it.copy(
                             isLocating = false,
                             locationError = result.reason.userMessage(),
+                            geoEditorVisible = it.geoEditorVisible &&
+                                (keepSectionOnFailure || !emptySection),
                         )
                     }
                 }

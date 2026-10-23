@@ -109,6 +109,7 @@ fun ReminderApp(
                                 navController.navigate(Routes.new(focusText))
                             },
                             onSaved = composerViewModel::reset,
+                            onDiscardDraft = composerViewModel::reset,
                             idleHeader = idleHeader,
                         )
                     } ?: idleHeader()

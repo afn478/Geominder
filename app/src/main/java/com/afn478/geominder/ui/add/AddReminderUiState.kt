@@ -45,6 +45,10 @@ data class AddReminderUiState(
     val hasUnsavedInput: Boolean
         get() = sourceText.isNotBlank() || checklist.any { it.text.isNotBlank() }
 
+    /** Choices that only make sense together with some text: a time, place, tag or empty list. */
+    val hasDraftSelections: Boolean
+        get() = parseResult?.dateTime != null || geoEditorVisible || tag != null || checklistVisible
+
     val hasDateTimeDetection: Boolean
         get() = parseResult?.dateTime != null
 

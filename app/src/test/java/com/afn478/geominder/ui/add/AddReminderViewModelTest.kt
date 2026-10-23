@@ -17,6 +17,7 @@ import com.afn478.geominder.domain.repository.ReminderRepository
 import com.afn478.geominder.geofence.CancellationHandle
 import com.afn478.geominder.geofence.CurrentLocationProvider
 import com.afn478.geominder.geofence.GeoLabelResolver
+import com.afn478.geominder.geofence.LocationFailure
 import com.afn478.geominder.geofence.LocationFix
 import com.afn478.geominder.geofence.LocationResult
 import com.afn478.geominder.localization.resourceId
@@ -815,6 +816,37 @@ class AddReminderViewModelTest {
         assertEquals(first.id, repository.saved.single().id)
         assertEquals(listOf(first.id), actions.cancelled.map(Reminder::id))
         assertNotNull(viewModel.uiState.value.savedReminder)
+    }
+
+    @Test
+    fun `quick-add location failure closes the empty location section but keeps the error`() {
+        val failing = CurrentLocationProvider { callback ->
+            callback(LocationResult.Unavailable(LocationFailure.PERMISSION_REQUIRED))
+            CancellationHandle {}
+        }
+        val inline = viewModel(locationProvider = failing)
+        inline.locate(keepSectionOnFailure = false)
+
+        assertFalse(inline.uiState.value.geoEditorVisible)
+        assertEquals(R.string.location_permission_required, inline.uiState.value.locationError?.resourceId())
+
+        val editor = viewModel(locationProvider = failing)
+        editor.locate()
+
+        assertTrue(editor.uiState.value.geoEditorVisible)
+    }
+
+    @Test
+    fun `chip-only draft has selections but no input worth keeping`() {
+        val viewModel = viewModel()
+        assertFalse(viewModel.uiState.value.hasDraftSelections)
+
+        viewModel.beginDateTimeEdit()
+
+        val state = viewModel.uiState.value
+        assertTrue(state.hasDraftSelections)
+        assertFalse(state.hasUnsavedInput)
+        assertFalse(state.detailsExpanded)
     }
 
     @Test
