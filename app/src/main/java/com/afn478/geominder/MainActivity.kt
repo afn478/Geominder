@@ -15,8 +15,11 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -59,11 +62,17 @@ class MainActivity : ComponentActivity() {
                 enableEdgeToEdge(statusBarStyle = barStyle, navigationBarStyle = barStyle)
             }
             ReminderTheme(themeMode = settings.themeMode, accentTheme = settings.accentTheme) {
-                ReminderApp(
-                    container = container,
-                    onPermissionAction = ::handlePermissionAction,
-                    onLanguageChanged = { recreate() },
-                )
+                // Page transitions fade through an empty frame; paint the app's own background
+                // there, and in the window behind it, rather than the system theme's.
+                val background = MaterialTheme.colorScheme.background
+                SideEffect { window.decorView.setBackgroundColor(background.toArgb()) }
+                Surface(color = background) {
+                    ReminderApp(
+                        container = container,
+                        onPermissionAction = ::handlePermissionAction,
+                        onLanguageChanged = { recreate() },
+                    )
+                }
             }
         }
         // Recreation (rotation, language change) must not re-open permission prompts.
