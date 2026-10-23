@@ -91,8 +91,6 @@ fun ReachableScaffold(
      * pass false and always open compact; they can still be pulled down.
      */
     initiallyExpanded: Boolean = true,
-    /** Only top-level pages get the full-size pulled-down title; subpages use a quieter one. */
-    prominentTitle: Boolean = false,
     /** The app bar resets when this changes; pass a stable key when only the title text varies. */
     scrollResetKey: Any? = title,
     content: @Composable (PaddingValues) -> Unit,
@@ -183,7 +181,6 @@ fun ReachableScaffold(
                     expandedHeight = reachableAppBarExpandedHeight(windowHeight),
                     appBarState = appBarState,
                     scrollBehavior = scrollBehavior,
-                    prominentTitle = prominentTitle,
                 )
             },
             bottomBar = bottomBar,
@@ -203,7 +200,6 @@ private fun ReachableTopAppBar(
     expandedHeight: Dp,
     appBarState: TopAppBarState,
     scrollBehavior: TopAppBarScrollBehavior?,
-    prominentTitle: Boolean,
 ) {
     if (scrollBehavior == null) {
         TopAppBar(
@@ -230,7 +226,6 @@ private fun ReachableTopAppBar(
             actions = actions,
             collapsedFraction = appBarState.collapsedFraction,
             compactTitleStartPadding = compactTitleStartPadding,
-            maxTitleScale = if (prominentTitle) EXPANDED_TITLE_SCALE else SUBPAGE_TITLE_SCALE,
             modifier = Modifier.matchParentSize(),
         )
     }
@@ -243,7 +238,6 @@ private fun ReachableTopAppBarOverlay(
     actions: @Composable RowScope.() -> Unit,
     collapsedFraction: Float,
     compactTitleStartPadding: Dp,
-    maxTitleScale: Float,
     modifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = modifier) {
@@ -271,10 +265,10 @@ private fun ReachableTopAppBarOverlay(
         val expandedTitleScale = if (titleSize.width > 0) {
             (maxExpandedTitleWidthPx / titleSize.width).coerceIn(
                 minimumValue = 1f,
-                maximumValue = maxTitleScale,
+                maximumValue = EXPANDED_TITLE_SCALE,
             )
         } else {
-            maxTitleScale
+            EXPANDED_TITLE_SCALE
         }
         val expandedTitleStartPx = if (titleSize.width > 0) {
             (containerWidthPx - titleSize.width) / 2f
@@ -365,7 +359,6 @@ internal fun reachableAppBarExpandedHeight(windowHeight: Dp): Dp =
 private const val REACHABLE_APP_BAR_HEIGHT_FRACTION = 0.40f
 private const val IME_COLLAPSE_MILLIS = 200
 private const val EXPANDED_TITLE_SCALE = 1.55f
-private const val SUBPAGE_TITLE_SCALE = 1.2f
 private const val HALF = 0.5f
 private val COMPACT_TITLE_START_PADDING = 24.dp
 private val EXPANDED_TITLE_VERTICAL_OFFSET = 20.dp

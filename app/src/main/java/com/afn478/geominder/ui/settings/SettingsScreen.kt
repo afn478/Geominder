@@ -286,7 +286,6 @@ fun SettingsScreen(
         ReachableScaffold(
             title = stringResource(subsection?.titleRes ?: R.string.settings),
             compactTitleStartPadding = 56.dp,
-            prominentTitle = subsection == null,
             navigationIcon = {
                 IconButton(
                     onClick = {
