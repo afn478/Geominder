@@ -528,7 +528,7 @@ class AddReminderViewModelTest {
     }
 
     @Test
-    fun `detected time and edited GPS invoke both integration callbacks`() {
+    fun `detected time gates the edited GPS location`() {
         val repository = FakeReminderRepository()
         val actions = RecordingPostSaveActions()
         val viewModel = viewModel(repository = repository, actions = actions)
@@ -541,14 +541,15 @@ class AddReminderViewModelTest {
         viewModel.save()
 
         val saved = repository.saved.single()
-        assertNotNull(saved.timeTrigger)
+        assertNull(saved.timeTrigger)
+        assertNotNull(saved.geoTrigger?.activeFrom)
         assertEquals(40.7484, saved.geoTrigger?.latitude ?: 0.0, 0.0)
-        assertEquals(listOf(saved), actions.scheduled)
+        assertTrue(actions.scheduled.isEmpty())
         assertEquals(listOf(saved), actions.registered)
     }
 
     @Test
-    fun `preset keyword before coordinates persists both triggers without geo active-from`() {
+    fun `a time before coordinates gates the location instead of ringing`() {
         val repository = FakeReminderRepository()
         val actions = RecordingPostSaveActions()
         val viewModel = viewModel(repository = repository, actions = actions)
@@ -557,15 +558,14 @@ class AddReminderViewModelTest {
         viewModel.save()
 
         val saved = repository.saved.single()
-        assertNotNull(saved.timeTrigger)
-        assertNotNull(saved.geoTrigger)
-        assertNull(saved.geoTrigger?.activeFrom)
-        assertEquals(1, actions.scheduled.count { it == saved })
-        assertEquals(1, actions.registered.count { it == saved })
+        assertNull(saved.timeTrigger)
+        assertEquals(Instant.parse("2026-08-24T20:00:00Z"), saved.geoTrigger?.activeFrom)
+        assertTrue(actions.scheduled.isEmpty())
+        assertEquals(listOf(saved), actions.registered)
     }
 
     @Test
-    fun `time after coordinates independently triggers and gates location`() {
+    fun `time after coordinates only gates the location`() {
         val repository = FakeReminderRepository()
         val actions = RecordingPostSaveActions()
         val viewModel = viewModel(repository = repository, actions = actions)
@@ -574,16 +574,28 @@ class AddReminderViewModelTest {
         viewModel.save()
 
         val saved = repository.saved.single()
-        assertEquals(
-            viewModel.uiState.value.parseResult?.dateTime?.instant,
-            saved.timeTrigger?.exactAt,
-        )
+        assertNull(saved.timeTrigger)
         assertEquals(
             viewModel.uiState.value.parseResult?.dateTime?.instant,
             saved.geoTrigger?.activeFrom,
         )
-        assertEquals(listOf(saved), actions.scheduled)
+        assertFalse(viewModel.uiState.value.hasDateTimeDetection)
+        assertTrue(actions.scheduled.isEmpty())
         assertEquals(listOf(saved), actions.registered)
+    }
+
+    @Test
+    fun `switching the location off turns its time back into an alarm`() {
+        val repository = FakeReminderRepository()
+        val viewModel = viewModel(repository = repository)
+
+        viewModel.onSourceTextChange("Arrive at 40.7128, -74.0060 tonight")
+        viewModel.hideGeoEditor()
+        viewModel.save()
+
+        val saved = repository.saved.single()
+        assertEquals(Instant.parse("2026-08-24T20:00:00Z"), saved.timeTrigger?.exactAt)
+        assertNull(saved.geoTrigger)
     }
 
     @Test
@@ -605,7 +617,7 @@ class AddReminderViewModelTest {
     }
 
     @Test
-    fun `disabling inferred active-from leaves independent time trigger enabled`() {
+    fun `disabling the inferred active-from leaves a plain location trigger`() {
         val repository = FakeReminderRepository()
         val viewModel = viewModel(repository = repository)
         viewModel.onSourceTextChange("Arrive at 40.7128, -74.0060 tonight")
@@ -614,27 +626,26 @@ class AddReminderViewModelTest {
         viewModel.save()
 
         val saved = repository.saved.single()
-        assertNotNull(saved.timeTrigger)
+        assertNull(saved.timeTrigger)
+        assertNotNull(saved.geoTrigger)
         assertNull(saved.geoTrigger?.activeFrom)
     }
 
     @Test
-    fun `editing inferred active-from time updates both independent triggers`() {
+    fun `editing the inferred active-from time moves the gate only`() {
         val repository = FakeReminderRepository()
         val actions = RecordingPostSaveActions()
         val viewModel = viewModel(repository = repository, actions = actions)
 
         viewModel.onSourceTextChange("Arrive at 40.7128, -74.0060 tonight")
-        viewModel.beginDateTimeEdit()
-        viewModel.onDateEditChange("2026-08-30")
-        viewModel.onTimeEditChange("18:15")
-        viewModel.commitDateTimeEdit()
+        viewModel.onActiveFromDateChange("2026-08-30")
+        viewModel.onActiveFromTimeChange("18:15")
         viewModel.save()
 
         val saved = repository.saved.single()
-        assertEquals(Instant.parse("2026-08-30T18:15:00Z"), saved.timeTrigger?.exactAt)
+        assertNull(saved.timeTrigger)
         assertEquals(Instant.parse("2026-08-30T18:15:00Z"), saved.geoTrigger?.activeFrom)
-        assertEquals(listOf(saved), actions.scheduled)
+        assertTrue(actions.scheduled.isEmpty())
         assertEquals(listOf(saved), actions.registered)
     }
 
@@ -651,7 +662,7 @@ class AddReminderViewModelTest {
 
         val state = viewModel.uiState.value
         val saved = repository.saved.single()
-        assertNull(state.parseResult?.dateTime)
+        assertNull(state.parseResult?.reminderTime)
         assertEquals("", state.dateEditText)
         assertEquals("", state.timeEditText)
         assertNull(saved.timeTrigger)

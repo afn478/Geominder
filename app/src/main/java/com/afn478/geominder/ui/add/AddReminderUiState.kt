@@ -50,7 +50,7 @@ data class AddReminderUiState(
         get() = parseResult?.dateTime != null || geoEditorVisible || tag != null || checklistVisible
 
     val hasDateTimeDetection: Boolean
-        get() = parseResult?.dateTime != null
+        get() = parseResult?.reminderTime != null
 
     val hasGpsDetection: Boolean
         get() = parseResult?.gps != null

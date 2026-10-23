@@ -36,6 +36,8 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -507,7 +509,7 @@ internal fun DetectionChips(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    val timeDetection = state.parseResult?.dateTime
+    val timeDetection = state.parseResult?.reminderTime
     val coordinateSummary = state.geoLabel?.let { it.resolveNearbyLabel() }
         ?: state.parseResult?.gps?.displayLabel
         ?: listOf(state.latitudeText, state.longitudeText)
@@ -577,8 +579,8 @@ private fun DateTimeEditor(
         DateTimePickerFields(
             dateText = state.dateEditText,
             timeText = state.timeEditText,
-            fallbackDate = state.parseResult?.dateTime?.date,
-            fallbackTime = state.parseResult?.dateTime?.time,
+            fallbackDate = state.parseResult?.reminderTime?.date,
+            fallbackTime = state.parseResult?.reminderTime?.time,
             dateLabel = stringResource(R.string.date),
             timeLabel = stringResource(R.string.time),
             onDateChange = onDateEditChange,
@@ -631,6 +633,7 @@ private fun DateTimePickerFields(
             value = dateText,
             label = dateLabel,
             actionDescription = stringResource(R.string.select_date),
+            icon = Icons.Default.CalendarMonth,
             onClick = { datePickerVisible = true },
             modifier = Modifier.weight(1.5f),
             isError = isError,
@@ -640,6 +643,7 @@ private fun DateTimePickerFields(
             value = timeText,
             label = timeLabel,
             actionDescription = stringResource(R.string.select_time),
+            icon = Icons.Default.Schedule,
             onClick = { timePickerVisible = true },
             modifier = Modifier.weight(1f),
             isError = isError,
@@ -722,6 +726,7 @@ private fun PickerField(
     value: String,
     label: String,
     actionDescription: String,
+    icon: ImageVector,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     isError: Boolean = false,
@@ -732,6 +737,8 @@ private fun PickerField(
             value = value,
             onValueChange = {},
             label = { Text(label) },
+            // Marks the field as a picker rather than something to type into.
+            trailingIcon = { Icon(icon, contentDescription = null) },
             readOnly = true,
             enabled = enabled,
             singleLine = true,

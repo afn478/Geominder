@@ -149,6 +149,16 @@ data class ParseResult(
     val dateTime: DateTimeDetection?
         get() = detections.filterIsInstance<DateTimeDetection>().firstOrNull()
 
+    /** The time that rings on its own, as opposed to one that only gates the place. */
+    val reminderTime: DateTimeDetection?
+        get() = detections.filterIsInstance<DateTimeDetection>()
+            .firstOrNull { it.role == TemporalRole.REMINDER_TRIGGER }
+
+    /** A time written beside a place: the location trigger only counts from then on. */
+    val geoActiveFrom: DateTimeDetection?
+        get() = detections.filterIsInstance<DateTimeDetection>()
+            .firstOrNull { it.role == TemporalRole.GEO_ACTIVE_FROM }
+
     val gps: GpsDetection?
         get() = detections.filterIsInstance<GpsDetection>().firstOrNull()
 

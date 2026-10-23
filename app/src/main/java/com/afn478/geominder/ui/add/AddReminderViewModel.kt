@@ -287,14 +287,14 @@ class AddReminderViewModel(
                 dateTimeEditError = if (expanded) state.dateTimeEditError else null,
             )
         }
-        if (expanded && !wasExpanded && _uiState.value.parseResult?.dateTime != null) {
+        if (expanded && !wasExpanded && _uiState.value.parseResult?.reminderTime != null) {
             beginDateTimeEdit()
         }
     }
 
     fun onSourceTextChange(sourceText: String) {
         val state = _uiState.value
-        val previousDateTime = state.parseResult?.dateTime
+        val previousDateTime = state.parseResult?.reminderTime
         val previousGps = state.parseResult?.gps
         val preservedDateTime = previousDateTime?.takeIf {
             !state.timeTriggerCleared &&
@@ -306,14 +306,14 @@ class AddReminderViewModel(
             detectTemporalExpressions = detectSourceExpressions,
             detectGpsExpressions = detectSourceExpressions,
         )
-        val parsed = if (parsedSource.dateTime == null && preservedDateTime != null) {
+        val parsed = if (parsedSource.reminderTime == null && preservedDateTime != null) {
             parsedSource.copy(detections = parsedSource.detections + preservedDateTime)
         } else {
             parsedSource
         }
         val gps = parsed.gps
         val gpsRadius = gps?.radiusMeters
-        val parsedActiveFrom = parsed.dateTime?.takeIf { it.role == TemporalRole.GEO_ACTIVE_FROM }
+        val parsedActiveFrom = parsed.geoActiveFrom
         val gpsChanged = gps != null &&
             (gps.latitude != previousGps?.latitude ||
                 gps.longitude != previousGps.longitude ||
@@ -323,12 +323,12 @@ class AddReminderViewModel(
             state.copy(
                 sourceText = sourceText,
                 parseResult = parsed,
-                dateEditText = parsed.dateTime?.let { formatDate(it.date) } ?: state.dateEditText,
-                timeEditText = parsed.dateTime?.let { formatTime(it.time) } ?: state.timeEditText,
+                dateEditText = parsed.reminderTime?.let { formatDate(it.date) } ?: state.dateEditText,
+                timeEditText = parsed.reminderTime?.let { formatTime(it.time) } ?: state.timeEditText,
                 expanded = state.expanded || sourceText.isNotBlank(),
                 editingDateTimeDetectionId = null,
                 dateTimeEditDirty = false,
-                timeTriggerCleared = if (parsed.dateTime != null) false else state.timeTriggerCleared,
+                timeTriggerCleared = if (parsed.reminderTime != null) false else state.timeTriggerCleared,
                 dateTimeEditError = null,
                 geoEditorVisible = state.geoEditorVisible || gps != null,
                 latitudeText = gps?.latitude?.toPlainString() ?: state.latitudeText,
@@ -356,7 +356,7 @@ class AddReminderViewModel(
     }
 
     fun beginDateTimeEdit() {
-        val detection = _uiState.value.parseResult?.dateTime
+        val detection = _uiState.value.parseResult?.reminderTime
         if (detection == null) {
             addDefaultTimeTrigger()
             return
@@ -409,7 +409,7 @@ class AddReminderViewModel(
             return
         }
 
-        val id = state.editingDateTimeDetectionId ?: state.parseResult?.dateTime?.id
+        val id = state.editingDateTimeDetectionId ?: state.parseResult?.reminderTime?.id
         if (id == null) {
             addManualTimeTrigger(date, time)
             return
@@ -417,7 +417,7 @@ class AddReminderViewModel(
         val result = state.parseResult ?: return
 
         val editedResult = result.applyEdit(DetectionEdit.DateTime(id, date, time))
-        val editedDetection = editedResult.dateTime
+        val editedDetection = editedResult.detections.firstOrNull { it.id == id } as? DateTimeDetection
         _uiState.update {
             it.copy(
                 parseResult = editedResult,
@@ -440,8 +440,9 @@ class AddReminderViewModel(
         _uiState.update { state ->
             state.copy(
                 parseResult = state.parseResult?.copy(
+                    // A time that only gates the place belongs to the location section.
                     detections = state.parseResult.detections.filterNot { detection ->
-                        detection is DateTimeDetection
+                        detection is DateTimeDetection && detection.role == TemporalRole.REMINDER_TRIGGER
                     },
                 ),
                 editingDateTimeDetectionId = null,
@@ -777,6 +778,7 @@ class AddReminderViewModel(
     fun save() {
         if (_uiState.value.isSaving) return
         if (!commitPendingDateTimeEdit()) return
+        // Any detected time counts here: without the location, a gating time rings instead.
         if (_uiState.value.parseResult?.dateTime == null &&
             !_uiState.value.geoEditorVisible &&
             !_uiState.value.timeTriggerCleared
@@ -866,7 +868,9 @@ class AddReminderViewModel(
     }
 
     private fun buildReminder(state: AddReminderUiState): ReminderBuildResult {
-        val dateTimeDetection = state.parseResult?.dateTime
+        // A time beside a place only gates it; with the location switched off it rings instead.
+        val dateTimeDetection = state.parseResult?.reminderTime
+            ?: state.parseResult?.geoActiveFrom?.takeIf { !state.geoEditorVisible }
         val timeTrigger = dateTimeDetection
             ?.let { TimeTrigger(exactAt = it.instant) }
         val geoInputResult = if (state.geoEditorVisible) parseGeoInput(state) else null

@@ -431,7 +431,7 @@ class ReminderTextParserTest {
     }
 
     @Test
-    fun `keyword after GPS is geo active while keyword before GPS remains reminder trigger`() {
+    fun `a time beside coordinates gates the place whichever side it is on`() {
         val afterGps = ReminderTextParser().parse(
             "Arrive at 40.7128, -74.0060 tonight",
             context,
@@ -442,7 +442,7 @@ class ReminderTextParserTest {
         )
 
         assertEquals(TemporalRole.GEO_ACTIVE_FROM, afterGps.dateTime?.role)
-        assertEquals(TemporalRole.REMINDER_TRIGGER, beforeGps.dateTime?.role)
+        assertEquals(TemporalRole.GEO_ACTIVE_FROM, beforeGps.dateTime?.role)
     }
 
     @Test
@@ -467,13 +467,24 @@ class ReminderTextParserTest {
     }
 
     @Test
-    fun `unrelated from does not change temporal role`() {
+    fun `a time without a place still rings on its own`() {
         val detection = ReminderTextParser().parse(
-            "From New York, tonight remind me at 40.7128, -74.0060",
+            "From New York, tonight call the hotel",
             context,
         ).dateTime
 
         assertEquals(TemporalRole.REMINDER_TRIGGER, detection?.role)
+    }
+
+    @Test
+    fun `from before a time that gates a place leaves the text with it`() {
+        val result = ReminderTextParser().parse(
+            "Buy milk at 40.7128, -74.0060 from 18:00",
+            context,
+        )
+
+        assertEquals(TemporalRole.GEO_ACTIVE_FROM, result.dateTime?.role)
+        assertEquals("Buy milk at 40.7128, -74.0060", result.textWithoutTimeExpression())
     }
 
     @Test

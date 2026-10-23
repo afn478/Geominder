@@ -114,12 +114,8 @@ class ReminderTextParser private constructor(
                 instant = duration.instant,
                 zoneId = context.zoneId,
                 precision = TemporalPrecision.RELATIVE_DURATION,
-                role = if (gpsSpan != null && isIntroducedByFrom(source, duration.span)) {
-                    TemporalRole.GEO_ACTIVE_FROM
-                } else {
-                    TemporalRole.REMINDER_TRIGGER
-                },
-                expressionSpans = listOf(duration.span),
+                role = roleBesidePlace(gpsSpan),
+                expressionSpans = listOf(duration.span) + activeFromWordSpans(source, duration.span, gpsSpan),
             )
         }
         if (date == null && time == null) return null
@@ -184,16 +180,10 @@ class ReminderTextParser private constructor(
             instant = zoned.toInstant(),
             zoneId = context.zoneId,
             precision = precision,
-            role = if (gpsSpan != null &&
-                (isIntroducedByFrom(source, span) ||
-                    (resolvedTimeCandidate?.isPreset == true &&
-                        resolvedTimeCandidate.span.start >= gpsSpan.endExclusive))
-            ) {
-                TemporalRole.GEO_ACTIVE_FROM
-            } else {
-                TemporalRole.REMINDER_TRIGGER
-            },
-            expressionSpans = expressionSpans,
+            role = roleBesidePlace(gpsSpan),
+            expressionSpans = (expressionSpans + activeFromWordSpans(source, span, gpsSpan))
+                .distinct()
+                .sortedBy(SourceSpan::start),
         )
     }
 
@@ -276,12 +266,32 @@ class ReminderTextParser private constructor(
         }
     }
 
-    private fun isIntroducedByFrom(source: String, temporalSpan: SourceSpan): Boolean =
-        languagePack.fromPrefixes.any { prefix ->
-            prefix.containsMatchIn(source.substring(0, temporalSpan.start))
-        } || languagePack.fromSuffixes.any { suffix ->
-            suffix.containsMatchIn(source.substring(temporalSpan.endExclusive))
+    /**
+     * A time written next to a place says when the place starts to matter ("at the station from
+     * 18:00"), so it gates the location trigger instead of ringing on its own.
+     */
+    private fun roleBesidePlace(gpsSpan: SourceSpan?): TemporalRole =
+        if (gpsSpan != null) TemporalRole.GEO_ACTIVE_FROM else TemporalRole.REMINDER_TRIGGER
+
+    /** The "from" word around a time that gates a place, removed from the text along with it. */
+    private fun activeFromWordSpans(
+        source: String,
+        temporalSpan: SourceSpan,
+        gpsSpan: SourceSpan?,
+    ): List<SourceSpan> {
+        if (gpsSpan == null) return emptyList()
+        val before = source.substring(0, temporalSpan.start)
+        val after = source.substring(temporalSpan.endExclusive)
+        val prefixes = languagePack.fromPrefixes.mapNotNull { prefix ->
+            prefix.find(before)?.range?.toSpan()
         }
+        val suffixes = languagePack.fromSuffixes.mapNotNull { suffix ->
+            suffix.find(after)
+                ?.takeIf { it.range.first == 0 }
+                ?.let { SourceSpan(temporalSpan.endExclusive, temporalSpan.endExclusive + it.range.last + 1) }
+        }
+        return prefixes + suffixes
+    }
 
     private fun parseGps(source: String, issues: MutableList<ParseIssue>): GpsDetection? {
         val candidates = mutableListOf<GpsCandidate>()
