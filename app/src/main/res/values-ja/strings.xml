@@ -6,12 +6,8 @@
     <string name="alert_snooze">スヌーズ</string>
     <string name="alert_dismiss">閉じる</string>
     <string name="alert_done">完了</string>
-    <string name="more_options">その他のオプション</string>
     <string name="settings">設定</string>
-    <string name="sort_by">並べ替え…</string>
     <string name="sort_menu_title">並べ替え</string>
-    <string name="open_sort_options">並べ替えオプションを開く</string>
-    <string name="sort_option_selected">%1$s、選択中</string>
     <string name="sort_title_ascending">タイトル（A から Z）</string>
     <string name="sort_title_descending">タイトル（Z から A）</string>
     <string name="sort_creation_date_ascending">作成日（古い順）</string>

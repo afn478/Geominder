@@ -65,19 +65,34 @@ fun ReachableScaffold(
     compactTitleStartPadding: Dp = COMPACT_TITLE_START_PADDING,
     bottomBar: @Composable () -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
-    /** The app bar re-expands when this changes; pass a stable key when only the title text varies. */
+    /**
+     * Whether the page opens with the big pulled-down title. Browsing pages (the list, settings)
+     * do; pages that exist to read or change one thing open compact, so their content starts at
+     * the top, and can still be pulled down.
+     */
+    initiallyExpanded: Boolean = true,
+    /** The app bar resets when this changes; pass a stable key when only the title text varies. */
     scrollResetKey: Any? = title,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxSize()) {
-        val appBarState = rememberTopAppBarState()
+        val density = LocalDensity.current
         // Size the header from the window, not from these constraints: the keyboard must never
         // flip the bar between its reachable and compact forms or resize it mid-animation.
-        val windowSize = with(LocalDensity.current) {
+        val windowSize = with(density) {
             LocalWindowInfo.current.containerSize.let { DpSize(it.width.toDp(), it.height.toDp()) }
         }
         val windowHeight = windowSize.height.takeIf { it > 0.dp } ?: maxHeight
         val windowWidth = windowSize.width.takeIf { it > 0.dp } ?: maxWidth
+        // The large bar collapses by exactly its expandable row, so a compact start is known
+        // before the first layout and never flashes the expanded title.
+        val collapsedOffset = with(density) {
+            -(reachableAppBarExpandedHeight(windowHeight) - TopAppBarDefaults.LargeAppBarCollapsedHeight).toPx()
+        }
+        val appBarState = rememberTopAppBarState(
+            initialHeightOffsetLimit = collapsedOffset,
+            initialHeightOffset = if (initiallyExpanded) 0f else collapsedOffset,
+        )
         val useReachableAppBar = shouldUseReachableAppBar(
             windowHeight = windowHeight,
             windowWidth = windowWidth,
@@ -101,17 +116,17 @@ fun ReachableScaffold(
         LaunchedEffect(scrollResetKey) {
             val key = scrollResetKey.hashCode()
             if (appliedResetKey != null && appliedResetKey != key) {
-                appBarState.heightOffset = 0f
+                appBarState.heightOffset = if (initiallyExpanded) 0f else appBarState.heightOffsetLimit
                 appBarState.contentOffset = 0f
             }
             appliedResetKey = key
         }
         LaunchedEffect(imeVisible, useReachableAppBar) {
-            val collapsedOffset = appBarState.heightOffsetLimit
-            if (imeVisible && useReachableAppBar && appBarState.heightOffset > collapsedOffset) {
+            val limit = appBarState.heightOffsetLimit
+            if (imeVisible && useReachableAppBar && appBarState.heightOffset > limit) {
                 animate(
                     initialValue = appBarState.heightOffset,
-                    targetValue = collapsedOffset,
+                    targetValue = limit,
                     animationSpec = tween(durationMillis = IME_COLLAPSE_MILLIS),
                 ) { value, _ -> appBarState.heightOffset = value }
             }

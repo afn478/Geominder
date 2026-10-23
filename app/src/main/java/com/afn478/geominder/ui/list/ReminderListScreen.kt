@@ -34,12 +34,10 @@ import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Checklist
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.RestoreFromTrash
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
@@ -50,10 +48,10 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.ui.semantics.selected
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -241,7 +239,7 @@ fun ReminderListScreen(
                     onInvertSelection = onInvertSelection,
                 )
             } else {
-                ReminderOverflowMenu(
+                ReminderListActions(
                     onOpenSettings = onOpenSettings,
                     sortOrder = state.sortOrder,
                     onSortOrderChange = onSortOrderChange,
@@ -371,89 +369,39 @@ private fun ReminderSelectionActions(
     }
 }
 
+/** Sorting and settings as their own buttons: each opens exactly what its icon shows. */
 @Composable
-private fun ReminderOverflowMenu(
+private fun ReminderListActions(
     onOpenSettings: () -> Unit,
     sortOrder: ReminderSortOrder,
     onSortOrderChange: (ReminderSortOrder) -> Unit,
 ) {
-    var overflowExpanded by rememberSaveable { mutableStateOf(false) }
     var sortExpanded by rememberSaveable { mutableStateOf(false) }
-    val moreOptionsLabel = stringResource(R.string.more_options)
 
     Box {
-        IconButton(
-            onClick = {
-                overflowExpanded = !overflowExpanded
-                sortExpanded = false
-            },
-            modifier = Modifier.semantics {
-                contentDescription = moreOptionsLabel
-            },
-        ) {
-            Icon(Icons.Default.MoreVert, contentDescription = null)
-        }
-
-        DropdownMenu(
-            expanded = overflowExpanded,
-            onDismissRequest = { overflowExpanded = false },
-        ) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.settings)) },
-                leadingIcon = { Icon(Icons.Default.Settings, contentDescription = null) },
-                onClick = {
-                    overflowExpanded = false
-                    onOpenSettings()
-                },
-            )
-            HorizontalDivider()
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.sort_by)) },
-                leadingIcon = { Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null) },
-                trailingIcon = {
-                    Icon(
-                        Icons.Default.ChevronRight,
-                        contentDescription = stringResource(R.string.open_sort_options),
-                    )
-                },
-                onClick = {
-                    overflowExpanded = false
-                    sortExpanded = true
-                },
+        IconButton(onClick = { sortExpanded = true }) {
+            Icon(
+                Icons.AutoMirrored.Filled.Sort,
+                contentDescription = stringResource(R.string.sort_menu_title),
             )
         }
-
         DropdownMenu(
             expanded = sortExpanded,
             onDismissRequest = { sortExpanded = false },
+            shape = MaterialTheme.shapes.large,
         ) {
-            Text(
-                text = stringResource(R.string.sort_menu_title),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            )
-            HorizontalDivider()
             SORT_MENU_OPTIONS.forEach { option ->
-                val isSelected = option.sortOrder == sortOrder
-                val label = stringResource(option.labelRes)
-                val accessibilityLabel = if (isSelected) {
-                    stringResource(R.string.sort_option_selected, label)
-                } else {
-                    label
-                }
+                val selected = option.sortOrder == sortOrder
                 DropdownMenuItem(
-                    text = { Text(label) },
+                    text = { Text(stringResource(option.labelRes)) },
                     leadingIcon = {
-                        if (isSelected) {
+                        if (selected) {
                             Icon(Icons.Default.Check, contentDescription = null)
                         } else {
                             Spacer(Modifier.size(24.dp))
                         }
                     },
-                    modifier = Modifier.semantics {
-                        contentDescription = accessibilityLabel
-                    },
+                    modifier = Modifier.semantics { this.selected = selected },
                     onClick = {
                         sortExpanded = false
                         onSortOrderChange(option.sortOrder)
@@ -461,6 +409,9 @@ private fun ReminderOverflowMenu(
                 )
             }
         }
+    }
+    IconButton(onClick = onOpenSettings) {
+        Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.settings))
     }
 }
 

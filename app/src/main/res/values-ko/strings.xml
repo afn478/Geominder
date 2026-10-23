@@ -6,12 +6,8 @@
     <string name="alert_snooze">다시 알림</string>
     <string name="alert_dismiss">해제</string>
     <string name="alert_done">완료</string>
-    <string name="more_options">옵션 더보기</string>
     <string name="settings">설정</string>
-    <string name="sort_by">정렬 기준…</string>
     <string name="sort_menu_title">정렬 기준</string>
-    <string name="open_sort_options">정렬 옵션 열기</string>
-    <string name="sort_option_selected">%1$s, 선택됨</string>
     <string name="sort_title_ascending">제목 (A~Z)</string>
     <string name="sort_title_descending">제목 (Z~A)</string>
     <string name="sort_creation_date_ascending">생성 날짜 (오래된 순)</string>

@@ -249,6 +249,17 @@ internal fun accentSwatchColor(
     if (darkTheme) accent.darkPrimary else accent.lightPrimary
 }
 
+/** The colour [AccentTheme.DYNAMIC] resolves to: the wallpaper colour, or the fallback before Android 12. */
+@Composable
+internal fun systemAccentColor(darkTheme: Boolean): Color {
+    val context = LocalContext.current
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (darkTheme) dynamicDarkColorScheme(context).primary else dynamicLightColorScheme(context).primary
+    } else {
+        if (darkTheme) fallbackAccent.darkPrimary else fallbackAccent.lightPrimary
+    }
+}
+
 internal fun resolveDarkTheme(systemIsDark: Boolean, themeMode: ThemeMode): Boolean =
     when (themeMode) {
         ThemeMode.SYSTEM -> systemIsDark

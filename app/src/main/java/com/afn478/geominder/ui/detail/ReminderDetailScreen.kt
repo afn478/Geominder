@@ -95,6 +95,7 @@ fun ReminderDetailScreen(
         title = stringResource(R.string.reminder),
         modifier = modifier,
         compactTitleStartPadding = 56.dp,
+        initiallyExpanded = false,
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(

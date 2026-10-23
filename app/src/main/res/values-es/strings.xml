@@ -6,12 +6,8 @@
     <string name="alert_snooze">Posponer</string>
     <string name="alert_dismiss">Descartar</string>
     <string name="alert_done">Listo</string>
-    <string name="more_options">Más opciones</string>
     <string name="settings">Ajustes</string>
-    <string name="sort_by">Ordenar por…</string>
     <string name="sort_menu_title">Ordenar por</string>
-    <string name="open_sort_options">Abrir opciones de ordenación</string>
-    <string name="sort_option_selected">%1$s, seleccionado</string>
     <string name="sort_title_ascending">Título (de la A a la Z)</string>
     <string name="sort_title_descending">Título (de la Z a la A)</string>
     <string name="sort_creation_date_ascending">Fecha de creación (más antiguos primero)</string>

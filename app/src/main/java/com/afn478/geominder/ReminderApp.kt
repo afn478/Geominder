@@ -26,6 +26,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
+import com.afn478.geominder.ui.motion.SharedAxis
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
@@ -93,6 +94,10 @@ fun ReminderApp(
     NavHost(
         navController = navController,
         startDestination = Routes.LIST,
+        enterTransition = { SharedAxis.forwardEnter() },
+        exitTransition = { SharedAxis.forwardExit() },
+        popEnterTransition = { SharedAxis.backwardEnter() },
+        popExitTransition = { SharedAxis.backwardExit() },
     ) {
         composable(Routes.LIST) {
             val listViewModel: ReminderListViewModel = viewModel(
@@ -353,6 +358,7 @@ private fun ReminderEditorHost(
     ReachableScaffold(
         title = title,
         compactTitleStartPadding = 56.dp,
+        initiallyExpanded = false,
         navigationIcon = {
             IconButton(onClick = onBack) {
                 Icon(

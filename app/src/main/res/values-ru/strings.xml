@@ -6,12 +6,8 @@
     <string name="alert_snooze">Отложить</string>
     <string name="alert_dismiss">Отклонить</string>
     <string name="alert_done">Готово</string>
-    <string name="more_options">Дополнительные параметры</string>
     <string name="settings">Настройки</string>
-    <string name="sort_by">Сортировка…</string>
     <string name="sort_menu_title">Сортировать по</string>
-    <string name="open_sort_options">Открыть параметры сортировки</string>
-    <string name="sort_option_selected">%1$s, выбрано</string>
     <string name="sort_title_ascending">Название (от А до Я)</string>
     <string name="sort_title_descending">Название (от Я до А)</string>
     <string name="sort_creation_date_ascending">Дата создания (сначала старые)</string>

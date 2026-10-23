@@ -6,12 +6,8 @@
     <string name="alert_snooze">稍后提醒</string>
     <string name="alert_dismiss">关闭</string>
     <string name="alert_done">完成</string>
-    <string name="more_options">更多选项</string>
     <string name="settings">设置</string>
-    <string name="sort_by">排序方式…</string>
     <string name="sort_menu_title">排序方式</string>
-    <string name="open_sort_options">打开排序选项</string>
-    <string name="sort_option_selected">%1$s，已选择</string>
     <string name="sort_title_ascending">标题（A 到 Z）</string>
     <string name="sort_title_descending">标题（Z 到 A）</string>
     <string name="sort_creation_date_ascending">创建日期（最早优先）</string>

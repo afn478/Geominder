@@ -1,7 +1,7 @@
 package com.afn478.geominder.ui.settings
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -88,8 +86,13 @@ import com.afn478.geominder.settings.PermissionUiItem
 import com.afn478.geominder.settings.SettingsPermissionAction
 import com.afn478.geominder.settings.ThemeMode
 import com.afn478.geominder.ui.appbar.ReachableScaffold
+import com.afn478.geominder.ui.motion.SharedAxis
 import com.afn478.geominder.ui.theme.accentSwatchColor
 import com.afn478.geominder.ui.theme.resolveDarkTheme
+import com.afn478.geominder.ui.theme.systemAccentColor
+import androidx.compose.material.icons.outlined.Wallpaper
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import com.afn478.geominder.ui.text.resolve
 
 private enum class SettingsSubsection(@androidx.annotation.StringRes val titleRes: Int) {
@@ -270,13 +273,15 @@ fun SettingsScreen(
         selectedSubsection = null
     }
 
-    Crossfade(
+    AnimatedContent(
         targetState = selectedSubsection,
         modifier = modifier,
+        // Subsections move like separate screens: in from the right, back out to the right.
+        transitionSpec = { if (targetState != null) SharedAxis.forward() else SharedAxis.backward() },
         label = "Settings subsection",
     ) { subsection ->
         // Each page owns its scroll state: the outgoing and incoming page are both laid out during
-        // the crossfade, and every page should open at the top.
+        // the transition, and every page should open at the top.
         val pageScrollState = rememberScrollState()
         ReachableScaffold(
             title = stringResource(subsection?.titleRes ?: R.string.settings),
@@ -393,27 +398,22 @@ private fun LanguageSection(
     state: SettingsUiState,
     onKeywordLanguageChange: (SupportedLanguage?) -> Unit,
 ) {
-    SettingsSection(title = stringResource(R.string.language)) {
+    SettingsSection {
         Text(
             text = stringResource(R.string.language_description),
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        LazyRow(
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            item(key = "system-default") {
-                FilterChip(
-                    selected = state.settings.keywordLanguageOverride == null,
-                    onClick = { onKeywordLanguageChange(null) },
-                    label = { Text(stringResource(R.string.language_system_default)) },
-                )
-            }
-            items(
-                items = SupportedLanguage.entries.toList(),
-                key = SupportedLanguage::languageTag,
-            ) { language ->
+            FilterChip(
+                selected = state.settings.keywordLanguageOverride == null,
+                onClick = { onKeywordLanguageChange(null) },
+                label = { Text(stringResource(R.string.language_system_default)) },
+            )
+            SupportedLanguage.entries.forEach { language ->
                 FilterChip(
                     selected = state.settings.keywordLanguageOverride == language,
                     onClick = { onKeywordLanguageChange(language) },
@@ -579,7 +579,7 @@ private fun AppearanceSection(
         themeMode = state.settings.themeMode,
     )
 
-    SettingsSection(title = stringResource(R.string.appearance)) {
+    SettingsSection {
         Text(stringResource(R.string.theme), style = MaterialTheme.typography.titleMedium)
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ThemeMode.entries.forEach { mode ->
@@ -591,41 +591,59 @@ private fun AppearanceSection(
             }
         }
         Text(stringResource(R.string.accent), style = MaterialTheme.typography.titleMedium)
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(AccentTheme.entries.toList(), key = { accent -> accent.name }) { accent ->
+        // The system swatch shows the wallpaper colour itself, not whatever accent is applied now.
+        val systemAccent = systemAccentColor(darkTheme)
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            AccentTheme.entries.forEach { accent ->
                 val selected = state.settings.accentTheme == accent
                 val label = accent.localizedLabel()
                 val accessibilityLabel = stringResource(
                     if (selected) R.string.accent_color_selected else R.string.accent_color,
                     label,
                 )
+                val swatch = accentSwatchColor(
+                    accentTheme = accent,
+                    darkTheme = darkTheme,
+                    dynamicColor = systemAccent,
+                )
+                val glyphTint = if (swatch.luminance() > 0.5f) Color.Black else Color.White
                 IconButton(
                     onClick = { onAccentThemeChange(accent) },
-                    modifier = Modifier.semantics {
-                        contentDescription = accessibilityLabel
-                    },
+                    modifier = Modifier
+                        .size(48.dp)
+                        .semantics { contentDescription = accessibilityLabel },
                 ) {
                     Surface(
-                        modifier = Modifier.size(32.dp),
+                        modifier = Modifier.size(36.dp),
                         shape = CircleShape,
-                        color = accentSwatchColor(
-                            accentTheme = accent,
-                            darkTheme = darkTheme,
-                            dynamicColor = MaterialTheme.colorScheme.primary,
-                        ),
+                        color = swatch,
                     ) {
-                        if (selected) {
-                            Icon(
+                        when {
+                            selected -> Icon(
                                 imageVector = Icons.Default.Check,
                                 contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.padding(7.dp),
+                                tint = glyphTint,
+                                modifier = Modifier.padding(8.dp),
+                            )
+                            accent == AccentTheme.DYNAMIC -> Icon(
+                                imageVector = Icons.Outlined.Wallpaper,
+                                contentDescription = null,
+                                tint = glyphTint,
+                                modifier = Modifier.padding(9.dp),
                             )
                         }
                     }
                 }
             }
         }
+        Text(
+            text = state.settings.accentTheme.localizedLabel(),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
@@ -636,7 +654,7 @@ private fun BackupSection(
     status: UiText?,
     inProgress: Boolean,
 ) {
-    SettingsSection(title = stringResource(R.string.backup)) {
+    SettingsSection {
         Text(
             text = stringResource(R.string.backup_description),
             style = MaterialTheme.typography.bodyMedium,
@@ -676,7 +694,7 @@ private fun BackupSection(
 private fun DebugAlertSection(
     onShowDebugFullScreenReminder: () -> Unit,
 ) {
-    SettingsSection(title = stringResource(R.string.debug)) {
+    SettingsSection {
         Text(
             text = stringResource(R.string.debug_alert_description),
             style = MaterialTheme.typography.bodyMedium,
@@ -695,7 +713,7 @@ private fun RadiusSection(
     onSaveRadius: () -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
-    SettingsSection(title = stringResource(R.string.location_defaults)) {
+    SettingsSection {
         Text(
             text = stringResource(R.string.location_defaults_description),
             style = MaterialTheme.typography.bodyMedium,
@@ -744,7 +762,7 @@ private fun LocationPresetSection(
     onResetLocations: () -> Unit,
 ) {
     val clipboardManager = LocalClipboardManager.current
-    SettingsSection(title = stringResource(R.string.preset_locations)) {
+    SettingsSection {
         Text(
             text = stringResource(R.string.preset_locations_description),
             style = MaterialTheme.typography.bodyMedium,
@@ -982,7 +1000,7 @@ private fun KeywordSection(
     onRemoveKeyword: (String) -> Unit,
     onResetKeywords: () -> Unit,
 ) {
-    SettingsSection(title = stringResource(R.string.preset_times)) {
+    SettingsSection {
         Text(
             text = stringResource(R.string.preset_times_description),
             style = MaterialTheme.typography.bodyMedium,
@@ -1141,7 +1159,7 @@ private fun PermissionSection(
     items: List<PermissionUiItem>,
     onPermissionAction: (SettingsPermissionAction) -> Unit,
 ) {
-    SettingsSection(title = stringResource(R.string.permissions)) {
+    SettingsSection {
         Text(
             text = stringResource(R.string.permissions_description),
             style = MaterialTheme.typography.bodyMedium,
@@ -1189,14 +1207,9 @@ private fun PermissionRow(
 }
 
 @Composable
-private fun SettingsSection(
-    title: String,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(title, style = MaterialTheme.typography.headlineSmall)
-        content()
-    }
+private fun SettingsSection(content: @Composable ColumnScope.() -> Unit) {
+    // No headline: the app bar above already names the page.
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
 }
 
 @Composable
