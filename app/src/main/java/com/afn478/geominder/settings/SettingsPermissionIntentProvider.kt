@@ -26,9 +26,19 @@ class SettingsPermissionIntentProvider(
             Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
             Uri.parse("package:${applicationContext.packageName}"),
         ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        // The app's own battery page (Optimized / Unrestricted). Not a public action, so the
+        // host falls back to the app details page where a device lacks it.
+        SettingsPermissionAction.OPEN_BATTERY_SETTINGS -> Intent(
+            ACTION_APP_BATTERY_SETTINGS,
+            Uri.parse("package:${applicationContext.packageName}"),
+        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         SettingsPermissionAction.REQUEST_FINE_LOCATION,
         SettingsPermissionAction.REQUEST_BACKGROUND_LOCATION,
         SettingsPermissionAction.REQUEST_NOTIFICATIONS,
         -> null
+    }
+
+    private companion object {
+        const val ACTION_APP_BATTERY_SETTINGS = "android.settings.VIEW_ADVANCED_POWER_USAGE_DETAIL"
     }
 }

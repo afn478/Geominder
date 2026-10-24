@@ -55,6 +55,19 @@ class PlatformGeofenceRegistrar(
         }
     }
 
+    /**
+     * Proximity alerts live as long as their PendingIntent: both go together on a reboot or a
+     * force stop. While the intent still exists the alert does too, and re-adding it would only
+     * fire again for a device already inside.
+     */
+    override fun refresh(spec: GeofenceSpec, callback: GeofenceOperationCallback) {
+        if (pendingIntent(spec.requestId, PendingIntent.FLAG_NO_CREATE) != null) {
+            callback.onComplete(GeofenceOperationResult.Success)
+        } else {
+            register(spec, callback)
+        }
+    }
+
     override fun cancel(triggerId: TriggerId, callback: GeofenceOperationCallback) {
         val intent = pendingIntent(StableGeofenceId.from(triggerId), PendingIntent.FLAG_NO_CREATE)
         if (intent == null) {

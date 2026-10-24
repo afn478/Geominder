@@ -21,6 +21,14 @@ class FallbackGeofenceRegistrar(
         fallback.cancel(spec.triggerId) { primary().register(spec, callback) }
     }
 
+    override fun refresh(spec: GeofenceSpec, callback: GeofenceOperationCallback) {
+        if (!usePrimary()) {
+            fallback.refresh(spec, callback)
+            return
+        }
+        fallback.cancel(spec.triggerId) { primary().refresh(spec, callback) }
+    }
+
     override fun cancel(triggerId: TriggerId, callback: GeofenceOperationCallback) {
         fallback.cancel(triggerId) { fallbackResult ->
             if (usePrimary()) primary().cancel(triggerId, callback) else callback.onComplete(fallbackResult)

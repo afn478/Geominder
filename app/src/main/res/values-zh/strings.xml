@@ -164,6 +164,13 @@
     <string name="background_location_settings_explanation">在应用权限页面选择“始终允许”。</string>
     <string name="notifications_allowed_explanation">可以显示提醒通知。</string>
     <string name="notifications_needed_explanation">请允许通知，以便收到提醒。</string>
+    <string name="battery_usage">电池用量</string>
+    <string name="battery_unrestricted">无限制</string>
+    <string name="battery_optimized">已优化</string>
+    <string name="battery_unrestricted_explanation">手机不会在后台暂停 Geominder，位置提醒可以准时送达。</string>
+    <string name="battery_optimized_explanation">部分手机会暂停后台应用以节省电量，这可能导致位置提醒延迟或无法送达。请在应用的电池页面中选择“无限制”。Geominder 只会在提醒到期时短暂运行。</string>
+    <string name="open_battery_settings">打开电池设置</string>
+    <string name="small_radius_hint">小于 %1$s 的区域可能无法被检测到。在后台，手机的定位精度通常只有几十米。</string>
     <string name="setting_save_failed">无法保存设置</string>
     <string name="validation_radius_number">输入以米为单位的半径</string>
     <string name="validation_radius_finite">输入有效的半径</string>

@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.afn478.geominder.boot.RegistrationRefresh
 import com.afn478.geominder.localization.AppLanguagePreferences
 import com.afn478.geominder.settings.SettingsPermissionAction
 import com.afn478.geominder.ui.theme.ReminderTheme
@@ -76,7 +77,11 @@ class MainActivity : ComponentActivity() {
             }
         }
         // Recreation (rotation, language change) must not re-open permission prompts.
-        if (savedInstanceState == null) requestInitialNotificationAccess()
+        if (savedInstanceState == null) {
+            requestInitialNotificationAccess()
+            // Opening the app is a cheap moment to restore anything the system dropped meanwhile.
+            RegistrationRefresh.request("app opened")
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -132,6 +137,7 @@ class MainActivity : ComponentActivity() {
             SettingsPermissionAction.OPEN_EXACT_ALARM_SETTINGS,
             SettingsPermissionAction.OPEN_FULL_SCREEN_INTENT_SETTINGS,
             SettingsPermissionAction.OPEN_APP_PERMISSION_SETTINGS,
+            SettingsPermissionAction.OPEN_BATTERY_SETTINGS,
             -> launchSettings(container.permissionIntentProvider.intentFor(action))
         }
     }

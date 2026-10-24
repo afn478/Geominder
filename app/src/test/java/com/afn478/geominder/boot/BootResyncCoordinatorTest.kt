@@ -56,6 +56,26 @@ class BootResyncCoordinatorTest {
     }
 
     @Test
+    fun `refreshed geofences alert at once only for reminders that have not alerted yet`() = runBlocking {
+        val fresh = reminder(id = "fresh", withGeo = true)
+        val alerted = reminder(
+            id = "alerted",
+            withGeo = true,
+            lastTriggeredAt = Instant.parse("2026-08-24T12:00:00Z"),
+        )
+        val registrar = RecordingGeofenceRegistrar()
+
+        coordinator(
+            reminders = listOf(fresh, alerted),
+            scheduler = RecordingAlarmScheduler(),
+            registrar = registrar,
+        ).resynchronize()
+
+        assertEquals(listOf(fresh.id, alerted.id), registrar.refreshed.map(GeofenceSpec::reminderId))
+        assertEquals(listOf(true, false), registrar.refreshed.map(GeofenceSpec::alertIfInside))
+    }
+
+    @Test
     fun `alarm-only resync leaves geofences untouched and skips delivered snoozes`() = runBlocking {
         val timeOnly = reminder(id = "time", withTime = true)
         val geoOnly = reminder(id = "geo", withGeo = true)
@@ -234,6 +254,7 @@ class BootResyncCoordinatorTest {
         withTime: Boolean = false,
         withGeo: Boolean = false,
         activeFrom: Instant? = null,
+        lastTriggeredAt: Instant? = null,
     ): Reminder {
         val createdAt = Instant.parse("2026-08-24T10:00:00Z")
         return Reminder(
@@ -265,6 +286,7 @@ class BootResyncCoordinatorTest {
             createdAt = createdAt,
             snoozedUntil = snoozedUntil,
             dismissedAt = dismissedAt,
+            lastTriggeredAt = lastTriggeredAt,
         )
     }
 }
@@ -326,6 +348,12 @@ private class RecordingGeofenceRegistrar(
     private val failingReminderId: ReminderId? = null,
 ) : GeofenceRegistrar {
     val specs = mutableListOf<GeofenceSpec>()
+    val refreshed = mutableListOf<GeofenceSpec>()
+
+    override fun refresh(spec: GeofenceSpec, callback: GeofenceOperationCallback) {
+        refreshed += spec
+        register(spec, callback)
+    }
 
     override fun register(spec: GeofenceSpec, callback: GeofenceOperationCallback) {
         specs += spec

@@ -59,6 +59,7 @@ import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import com.afn478.geominder.ui.map.LocationMapPreview
+import com.afn478.geominder.ui.map.smallRadiusHint
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.runtime.getValue
@@ -917,6 +918,7 @@ private fun GeoEditor(
                 onValueChange = onRadiusChange,
                 label = stringResource(R.string.radius_metres),
                 error = state.geoInputErrors[GeoInputField.RADIUS],
+                hint = smallRadiusHint(state.radiusText.trim().toDoubleOrNull()),
                 modifier = Modifier.fillMaxWidth(),
             )
         }
@@ -975,6 +977,7 @@ private fun GeoNumberField(
     label: String,
     error: GeoInputError?,
     modifier: Modifier = Modifier,
+    hint: String? = null,
 ) {
     OutlinedTextField(
         value = value,
@@ -984,7 +987,7 @@ private fun GeoNumberField(
         singleLine = true,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
         isError = error != null,
-        supportingText = error?.let { { Text(it.userMessage().resolve()) } },
+        supportingText = (error?.userMessage()?.resolve() ?: hint)?.let { { Text(it) } },
     )
 }
 

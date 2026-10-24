@@ -164,6 +164,13 @@
     <string name="background_location_settings_explanation">アプリの権限画面で「常に許可」を選択してください。</string>
     <string name="notifications_allowed_explanation">リマインダー通知を表示できます。</string>
     <string name="notifications_needed_explanation">リマインダーを受け取るには通知を許可してください。</string>
+    <string name="battery_usage">電池使用量</string>
+    <string name="battery_unrestricted">制限なし</string>
+    <string name="battery_optimized">最適化</string>
+    <string name="battery_unrestricted_explanation">Geominder はバックグラウンドで一時停止されないため、場所のリマインダーが時間どおりに届きます。</string>
+    <string name="battery_optimized_explanation">一部のスマートフォンは電池を節約するためにバックグラウンドのアプリを一時停止し、場所のリマインダーが遅れたり届かなかったりすることがあります。アプリの電池画面で「制限なし」を選択してください。Geominder はリマインダーの時刻に短時間だけ動作します。</string>
+    <string name="open_battery_settings">電池の設定を開く</string>
+    <string name="small_radius_hint">%1$s 未満の範囲は検出されないことがあります。バックグラウンドでは、スマートフォンの位置精度が数十メートル程度にとどまることがよくあります。</string>
     <string name="setting_save_failed">設定を保存できませんでした</string>
     <string name="validation_radius_number">半径をメートル単位で入力してください</string>
     <string name="validation_radius_finite">有効な半径を入力してください</string>

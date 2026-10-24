@@ -43,6 +43,19 @@ class FallbackLocationServicesTest {
     }
 
     @Test
+    fun `refreshing follows the available backend`() {
+        val play = RecordingRegistrar("play")
+        val platform = RecordingRegistrar("platform")
+
+        FallbackGeofenceRegistrar({ play }, platform, usePrimary = { true }).refresh(spec) {}
+        FallbackGeofenceRegistrar({ error("Play services is absent") }, platform, usePrimary = { false })
+            .refresh(spec) {}
+
+        assertEquals(listOf("refresh trigger"), play.calls)
+        assertEquals(listOf("cancel trigger", "refresh trigger"), platform.calls)
+    }
+
+    @Test
     fun `cancelling clears both backends when Play services is available`() {
         val play = RecordingRegistrar("play")
         val platform = RecordingRegistrar("platform")
@@ -72,6 +85,11 @@ class FallbackLocationServicesTest {
 
         override fun register(spec: GeofenceSpec, callback: GeofenceOperationCallback) {
             calls += "register ${spec.triggerId.value}"
+            callback.onComplete(GeofenceOperationResult.Success)
+        }
+
+        override fun refresh(spec: GeofenceSpec, callback: GeofenceOperationCallback) {
+            calls += "refresh ${spec.triggerId.value}"
             callback.onComplete(GeofenceOperationResult.Success)
         }
 

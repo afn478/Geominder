@@ -19,4 +19,6 @@
     <string name="preset_location_summary">%1$s · radius: %2$s metres</string>
     <string name="recycling_bin">Bin</string>
     <string name="recycling_bin_selected">Bin, selected</string>
+    <string name="battery_optimized">Optimised</string>
+    <string name="small_radius_hint">Areas smaller than %1$s may be missed. In the background, phones often know their position only to within a few dozen metres.</string>
 </resources>

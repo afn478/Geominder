@@ -78,6 +78,7 @@ import com.afn478.geominder.BuildConfig
 import com.afn478.geominder.R
 import com.afn478.geominder.geofence.GeoInputError
 import com.afn478.geominder.geofence.GeoInputField
+import com.afn478.geominder.ui.map.smallRadiusHint
 import com.afn478.geominder.localization.SupportedLanguage
 import com.afn478.geominder.localization.UiText
 import com.afn478.geominder.localization.resource
@@ -727,7 +728,8 @@ private fun RadiusSection(
             suffix = { Text(stringResource(R.string.metres)) },
             singleLine = true,
             isError = state.radiusError != null,
-            supportingText = state.radiusError?.let { error -> { Text(error.resolve()) } },
+            supportingText = (state.radiusError?.resolve() ?: smallRadiusHint(state.radiusText.trim().toDoubleOrNull()))
+                ?.let { text -> { Text(text) } },
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Decimal,
                 imeAction = ImeAction.Done,
@@ -934,6 +936,7 @@ private fun LocationPresetEditor(
                 onValueChange = onRadiusChange,
                 label = stringResource(R.string.radius_metres),
                 error = state.locationInputErrors[GeoInputField.RADIUS],
+                hint = smallRadiusHint(state.locationRadiusText.trim().toDoubleOrNull()),
                 modifier = Modifier.fillMaxWidth(),
             )
             state.locationError?.let {
@@ -965,6 +968,7 @@ private fun PresetLocationNumberField(
     label: String,
     error: GeoInputError?,
     modifier: Modifier = Modifier,
+    hint: String? = null,
 ) {
     OutlinedTextField(
         value = value,
@@ -973,7 +977,7 @@ private fun PresetLocationNumberField(
         modifier = modifier,
         singleLine = true,
         isError = error != null,
-        supportingText = error?.let { { Text(it.userMessage().resolve()) } },
+        supportingText = (error?.userMessage()?.resolve() ?: hint)?.let { { Text(it) } },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
     )
 }

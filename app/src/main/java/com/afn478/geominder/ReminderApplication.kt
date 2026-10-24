@@ -12,6 +12,7 @@ import com.afn478.geominder.backup.ReminderBackupManager
 import com.afn478.geominder.backup.SafReminderBackup
 import com.afn478.geominder.boot.BootFeatureRuntime
 import com.afn478.geominder.boot.DefaultBootFeatureEntryPoint
+import com.afn478.geominder.boot.RegistrationRefresh
 import com.afn478.geominder.data.local.ReminderDatabase
 import com.afn478.geominder.data.repository.RoomReminderRepository
 import com.afn478.geominder.domain.repository.ReminderRepository
@@ -58,6 +59,7 @@ class ReminderApplication : Application() {
             alarmScheduler = container.exactAlarmScheduler,
             geofenceRegistrar = container.geofenceRegistrar,
         )
+        RegistrationRefresh.install(this)
         GeoLabelRefreshCoordinator(
             repository = container.reminderRepository,
             resolver = container.geoLabelResolver,

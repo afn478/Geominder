@@ -152,7 +152,11 @@ class BootResyncCoordinator(
         reminders: List<Reminder>,
     ): List<BootResyncFailure?> = coroutineScope {
         reminders.mapNotNull { reminder ->
-            reminder.geoTrigger?.let { trigger -> reminder to GeofenceSpec.from(reminder.id, trigger) }
+            reminder.geoTrigger?.let { trigger ->
+                // A pending reminder that already alerted waits for the next arrival.
+                reminder to GeofenceSpec.from(reminder.id, trigger)
+                    .copy(alertIfInside = reminder.lastTriggeredAt == null)
+            }
         }.map { (reminder, spec) ->
             async {
                 when (val result = awaitRegistration(spec)) {
@@ -180,7 +184,7 @@ class BootResyncCoordinator(
                 continuation.invokeOnCancellation { completed.set(true) }
 
                 try {
-                    geofenceRegistrar.register(
+                    geofenceRegistrar.refresh(
                         spec,
                         GeofenceOperationCallback { result ->
                             if (completed.compareAndSet(false, true) && continuation.isActive) {

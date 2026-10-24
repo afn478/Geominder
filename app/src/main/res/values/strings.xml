@@ -174,6 +174,13 @@
     <string name="background_location_settings_explanation">Choose ‘Allow all the time’ on the app permission screen.</string>
     <string name="notifications_allowed_explanation">Reminder notifications can be shown.</string>
     <string name="notifications_needed_explanation">Allow notifications so reminders can reach you.</string>
+    <string name="battery_usage">Battery usage</string>
+    <string name="battery_unrestricted">Unrestricted</string>
+    <string name="battery_optimized">Optimized</string>
+    <string name="battery_unrestricted_explanation">Your phone won’t pause Geominder in the background, so location reminders arrive on time.</string>
+    <string name="battery_optimized_explanation">Some phones pause background apps to save battery, which can delay or drop location reminders. Choose ‘Unrestricted’ on the app’s battery screen. Geominder only runs briefly when a reminder is due.</string>
+    <string name="open_battery_settings">Open battery settings</string>
+    <string name="small_radius_hint">Areas smaller than %1$s may be missed. In the background, phones often know their position only to within a few dozen meters.</string>
     <string name="setting_save_failed">The setting could not be saved</string>
     <string name="validation_radius_number">Enter a radius in meters</string>
     <string name="validation_radius_finite">Enter a finite radius</string>

@@ -164,6 +164,13 @@
     <string name="background_location_settings_explanation">Elige «Permitir siempre» en la pantalla de permisos de la aplicación.</string>
     <string name="notifications_allowed_explanation">Se pueden mostrar las notificaciones de recordatorios.</string>
     <string name="notifications_needed_explanation">Permite las notificaciones para recibir tus recordatorios.</string>
+    <string name="battery_usage">Uso de batería</string>
+    <string name="battery_unrestricted">Sin restricciones</string>
+    <string name="battery_optimized">Optimizada</string>
+    <string name="battery_unrestricted_explanation">Tu teléfono no pausa Geominder en segundo plano, así que los recordatorios de lugar llegan a tiempo.</string>
+    <string name="battery_optimized_explanation">Algunos teléfonos pausan las aplicaciones en segundo plano para ahorrar batería, lo que puede retrasar o impedir los recordatorios de lugar. Elige «Sin restricciones» en la pantalla de batería de la aplicación. Geominder solo se ejecuta brevemente cuando vence un recordatorio.</string>
+    <string name="open_battery_settings">Abrir ajustes de batería</string>
+    <string name="small_radius_hint">Las zonas de menos de %1$s pueden pasar desapercibidas. En segundo plano, el teléfono a menudo solo conoce su posición con un margen de unas decenas de metros.</string>
     <string name="setting_save_failed">No se ha podido guardar el ajuste</string>
     <string name="validation_radius_number">Introduce un radio en metros</string>
     <string name="validation_radius_finite">Introduce un radio válido</string>

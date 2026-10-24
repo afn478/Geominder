@@ -164,6 +164,13 @@
     <string name="background_location_settings_explanation">앱 권한 화면에서 ‘항상 허용’을 선택하세요.</string>
     <string name="notifications_allowed_explanation">리마인더 알림을 표시할 수 있습니다.</string>
     <string name="notifications_needed_explanation">리마인더를 받으려면 알림을 허용하세요.</string>
+    <string name="battery_usage">배터리 사용량</string>
+    <string name="battery_unrestricted">제한 없음</string>
+    <string name="battery_optimized">최적화됨</string>
+    <string name="battery_unrestricted_explanation">휴대전화가 백그라운드에서 Geominder를 일시중지하지 않으므로 위치 리마인더가 제때 도착합니다.</string>
+    <string name="battery_optimized_explanation">일부 휴대전화는 배터리를 아끼기 위해 백그라운드 앱을 일시중지하며, 이 때문에 위치 리마인더가 늦거나 오지 않을 수 있습니다. 앱의 배터리 화면에서 ‘제한 없음’을 선택하세요. Geominder는 리마인더가 울릴 때만 잠깐 실행됩니다.</string>
+    <string name="open_battery_settings">배터리 설정 열기</string>
+    <string name="small_radius_hint">%1$s 미만의 영역은 감지되지 않을 수 있습니다. 백그라운드에서는 휴대전화가 위치를 수십 미터 정도의 정확도로만 아는 경우가 많습니다.</string>
     <string name="setting_save_failed">설정을 저장할 수 없음</string>
     <string name="validation_radius_number">반경을 미터 단위로 입력하세요</string>
     <string name="validation_radius_finite">유효한 반경을 입력하세요</string>

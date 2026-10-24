@@ -74,12 +74,24 @@ class SettingsPermissionPolicyTest {
         )
     }
 
+    @Test
+    fun `battery row offers the battery settings only while optimized`() {
+        val optimized = items(36, batteryUnrestricted = false)
+            .first { it.id == SettingsPermissionId.BATTERY }
+        assertEquals(SettingsPermissionAction.OPEN_BATTERY_SETTINGS, optimized.action)
+        assertFalse(optimized.shouldProactivelyRequest)
+
+        val unrestricted = items(36).first { it.id == SettingsPermissionId.BATTERY }
+        assertNull(unrestricted.action)
+    }
+
     private fun items(
         sdkInt: Int,
         exactAlarm: ExactAlarmPermissionState = ExactAlarmPermissionState.GRANTED,
         fullScreenIntent: FullScreenIntentPermissionState =
             FullScreenIntentPermissionState.GRANTED,
         fineLocationGranted: Boolean = false,
+        batteryUnrestricted: Boolean = true,
     ) = SettingsPermissionPolicy.items(
         SettingsPermissionSnapshot(
             sdkInt = sdkInt,
@@ -88,6 +100,7 @@ class SettingsPermissionPolicyTest {
             fineLocationGranted = fineLocationGranted,
             backgroundLocationGranted = false,
             notifications = RuntimePermissionState.USER_ACTION_REQUIRED,
+            batteryUnrestricted = batteryUnrestricted,
         ),
     )
 }

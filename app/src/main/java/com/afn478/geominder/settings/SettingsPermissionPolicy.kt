@@ -19,6 +19,8 @@ data class SettingsPermissionSnapshot(
     val fineLocationGranted: Boolean,
     val backgroundLocationGranted: Boolean,
     val notifications: RuntimePermissionState,
+    /** Exempt from battery optimization, so OEM battery managers leave the app alone. */
+    val batteryUnrestricted: Boolean = true,
 )
 
 enum class SettingsPermissionAction {
@@ -28,6 +30,7 @@ enum class SettingsPermissionAction {
     REQUEST_BACKGROUND_LOCATION,
     OPEN_APP_PERMISSION_SETTINGS,
     REQUEST_NOTIFICATIONS,
+    OPEN_BATTERY_SETTINGS,
 }
 
 enum class SettingsPermissionId {
@@ -36,6 +39,7 @@ enum class SettingsPermissionId {
     FINE_LOCATION,
     BACKGROUND_LOCATION,
     NOTIFICATIONS,
+    BATTERY,
 }
 
 data class PermissionUiItem(
@@ -56,6 +60,7 @@ object SettingsPermissionPolicy {
         add(fineLocationItem(snapshot))
         add(backgroundLocationItem(snapshot))
         if (snapshot.sdkInt >= 33) add(notificationItem(snapshot))
+        add(batteryItem(snapshot))
     }
 
     private fun exactAlarmItem(snapshot: SettingsPermissionSnapshot): PermissionUiItem = when {
@@ -163,6 +168,26 @@ object SettingsPermissionPolicy {
             shouldProactivelyRequest = false,
         )
     }
+
+    // Recommended rather than required, so it is never requested on its own.
+    private fun batteryItem(snapshot: SettingsPermissionSnapshot): PermissionUiItem =
+        if (snapshot.batteryUnrestricted) {
+            PermissionUiItem(
+                id = SettingsPermissionId.BATTERY,
+                title = UiText.resource(R.string.battery_usage),
+                status = UiText.resource(R.string.battery_unrestricted),
+                explanation = UiText.resource(R.string.battery_unrestricted_explanation),
+            )
+        } else {
+            PermissionUiItem(
+                id = SettingsPermissionId.BATTERY,
+                title = UiText.resource(R.string.battery_usage),
+                status = UiText.resource(R.string.battery_optimized),
+                explanation = UiText.resource(R.string.battery_optimized_explanation),
+                action = SettingsPermissionAction.OPEN_BATTERY_SETTINGS,
+                actionLabel = UiText.resource(R.string.open_battery_settings),
+            )
+        }
 
     private fun notificationItem(snapshot: SettingsPermissionSnapshot): PermissionUiItem =
         if (snapshot.notifications == RuntimePermissionState.GRANTED) {

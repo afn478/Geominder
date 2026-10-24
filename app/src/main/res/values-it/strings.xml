@@ -164,6 +164,13 @@
     <string name="background_location_settings_explanation">Scegli «Consenti sempre» nella schermata delle autorizzazioni dell’app.</string>
     <string name="notifications_allowed_explanation">Le notifiche dei promemoria possono essere mostrate.</string>
     <string name="notifications_needed_explanation">Consenti le notifiche per ricevere i promemoria.</string>
+    <string name="battery_usage">Utilizzo della batteria</string>
+    <string name="battery_unrestricted">Senza restrizioni</string>
+    <string name="battery_optimized">Ottimizzato</string>
+    <string name="battery_unrestricted_explanation">Il telefono non mette in pausa Geominder in background, quindi i promemoria di luogo arrivano puntuali.</string>
+    <string name="battery_optimized_explanation">Alcuni telefoni mettono in pausa le app in background per risparmiare batteria, e i promemoria di luogo possono arrivare in ritardo o non arrivare affatto. Scegli «Senza restrizioni» nella schermata batteria dell’app. Geominder resta attivo solo per pochi istanti quando scatta un promemoria.</string>
+    <string name="open_battery_settings">Apri le impostazioni della batteria</string>
+    <string name="small_radius_hint">Le aree più piccole di %1$s potrebbero non essere rilevate. In background il telefono conosce spesso la propria posizione solo con un margine di qualche decina di metri.</string>
     <string name="setting_save_failed">Non è stato possibile salvare l’impostazione</string>
     <string name="validation_radius_number">Inserisci un raggio in metri</string>
     <string name="validation_radius_finite">Inserisci un raggio valido</string>

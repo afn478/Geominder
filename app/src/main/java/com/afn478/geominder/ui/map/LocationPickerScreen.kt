@@ -72,6 +72,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.afn478.geominder.R
+import com.afn478.geominder.geofence.GeofenceSpec
 import com.afn478.geominder.geofence.PlaceResult
 import com.afn478.geominder.ui.add.SupportingError
 import com.afn478.geominder.ui.text.resolve
@@ -538,6 +539,13 @@ private fun PickerPanel(
                 valueRange = 0f..(steps.size - 1).toFloat(),
                 steps = (steps.size - 2).coerceAtLeast(0),
             )
+            smallRadiusHint(state.radiusMeters)?.let { hint ->
+                Text(
+                    text = hint,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             Button(
                 onClick = onConfirm,
                 enabled = state.canConfirm,
@@ -557,6 +565,13 @@ private fun coordinatesText(state: LocationPickerUiState): String {
     val longitude = state.longitude ?: return ""
     return String.format(Locale.US, "%.5f, %.5f", latitude, longitude)
 }
+
+/** A caution for radiuses too small to be detected reliably, or null when the radius is fine. */
+@Composable
+internal fun smallRadiusHint(radiusMeters: Double?): String? =
+    radiusMeters?.takeIf { it > 0.0 && it < GeofenceSpec.RELIABLE_RADIUS_METERS }?.let {
+        stringResource(R.string.small_radius_hint, formatDistance(GeofenceSpec.RELIABLE_RADIUS_METERS))
+    }
 
 /** "150 m" or "1.5 km", in the user's number format. */
 @Composable

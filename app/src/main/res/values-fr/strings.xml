@@ -164,6 +164,13 @@
     <string name="background_location_settings_explanation">Choisissez « Toujours autoriser » sur l’écran des autorisations de l’application.</string>
     <string name="notifications_allowed_explanation">Les notifications de rappel peuvent être affichées.</string>
     <string name="notifications_needed_explanation">Autorisez les notifications pour recevoir vos rappels.</string>
+    <string name="battery_usage">Utilisation de la batterie</string>
+    <string name="battery_unrestricted">Non restreinte</string>
+    <string name="battery_optimized">Optimisée</string>
+    <string name="battery_unrestricted_explanation">Votre téléphone ne met pas Geominder en pause en arrière-plan : les rappels de lieu arrivent à temps.</string>
+    <string name="battery_optimized_explanation">Certains téléphones mettent en pause les applications en arrière-plan pour économiser la batterie, ce qui peut retarder ou bloquer les rappels de lieu. Choisissez « Non restreinte » sur l’écran batterie de l’application. Geominder ne s’exécute que brièvement lorsqu’un rappel est dû.</string>
+    <string name="open_battery_settings">Ouvrir les paramètres de batterie</string>
+    <string name="small_radius_hint">Les zones de moins de %1$s risquent de ne pas être détectées. En arrière-plan, un téléphone ne connaît souvent sa position qu’à quelques dizaines de mètres près.</string>
     <string name="setting_save_failed">Impossible d’enregistrer le paramètre</string>
     <string name="validation_radius_number">Saisissez un rayon en mètres</string>
     <string name="validation_radius_finite">Saisissez un rayon valide</string>

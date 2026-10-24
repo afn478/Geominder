@@ -14,8 +14,19 @@ data class GeofenceSpec(
     val longitude: Double,
     val radiusMeters: Double,
     val activeFrom: Instant?,
+    /**
+     * Whether registering while the device is already inside should alert at once. Refreshes turn
+     * this off for reminders that already alerted, so a still-pending reminder doesn't fire again.
+     */
+    val alertIfInside: Boolean = true,
 ) {
     companion object {
+        /**
+         * Below this, arrivals are often missed: in the background a phone frequently knows its
+         * position only to within a few dozen meters.
+         */
+        const val RELIABLE_RADIUS_METERS = 50.0
+
         fun from(reminderId: ReminderId, trigger: GeoTrigger): GeofenceSpec = GeofenceSpec(
             reminderId = reminderId,
             triggerId = trigger.id,

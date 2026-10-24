@@ -164,6 +164,13 @@
     <string name="background_location_settings_explanation">Выберите «Разрешить всегда» на экране разрешений приложения.</string>
     <string name="notifications_allowed_explanation">Уведомления о напоминаниях могут отображаться.</string>
     <string name="notifications_needed_explanation">Разрешите уведомления, чтобы получать напоминания.</string>
+    <string name="battery_usage">Расход заряда батареи</string>
+    <string name="battery_unrestricted">Без ограничений</string>
+    <string name="battery_optimized">Оптимизировано</string>
+    <string name="battery_unrestricted_explanation">Телефон не приостанавливает Geominder в фоне, поэтому напоминания о местах приходят вовремя.</string>
+    <string name="battery_optimized_explanation">Некоторые телефоны приостанавливают фоновые приложения ради экономии заряда, из-за чего напоминания о местах могут опаздывать или не приходить. Выберите «Без ограничений» на экране батареи приложения. Geominder работает лишь несколько секунд, когда срабатывает напоминание.</string>
+    <string name="open_battery_settings">Открыть настройки батареи</string>
+    <string name="small_radius_hint">Зоны меньше %1$s могут не распознаваться. В фоне телефон часто знает своё положение лишь с точностью до нескольких десятков метров.</string>
     <string name="setting_save_failed">Не удалось сохранить настройку</string>
     <string name="validation_radius_number">Введите радиус в метрах</string>
     <string name="validation_radius_finite">Введите корректный радиус</string>

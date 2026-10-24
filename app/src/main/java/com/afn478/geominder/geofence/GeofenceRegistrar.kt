@@ -15,5 +15,11 @@ fun interface GeofenceOperationCallback {
 
 interface GeofenceRegistrar {
     fun register(spec: GeofenceSpec, callback: GeofenceOperationCallback)
+
+    /**
+     * Makes sure the geofence exists again after the system may have dropped it, for example when
+     * location was switched off or the app was force-stopped. Defaults to registering it anew.
+     */
+    fun refresh(spec: GeofenceSpec, callback: GeofenceOperationCallback) = register(spec, callback)
     fun cancel(triggerId: TriggerId, callback: GeofenceOperationCallback)
 }

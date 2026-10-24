@@ -16,7 +16,7 @@ object GoogleGeofenceRequestFactory {
         .build()
 
     fun request(spec: GeofenceSpec): GeofencingRequest = GeofencingRequest.Builder()
-        .setInitialTrigger(GeofencingRequest.INITIAL_TRIGGER_ENTER)
+        .setInitialTrigger(if (spec.alertIfInside) GeofencingRequest.INITIAL_TRIGGER_ENTER else 0)
         .addGeofence(geofence(spec))
         .build()
 }

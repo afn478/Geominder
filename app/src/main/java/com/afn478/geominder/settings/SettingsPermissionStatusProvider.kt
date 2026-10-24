@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.os.PowerManager
 import androidx.core.content.ContextCompat
 import com.afn478.geominder.alarm.AlarmPermissionController
 import com.afn478.geominder.geofence.LocationCapability
@@ -38,6 +39,8 @@ class AndroidSettingsPermissionStatusProvider(
             fineLocationGranted = fineLocationGranted,
             backgroundLocationGranted = backgroundLocationGranted,
             notifications = notificationState(),
+            batteryUnrestricted = applicationContext.getSystemService(PowerManager::class.java)
+                ?.isIgnoringBatteryOptimizations(applicationContext.packageName) ?: true,
         )
     }
 

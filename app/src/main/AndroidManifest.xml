@@ -48,6 +48,7 @@
         <receiver android:name=".alarm.SnoozeAlarmReceiver" android:exported="false" />
         <receiver android:name=".geofence.ProximityAlertReceiver" android:exported="false" />
         <receiver android:name=".alert.AlertActionReceiver" android:exported="false" />
+        <receiver android:name=".boot.RefreshAlarmReceiver" android:exported="false" />
         <receiver
             android:name=".boot.BootCompletedReceiver"
             android:directBootAware="false"

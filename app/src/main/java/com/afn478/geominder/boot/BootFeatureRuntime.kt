@@ -4,8 +4,10 @@ import com.afn478.geominder.alarm.ExactAlarmScheduler
 import com.afn478.geominder.domain.repository.ReminderRepository
 import com.afn478.geominder.geofence.GeofenceRegistrar
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -41,8 +43,16 @@ class DefaultBootFeatureEntryPoint(
         geofenceRegistrar = geofenceRegistrar,
     )
 
+    private var running: Deferred<BootResyncReport>? = null
+
+    // Boot, app start and a location switch can ask at the same moment; they share one pass.
     override fun resynchronize(completion: (BootResyncReport) -> Unit) =
-        launch(completion) { coordinator.resynchronize() }
+        launch(completion) { sharedResynchronization().await() }
+
+    private fun sharedResynchronization(): Deferred<BootResyncReport> = synchronized(this) {
+        running?.takeIf { it.isActive }
+            ?: scope.async { coordinator.resynchronize() }.also { running = it }
+    }
 
     override fun rescheduleAlarms(completion: (BootResyncReport) -> Unit) =
         launch(completion) { coordinator.rescheduleAlarms() }
